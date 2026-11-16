@@ -24,3 +24,21 @@ jobs:
         run: npm test
       - name: Verify standalone container build
         run: docker build -t permit-finder:ci .
+      - name: Verify container startup and persistent-disk permissions
+        run: |
+          docker run -d --name permit-finder-smoke \
+            -e NODE_ENV=development \
+            -e APP_URL=http://localhost:3000 \
+            -e ADMIN_EMAIL=ci@example.test \
+            -e ADMIN_PASSWORD=ci-only-password-not-for-production \
+            permit-finder:ci
+          for attempt in $(seq 1 20); do
+            if docker exec permit-finder-smoke node -e "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; then
+              docker rm -f permit-finder-smoke
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs permit-finder-smoke
+          docker rm -f permit-finder-smoke
+          exit 1
