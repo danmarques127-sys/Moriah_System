@@ -1,0 +1,6 @@
+import {randomUUID} from 'node:crypto';import {openDatabase,timestamp,transaction} from '../src/db.mjs';import {hashPassword,validEmail} from '../src/auth.mjs';import {DEFAULT_SETTINGS} from '../src/estimator.mjs';
+const command=process.argv[2],email=process.env.NEW_USER_EMAIL,password=process.env.NEW_USER_PASSWORD;
+if(!validEmail(email))throw new Error('Set NEW_USER_EMAIL.');const hash=await hashPassword(password),db=openDatabase(process.env.DATABASE_PATH||'data/permit-finder.sqlite');
+if(command==='reset-password'){const result=db.prepare('UPDATE users SET password_hash=? WHERE email=?').run(hash,email.toLowerCase());if(!result.changes)throw new Error('User not found.');db.prepare('DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE email=?)').run(email.toLowerCase());}
+else if(command==='create-workspace'){const id=randomUUID(),settings=structuredClone(DEFAULT_SETTINGS);settings.company.name=process.env.NEW_WORKSPACE_NAME||'New workspace';transaction(db,()=>{db.prepare('INSERT INTO workspaces VALUES(?,?,?,?)').run(id,settings.company.name,JSON.stringify(settings),timestamp());db.prepare('INSERT INTO users VALUES(?,?,?,?,?,?,?)').run(randomUUID(),id,email.toLowerCase(),hash,'owner',0,timestamp());});}
+else throw new Error('Use create-workspace or reset-password.');db.close();console.log('Account operation completed. No email was sent.');

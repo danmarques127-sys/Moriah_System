@@ -1,0 +1,18 @@
+CREATE TABLE IF NOT EXISTS workspaces(id TEXT PRIMARY KEY,name TEXT NOT NULL,settings TEXT NOT NULL,created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),email TEXT NOT NULL UNIQUE,password_hash TEXT NOT NULL,role TEXT NOT NULL CHECK(role IN ('owner','estimator','viewer')),system_admin INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS sessions(token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,csrf TEXT NOT NULL,expires_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS permits(id TEXT PRIMARY KEY,source_id TEXT NOT NULL,issued TEXT NOT NULL,project_key TEXT NOT NULL,data TEXT NOT NULL,first_seen TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS permit_date ON permits(issued);
+CREATE INDEX IF NOT EXISTS permit_project ON permits(project_key);
+CREATE TABLE IF NOT EXISTS lead_reviews(workspace_id TEXT NOT NULL REFERENCES workspaces(id),project_key TEXT NOT NULL,status TEXT NOT NULL,notes TEXT NOT NULL DEFAULT '',contact_date TEXT NOT NULL DEFAULT '',updated_at TEXT NOT NULL,PRIMARY KEY(workspace_id,project_key));
+CREATE TABLE IF NOT EXISTS projects(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),name TEXT NOT NULL,data TEXT NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS project_workspace ON projects(workspace_id);
+CREATE TABLE IF NOT EXISTS estimates(id TEXT PRIMARY KEY,workspace_id TEXT NOT NULL REFERENCES workspaces(id),project_id TEXT NOT NULL REFERENCES projects(id),title TEXT NOT NULL,input TEXT NOT NULL,result TEXT NOT NULL,company TEXT NOT NULL,created_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS estimate_workspace ON estimates(workspace_id,project_id);
+CREATE TABLE IF NOT EXISTS coverage(source_id TEXT NOT NULL,month TEXT NOT NULL,status TEXT NOT NULL,message TEXT NOT NULL,count INTEGER NOT NULL DEFAULT 0,checked_at TEXT NOT NULL,PRIMARY KEY(source_id,month));
+CREATE TABLE IF NOT EXISTS jobs(id TEXT PRIMARY KEY,source_id TEXT NOT NULL,month TEXT NOT NULL,status TEXT NOT NULL,message TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS job_active ON jobs(source_id,month) WHERE status IN ('queued','running');
+CREATE TABLE IF NOT EXISTS scheduler_runs(day TEXT PRIMARY KEY,created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT,workspace_id TEXT,event TEXT NOT NULL,created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS custom_sources(id TEXT PRIMARY KEY,data TEXT NOT NULL);
+PRAGMA user_version=1;

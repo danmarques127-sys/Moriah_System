@@ -1,0 +1,7 @@
+data
+backups
+.env
+.env.*
+.git
+node_modules
+coverage

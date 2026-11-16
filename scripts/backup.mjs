@@ -1,0 +1,2 @@
+import {backup} from 'node:sqlite';import {mkdirSync} from 'node:fs';import {dirname} from 'node:path';import {openDatabase} from '../src/db.mjs';
+const source=process.env.DATABASE_PATH||'data/permit-finder.sqlite',target=process.argv[2];if(!target||target===source)throw new Error('Pass a distinct destination: npm run backup -- backups/file.sqlite');mkdirSync(dirname(target),{recursive:true});const db=openDatabase(source);await backup(db,target);db.close();console.log('Database backup completed. Store it privately; it includes account password hashes and company data.');

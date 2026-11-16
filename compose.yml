@@ -1,0 +1,42 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      APP_URL: ${APP_URL:?Set APP_URL to your HTTPS domain}
+      DATABASE_PATH: /data/permit-finder.sqlite
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?Set ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set a unique initial password}
+      COMPANY_NAME: ${COMPANY_NAME:-H&M Brothers Insulation}
+      TRUST_PROXY: '1'
+      ENABLE_SCHEDULER: ${ENABLE_SCHEDULER:-1}
+      SCAN_TIMEZONE: America/New_York
+    volumes:
+      - app_data:/data
+    expose:
+      - '3000'
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+  proxy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN to your domain without https}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+volumes:
+  app_data:
+  caddy_data:
+  caddy_config:
