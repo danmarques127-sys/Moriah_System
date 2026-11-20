@@ -18,6 +18,7 @@ async function body(req){
 }
 export async function createApplication(options={}){
  const config={databasePath:process.env.DATABASE_PATH||'data/permit-finder.sqlite',adminEmail:process.env.ADMIN_EMAIL,adminPassword:process.env.ADMIN_PASSWORD,companyName:process.env.COMPANY_NAME,production:process.env.NODE_ENV==='production',appUrl:process.env.APP_URL||'http://localhost:3000',trustProxy:process.env.TRUST_PROXY==='1',...options};
+ if(config.testLoginEmail&&(config.production||process.env.NODE_ENV==='production'))throw new Error('Acesso de teste proibido em produção.');
  const origin=new URL(config.appUrl).origin;if(config.production&&!origin.startsWith('https:'))throw new Error('APP_URL deve usar HTTPS em produção.');
  const db=config.db||openDatabase(config.databasePath);await bootstrap(db,config);
  const loginRate=rateLimit(),mutationRate=rateLimit(60000,120),collectRate=rateLimit(60000,5);
@@ -33,13 +34,17 @@ export async function createApplication(options={}){
    if(assets[path]&&req.method==='GET'){const suffix=path==='/'?'.html':path.endsWith('.css')?'.css':'.mjs';res.writeHead(200,{'Content-Type':mimes[suffix]});return res.end(await readFile(new URL(assets[path],import.meta.url)));}
    if(!path.startsWith('/api/'))throw new HttpError(404,'Página não encontrada.');
    if(mutating){
-    if(req.headers['sec-fetch-site']==='cross-site'||req.headers.origin&&req.headers.origin!==new URL(config.appUrl).origin)throw new HttpError(403,'Origem não autorizada.');
+    const expectedOrigin=new URL(config.appUrl).origin;
+    const proxyOrigin=config.testLoginEmail&&!config.production&&config.developmentProxyOrigin;
+    const trustedDevelopmentProxy=proxyOrigin&&req.headers.origin===proxyOrigin&&req.headers.host===new URL(proxyOrigin).host&&req.headers['sec-fetch-site']==='same-origin';
+    if(req.headers['sec-fetch-site']==='cross-site'||req.headers.origin&&req.headers.origin!==expectedOrigin&&!trustedDevelopmentProxy)throw new HttpError(403,'Origem não autorizada.');
     if(config.production&&!req.headers.origin)throw new HttpError(403,'Origem obrigatória.');
    }
    if(path==='/api/login'&&req.method==='POST'){
     const ip=config.trustProxy?String(req.headers['x-forwarded-for']||req.socket.remoteAddress).split(',').at(-1).trim():req.socket.remoteAddress;
     const b=await body(req);if(!loginRate('ip:'+ip)||!loginRate('email:'+String(b.email).toLowerCase()))throw new HttpError(429,'Muitas tentativas. Aguarde 15 minutos.');
-    const row=validEmail(b.email)?db.prepare('SELECT * FROM users WHERE email=?').get(b.email.toLowerCase()):null;
+    const loginEmail=config.testLoginEmail&&b.email==='mestre'?config.testLoginEmail:b.email;
+    const row=validEmail(loginEmail)?db.prepare('SELECT * FROM users WHERE email=?').get(loginEmail.toLowerCase()):null;
     const valid=await checkPassword(b.password,row?.password_hash);if(!row||!valid)throw new HttpError(401,'E-mail ou senha incorretos.');
     const session=newSession(db,row.id);res.setHeader('Set-Cookie',cookie(session.token,config.production));return send(res,200,{ok:true});
    }

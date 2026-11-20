@@ -104,3 +104,11 @@ Password recovery: set NEW_USER_EMAIL and NEW_USER_PASSWORD privately, then node
 - Live municipal availability and browser visual behavior are not certified by unit tests. Check the actual workflow result; do not infer that tests ran simply because a workflow file exists.
 
 Source publication is independent of production deployment. Keep this repository private unless you intentionally choose to open-source the code. Never commit .env, SQLite files, exports or customer data.
+
+## Private test preview
+
+Run `npm run start:test` with Node 24. This explicitly starts a test-only server with username `mestre` and the agreed public fixture password `shazam123@`. Do not reuse this password for real accounts. Keep Codespaces port visibility **Private**.
+
+This command uses a separate persistent `data/permit-finder-test.sqlite` database, ignores the real account bootstrap variables, and does not reset your existing accounts or estimates. The normal `npm start` command never creates this account. Test startup and test login configuration are rejected in production.
+
+In Codespaces the preview address is derived automatically from its environment. The test server also supports the Codespaces localhost Origin rewrite only for a same-origin request with an exactly matching localhost Host. Foreign origins and cross-site requests remain blocked. Outside Codespaces this exception is absent.
