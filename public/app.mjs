@@ -80,10 +80,10 @@ async function navigate(tab){s.chosen=null;s.modal=null;s.tab=tab;if(tab==='sett
 async function collectSelected(id){
  if(!s.me.systemAdmin)throw new Error('Somente o administrador do sistema pode iniciar coletas.');
  const ids=id?[id]:s.sources.filter(native).filter(c=>(s.filters.state==='Todos'||c.state===s.filters.state)&&(!s.filters.cities.length||s.filters.cities.includes(c.id))).map(c=>c.id);
- if(!ids.length)throw new Error('As cidades selected precisam of importação of relatório ou integração específica.');
- const r=await api('/api/jobs',{sources:ids,from:s.filters.from,to:s.filters.to});notice(r.queued+' consultas colocadas na fila. Você pode continuar usando o sistema.');s.poll=true;await pollJobs();
+ if(!ids.length){notice('Selected cities have no automated collector yet. See Sources & Coverage for their official reports.',true);return;}
+ const r=await api('/api/jobs',{sources:ids,from:s.filters.from,to:s.filters.to});notice(r.queued+' source/month queries queued. Results will refresh when collection finishes.');s.poll=true;await pollJobs();
 }
-async function pollJobs(){if(!s.me)return;s.jobs=(await api('/api/jobs')).jobs;const active=s.jobs.some(j=>['queued','running'].includes(j.status));if(s.tab==='coverage')render();if(s.poll&&!active){s.poll=false;await radar();render();notice('Consultas concluídas. Confira a cobertura of cada cidade.');}}
+async function pollJobs(){if(!s.me)return;s.jobs=(await api('/api/jobs')).jobs;const active=s.jobs.some(j=>['queued','running'].includes(j.status));if(s.tab==='coverage')render();if(s.poll&&!active){s.poll=false;await radar();render();notice('Collection finished. Check coverage for incomplete sources.');}}
 async function importPermits(file){
  if(!file)return;if(file.size>12000000)throw new Error('Use arquivos JSON of até 12 MB; o envio é dividido em lotes.');
  const obj=JSON.parse(await file.text()),records=Array.isArray(obj)?obj:obj.permits||obj.records;if(!Array.isArray(records))throw new Error('O JSON precisa conter records ou permits.');
@@ -137,7 +137,8 @@ document.addEventListener('input',event=>{
 });
 document.addEventListener('change',event=>{
  const el=event.target;
- if(el.dataset.city){s.filters.cities=el.checked?[...new Set([...s.filters.cities,el.dataset.city])]:s.filters.cities.filter(x=>x!==el.dataset.city);return;}
+ if(el.dataset.city){s.filters.cities=el.checked?[...new Set([...s.filters.cities,el.dataset.city])]:s.filters.cities.filter(x=>x!==el.dataset.city);const picker=el.closest('details');if(picker){const summary=picker.querySelector('summary');if(summary)summary.textContent='Cities · '+(s.filters.cities.length?s.filters.cities.length+' selected':'All');picker.open=false;}return;}
+ if(el.name==='state'&&el.closest('[data-form="filters"]')){s.filters.state=el.value;s.filters.cities=[];const form=el.closest('form');s.filters.from=form.elements.from.value;s.filters.to=form.elements.to.value;s.filters.q=form.elements.q.value;return render();}
  if(el.dataset.filter){s.filters[el.dataset.filter]=el.value;s.filters.page=1;return run(refresh);}
  if(el.id==='import-file')return run(()=>importPermits(el.files[0]));
  if(el.dataset.section!==undefined&&['SELECT'].includes(el.tagName)){
@@ -148,7 +149,7 @@ document.addEventListener('submit',event=>{
  const form=event.target;if(!form.dataset.form)return;event.preventDefault();const values=Object.fromEntries(new FormData(form));
  run(async()=>{
   if(form.dataset.form==='login'){await api('/api/login',values);const me=await api('/api/me');clearWorkspace();s.me=me.user;s.csrf=me.csrf;s.settings=me.settings;await radar();return render();}
-  if(form.dataset.form==='filters'){const changed=s.filters.state!==values.state;Object.assign(s.filters,values,{page:1});if(changed)s.filters.cities=[];await radar();return render();}
+  if(form.dataset.form==='filters'){const changed=s.filters.state!==values.state;Object.assign(s.filters,values,{page:1});if(changed)s.filters.cities=[];await radar();render();if(s.me.systemAdmin)await collectSelected();else notice('Search displays collected records. Automated refresh requires administrator access.');return;}
   if(form.dataset.form==='project'){const project=(await api('/api/projects',{...values,id:s.project?.id,sourceProjectKey:s.project?.sourceProjectKey||''})).project;s.project=project;s.modal=null;await projects();draft(project.id);return render();}
   if(form.dataset.form==='review'){await api('/api/reviews',{...values,projectKey:s.chosen.key},'PUT');s.chosen=null;await radar();render();notice('Acompanhamento salvo.');return;}
   if(form.dataset.form==='source'){await api('/api/sources',values);s.modal=null;await radar();render();notice('Fonte cadastrada para importação; coleta automática depende of integração validada.');return;}
