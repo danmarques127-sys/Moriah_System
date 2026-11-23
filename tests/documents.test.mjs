@@ -216,3 +216,23 @@ test('collect() routes document sources and keeps portal-only cities pending wit
   } finally { globalThis.fetch = old; }
   assert.equal(typeof parseCsv, 'function');
 });
+
+test('crawl stays inside the listing section, ignores the site menu, and lists the files it saw when nothing matches', async () => {
+  const source = {...src('newton'), collector: {scope: 'month', crawl: true, crawlRe: 'permit'}};
+  const calls = [];
+  const listing = '<a href="/government/city-clerk/burial-permits">Burial permits</a><a href="/government/inspectional-services/permit-forms">Permit forms</a><a href="/home/showpublisheddocument/1/2">Summary June 2026</a>';
+  const result = await collectDocuments(source, '2026-08', {fetch: fakeFetch({[source.url]: listing, 'https://www.newtonma.gov/government/inspectional-services/permit-forms': '<p>forms</p>'}, calls), ...noSleep});
+  assert.ok(!calls.some(u => u.includes('city-clerk')));
+  assert.ok(calls.some(u => u.includes('permit-forms')));
+  assert.equal(result.status, 'pending');
+  assert.match(result.message, /Arquivos vistos na página \(1\).*Summary June 2026/);
+});
+
+test('a refused crawled page stops the crawl instead of hammering the site', async () => {
+  const source = {...src('newton'), collector: {scope: 'month', crawl: true, crawlRe: 'permit|building'}};
+  const calls = [];
+  const base = 'https://www.newtonma.gov/government/inspectional-services/';
+  const result = await collectDocuments(source, '2026-08', {fetch: fakeFetch({[source.url]: '<a href="' + base + 'permit-a">permit a</a><a href="' + base + 'permit-b">permit b</a>', [base + 'permit-a']: new Response('no', {status: 403})}, calls), ...noSleep});
+  assert.ok(!calls.some(u => u.endsWith('permit-b')));
+  assert.match(result.message, /Rastreamento interrompido/);
+});

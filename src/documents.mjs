@@ -328,12 +328,20 @@ export async function collectDocuments(source, month, deps = {}) {
   for (let i = 0; i < pages.length && i < 12; i++) {
     if (seen.has(pages[i])) continue; seen.add(pages[i]);
     let page;
-    try { page = await fetchBinary(pages[i], net); } catch (e) { if (i === 0 && lists.length === 1) throw e; notes.push('Página não acessada (' + new URL(pages[i]).pathname + '): ' + String(e.message).slice(0, 120)); continue; }
+    try { page = await fetchBinary(pages[i], net); } catch (e) {
+      if (i === 0 && lists.length === 1) throw e;
+      notes.push('Página não acessada (' + new URL(pages[i]).pathname + '): ' + String(e.message).slice(0, 120));
+      // A page we only reached by crawling refused us: stop instead of insisting on more pages.
+      if (i >= lists.length && /HTTP 40[13]/.test(e.message)) { notes.push('Rastreamento interrompido: o site bloqueia acesso automático a estas páginas.'); break; }
+      continue;
+    }
     reached++;
     const found = extractAnchors(page.buffer.toString('utf8'), page.url); anchors.push(...found);
     if (cfg.crawl && i < lists.length) {
+      // Only follow links inside the same site section as the listing page (never the site-wide menu).
+      const section = new URL(page.url).pathname.replace(/[^/]*$/, ''), deep = section.split('/').filter(Boolean).length >= 2;
       const re = cfg.crawlRe ? new RegExp(cfg.crawlRe, 'i') : /permit|building|report|archive|inspection/i;
-      for (const a of found.filter(a => !fileLike(a.href) && allowedHost(new URL(a.href).hostname) && re.test(a.text + ' ' + a.href)).slice(0, cfg.crawlLimit || 6)) if (!seen.has(a.href)) pages.push(a.href);
+      for (const a of found.filter(a => !fileLike(a.href) && allowedHost(new URL(a.href).hostname) && (!deep || new URL(a.href).pathname.startsWith(section)) && re.test(a.text + ' ' + a.href)).slice(0, cfg.crawlLimit || 3)) if (!seen.has(a.href)) pages.push(a.href);
     }
     await pause(300);
   }
@@ -354,7 +362,12 @@ export async function collectDocuments(source, month, deps = {}) {
   const candidates = [...bySource.values()].sort((a, b) => Number(b.own) - Number(a.own)).slice(0, cfg.maxFiles || 3);
   const label = month.slice(5) + '/' + month.slice(0, 4);
   if (!candidates.length) {
-    return {status: 'pending', records: [], message: 'Relatório de ' + label + ' não publicado/localizado na página da cidade. Isso não significa zero permits.' + (skippedHosts.size ? ' Links em domínio não revisado ignorados: ' + [...skippedHosts].join(', ') + '.' : '') + (notes.length ? ' ' + notes.join(' ') : '')};
+    // Say what the page DID offer, so a wrong match rule can be fixed from the job log alone.
+    const seenFiles = [...new Map(anchors.filter(a => fileLike(a.href)).map(a => [a.href, a])).values()];
+    const sample = seenFiles.length
+      ? ' Arquivos vistos na página (' + seenFiles.length + '): ' + seenFiles.slice(0, 6).map(a => '«' + (a.text || a.href.split('/').pop()).slice(0, 60) + '»').join(' · ') + '.'
+      : ' Nenhum link de arquivo encontrado na página (o conteúdo pode ser carregado por JavaScript).';
+    return {status: 'pending', records: [], message: 'Relatório de ' + label + ' não publicado/localizado na página da cidade. Isso não significa zero permits.' + sample + (skippedHosts.size ? ' Links em domínio não revisado ignorados: ' + [...skippedHosts].join(', ') + '.' : '') + (notes.length ? ' ' + notes.slice(0, 2).join(' ') : '')};
   }
   const records = new Map(); let parsedRows = 0, files = 0;
   for (const a of candidates) {

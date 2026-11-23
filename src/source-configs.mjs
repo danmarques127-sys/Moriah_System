@@ -3,7 +3,7 @@
 // finish as "partial" (never "complete") so the coverage screen never over-claims.
 // `dateKind` says which date the document exposes: 'issued' (default), 'paid', 'submitted' or 'range'.
 export const DOCUMENT_SOURCES = {
-  newton: {collector: {scope: 'month', match: 'permit|building', dateWhich: 'last', crawl: true, crawlRe: 'permit|building|report|summary'}},
+  newton: {collector: {scope: 'month', match: 'permit|building|summary', dateWhich: 'last'}},
   needham: {collector: {scope: 'quarter', match: 'permit|building|residential|commercial', maxFiles: 4}},
   wellesley: {collector: {scope: 'year', match: 'permit', followItems: true, dateKind: 'submitted', maxFiles: 4, crawl: true, crawlRe: 'archive|permit'}},
   belmont: {collector: {scope: 'month', match: 'permit', crawl: true, crawlRe: 'archive|permit|report', dateKind: 'range', dateFallback: 'month-start', followItems: true}},
