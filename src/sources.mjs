@@ -249,7 +249,7 @@ export const SOURCES=[
     "id": "springfield",
     "city": "Springfield",
     "state": "MA",
-    "url": "https://springfieldma.portal.opengov.com/",
+    "url": "https://www.springfield-ma.gov/permits/permits",
     "mode": "portal",
     "allowedHosts": []
   },
