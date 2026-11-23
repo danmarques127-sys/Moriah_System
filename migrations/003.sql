@@ -1,0 +1,2 @@
+CREATE TABLE IF NOT EXISTS source_checks(source_id TEXT PRIMARY KEY,checked_at TEXT NOT NULL,ok INTEGER NOT NULL,http_status INTEGER NOT NULL DEFAULT 0,note TEXT NOT NULL DEFAULT '');
+PRAGMA user_version=3;
