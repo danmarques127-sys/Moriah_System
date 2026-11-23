@@ -52,7 +52,7 @@ export function setCoverage(db,id,month,status,message,count){db.prepare('INSERT
 export function radarData(db,user,query){
  const from=query.from,to=query.to,months=monthsBetween(from,to),ids=String(query.cities||'').split(',').filter(Boolean);
  if(ids.length>80)throw new Error('Selecione até 80 cidades ou deixe Todas.');for(const id of ids)findSource(db,id);
- const params=[from+'-01',monthsBetween(to,to)[0]+'-31'];let where='issued>=? AND issued<=?';
+ const includeArchived=query.includeArchived==='1';const archivalCutoff=new Date();archivalCutoff.setUTCMonth(archivalCutoff.getUTCMonth()-12);const cutoff=archivalCutoff.toISOString().slice(0,10);const params=[from+'-01',monthsBetween(to,to)[0]+'-31'];let where='issued>=? AND issued<=?';if(!includeArchived){where+=' AND issued>=?';params.push(cutoff);}
  if(query.state&&query.state!=='Todos'){if(!['MA','CT','RI'].includes(query.state))throw new Error('Estado inválido.');const stateIds=allSources(db).filter(s=>s.state===query.state).map(s=>s.id);where+=' AND source_id IN ('+stateIds.map(()=>'?').join(',')+')';params.push(...stateIds);}
  if(ids.length){where+=' AND source_id IN ('+ids.map(()=>'?').join(',')+')';params.push(...ids);}
  const rows=db.prepare('SELECT data FROM permits WHERE '+where+' ORDER BY issued DESC,id LIMIT 30001').all(...params),truncated=rows.length>30000;
