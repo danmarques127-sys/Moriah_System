@@ -20,7 +20,7 @@ function fakeFetch(map, calls = []) {
 const pdfBytes = '%PDF-1.4 fake';
 
 test('every city is either automatic or has an explicit import-only reason', () => {
-  assert.equal(SOURCES.length, 32);
+  assert.equal(SOURCES.length, 34);
   for (const s of SOURCES) {
     if (NATIVE_MODES.includes(s.mode)) continue;
     assert.ok(s.reason, s.id + ' needs a documented reason');

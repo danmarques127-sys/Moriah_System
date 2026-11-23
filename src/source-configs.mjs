@@ -42,6 +42,8 @@ export const ACCELA_SOURCES = {
 
 // No scriptable bulk source yet. These stay import-only, with the reason shown in the job log.
 export const PORTAL_REASONS = {
+  southbury: 'Southbury publica relatórios mensais sem coleta automática validada. Importe o relatório do mês.',
+  bethel: 'Bethel publica relatórios mensais sem coleta automática validada. Importe o relatório do mês.',
   springfield: 'Springfield publica os permits em um portal OpenGov sem exportação automática. Importe o relatório pela tela de importação.',
   lowell: 'Lowell guarda os relatórios mensais em pastas por ano (DocumentCenter), e ainda não há coletor para essas pastas. Importe o arquivo do mês.',
   chicopee: 'Chicopee usa o portal PermitEyes de consulta; não há exportação em massa. Importe o relatório.',
