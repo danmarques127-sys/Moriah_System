@@ -128,7 +128,11 @@
       "frequency": "searchable_without_login",
       "url": "https://permiteyes.us/chicopee/publicview.php",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": false,
+      "portalProvider": "PermitEyes",
+      "periodicIssuedListStatus": "not_found_yet",
+      "futureCollectionMode": "records_search_candidate",
+      "automationValidated": false
     },
     {
       "id": "springfield",
@@ -138,7 +142,12 @@
       "frequency": "searchable",
       "url": "https://springfieldma.portal.opengov.com/",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": false,
+      "portalProvider": "OpenGov",
+      "periodicIssuedListStatus": "not_found_yet",
+      "addressSearchStatus": "public_lookup_available_unverified_automation",
+      "futureCollectionMode": "address_lookup_candidate",
+      "automationValidated": false
     },
     {
       "id": "ludlow",
@@ -275,7 +284,12 @@
       "url": "https://www.tiverton.ri.gov/223/Building-Code-Zoning",
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": false,
-      "evidence": "Official Building/Code/Zoning page instructs users to select Search for Records in OpenGov. Address-search criteria and automated access remain unverified."
+      "evidence": "Official Building/Code/Zoning page instructs users to select Search for Records in OpenGov. Address-search criteria and automated access remain unverified.",
+      "portalProvider": "OpenGov",
+      "periodicIssuedListStatus": "not_found_yet",
+      "addressSearchStatus": "records_search_present_address_filter_unverified",
+      "futureCollectionMode": "address_lookup_candidate",
+      "automationValidated": false
     },
     {
       "id": "sharon",
@@ -299,8 +313,23 @@
       "url": "https://www.barrington.ri.gov/204/Planning-Building-and-Resilience",
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": false,
-      "evidence": "Official Planning, Building and Resilience page confirms OpenGov e-permitting; a public search of issued permits, address lookup, or monthly list is not yet verified"
+      "evidence": "Official Planning, Building and Resilience page confirms OpenGov e-permitting; a public search of issued permits, address lookup, or monthly list is not yet verified",
+      "portalProvider": "OpenGov",
+      "periodicIssuedListStatus": "not_found_yet",
+      "addressSearchStatus": "unverified",
+      "futureCollectionMode": "address_lookup_candidate",
+      "automationValidated": false
     }
   ],
-  "lastAuditUpdate": "2026-11-23"
+  "lastAuditUpdate": "2026-11-23",
+  "auditRules": {
+    "periodicIssuedListStatusValues": [
+      "confirmed",
+      "not_found_yet",
+      "not_checked"
+    ],
+    "notes": "not_found_yet means no list identified in research, NOT proof no list exists",
+    "openGovFallback": "record OpenGov public portal URL, whether records and address search are available, authentication, pagination, automation permission, confidence, verification date; only address-check after separate validation",
+    "doNotInfer": "OpenGov portal existence does not prove automated address lookup or bulk collection"
+  }
 }
