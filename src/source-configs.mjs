@@ -38,11 +38,11 @@ export const DOCUMENT_SOURCES = {
 // Accela Citizen Access portals: the collector fills the public General Search date range and pages through the results.
 // The portal date is the application (opened) date, not the issue date.
 export const ACCELA_SOURCES = {
-  brookline: {collector: {dateKind: 'submitted'}}
 };
 
 // No scriptable bulk source yet. These stay import-only, with the reason shown in the job log.
 export const PORTAL_REASONS = {
+  brookline: 'Brookline usa um portal Accela que exige busca manual. Os permits são importados à mão pela tela de importação (PDF/CSV/XLSX).',
   carlisle: 'O relatório mensal de Carlisle só traz tabelas-resumo de taxas, sem número de permit nem data de emissão. Não dá para coletar com segurança; importe o arquivo se precisar.',
   newton: 'Os permits ficam em um relatório do OpenGov que só exporta CSV pelo botão Export; ainda não há coletor para isso. Importe o relatório.'
 };

@@ -34,9 +34,9 @@ function portal(overrides = {}) {
   return {calls, fetchImpl};
 }
 
-test('Brookline is an automatic Accela source', () => {
-  assert.equal(source.mode, 'accela');
-  assert.equal(source.collector.dateKind, 'submitted');
+test('Brookline is imported by hand (the Accela collector is not enabled for any city)', () => {
+  assert.notEqual(source.mode, 'accela');
+  assert.ok(source.reason);
 });
 
 test('form state, text boxes and selects are collected; buttons are not', () => {
