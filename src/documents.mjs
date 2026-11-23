@@ -22,7 +22,7 @@ export const decode = s => String(s)
   .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#0?39;|&apos;/g, "'").replace(/&quot;/g, '"')
   .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
   .replace(/&#(\d+);/g, (_, n) => Number(n) < 1114112 ? String.fromCodePoint(Number(n)) : ' ');
-export const clean = v => decode(String(v ?? '').replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+export const clean = v => decode(String(v ?? '').replace(/<[^>]*>/g, ' ')).replace(/[\u200b-\u200d\u2060\ufeff]/g, '').replace(/\s+/g, ' ').trim();
 const amount = v => Math.max(0, Number(String(v ?? 0).replace(/[^0-9.]/g, '')) || 0);
 
 /* ---------- period matching (month / quarter / year / fiscal year) ---------- */
@@ -48,16 +48,21 @@ export function periodMatches(text, month, scope = 'month') {
 
 /* ---------- HTML helpers ---------- */
 export function extractAnchors(html, base) {
-  const out = [];
-  for (const m of String(html).matchAll(/<a\b[^>]*?\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')[^>]*>([\s\S]*?)<\/a>/gi)) {
+  const out = [], source = String(html);
+  let pos = 0, year = '';
+  for (const m of source.matchAll(/<a\b[^>]*?\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')[^>]*>([\s\S]*?)<\/a>/gi)) {
+    // The year heading above a link (e.g. "2026" over "3rd Quarter") is the year of that link.
+    const between = [...clean(source.slice(pos, m.index)).matchAll(/(?<!\d)(20\d{2})(?!\d)/g)];
+    if (between.length) year = between.at(-1)[1];
+    pos = m.index + m[0].length;
     const raw = decode(m[1] ?? m[2] ?? '').trim();
     if (!raw || /^(?:#|javascript:|mailto:|tel:)/i.test(raw)) continue;
     let href; try { href = new URL(raw, base).href; } catch { continue; }
-    out.push({href, text: clean(m[3])});
+    out.push({href, text: clean(m[3]), ctx: year});
   }
   return out;
 }
-export const fileLike = href => /DocumentCenter\/View|ViewFile|showpublisheddocument|Archive\.aspx\?(?:[^#]*&)?ADID=\d|\.(?:pdf|xlsx?|csv)(?:[?#]|$)|\/files\/|\/media\/|\/documents?\//i.test(href);
+export const fileLike = href => /DocumentCenter\/View|resource-manager\/view|ViewFile|showpublisheddocument|Archive\.aspx\?(?:[^#]*&)?ADID=\d|\.(?:pdf|xlsx?|csv)(?:[?#]|$)|\/files\/|\/media\/|\/documents?\//i.test(href);
 export function htmlToText(html) {
   return decode(String(html)
     .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ' ')
@@ -68,13 +73,17 @@ export function htmlToText(html) {
 }
 
 /* ---------- network (HTTPS only, reviewed hosts only, size limited) ---------- */
+const withDownload = u => { const x = new URL(u); if (/\.sharepoint\.com$/i.test(x.hostname) && !x.searchParams.has('download')) x.searchParams.set('download', '1'); return x.href; };
 export async function fetchBinary(url, {hosts = [], fetchImpl, timeout = 45000} = {}) {
-  const doFetch = fetchImpl || globalThis.fetch, start = new URL(url);
+  const doFetch = fetchImpl || globalThis.fetch, start = new URL(withDownload(url));
   if (start.protocol !== 'https:') throw new Error('Fonte deve usar HTTPS.');
-  const allowed = new Set([...hosts.map(bare), bare(start.hostname)]);
-  let target = url;
-  for (let i = 0; i < 5; i++) {
-    const r = await doFetch(target, {redirect: 'manual', signal: AbortSignal.timeout(timeout), headers: {'User-Agent': UA, Accept: '*/*'}});
+  const allowed = new Set([...hosts.map(bare), bare(start.hostname)]), jar = new Map();
+  let target = start.href;
+  for (let i = 0; i < 6; i++) {
+    const headers = {'User-Agent': UA, Accept: '*/*'};
+    if (jar.size) headers.Cookie = [...jar].map(([k, v]) => k + '=' + v).join('; '); // cookies of this download only, like a browser following redirects
+    const r = await doFetch(target, {redirect: 'manual', signal: AbortSignal.timeout(timeout), headers});
+    for (const c of r.headers.getSetCookie?.() || []) { const kv = c.split(';')[0], at = kv.indexOf('='); if (at > 0) jar.set(kv.slice(0, at).trim(), kv.slice(at + 1).trim()); }
     if (r.status >= 300 && r.status < 400 && r.headers.get('location')) {
       const next = new URL(r.headers.get('location'), target);
       if (next.protocol !== 'https:' || !allowed.has(bare(next.hostname))) throw new Error('Redirecionamento para domínio não revisado (' + next.hostname + '). Revise a fonte antes de permitir.');
@@ -90,7 +99,7 @@ export async function fetchBinary(url, {hosts = [], fetchImpl, timeout = 45000} 
 }
 export function detectFormat({buffer, contentType = ''}) {
   if (buffer.subarray(0, 4).toString('latin1') === '%PDF') return 'pdf';
-  if (buffer.readUInt32LE(0) === 0x04034b50) return 'xlsx';
+  if (buffer.length >= 4 && buffer.readUInt32LE(0) === 0x04034b50) return 'xlsx';
   const head = buffer.toString('utf8', 0, 400).toLowerCase();
   if (/text\/html/.test(contentType) || head.includes('<html') || head.includes('<!doctype html')) return 'html';
   return 'text';
@@ -175,7 +184,7 @@ export function toIso(v) {
 const datesIn = text => [...String(text).matchAll(DATE_G)].map(m => iso(Number(m[3]), Number(m[1]), Number(m[2]))).filter(Boolean);
 
 /* ---------- text tables (pdftotext -layout / HTML) ---------- */
-const NUM = /^((?:[A-Z]{1,5}-\d{2}-\d{1,7}|P-?\d{8,}))(?![A-Za-z0-9])[,.:;]?\s*/i;
+const NUM = /^((?:[A-Z]{1,6}-\d{2,4}-\d{1,7}|P-?\d{8,}))(?![A-Za-z0-9])[,.:;]?\s*/i;
 const HEADER = /^(?:record\s*(?:#|no)|permit\s*(?:#|no|number)|page\s+\d+|printed|run date|date range|permits? listing|building permits? (?:issued|listing|report)|manager'?s|address\b.*\bfees?\b)/i;
 const CO = /certificate of (?:occupancy|completion)|request for co\b/i;
 const STREET = /\b(?:ST|STREET|AVE|AVENUE|RD|ROAD|DR|DRIVE|LN|LANE|CT|COURT|PL|PLACE|BLVD|BOULEVARD|WAY|TER|TERRACE|CIR|CIRCLE|HWY|HIGHWAY|PKWY|PARKWAY|SQ|SQUARE|PARK|TRL|TRAIL|PATH|LOOP|ROW|XING|COMMON|WHARF)\b\.?(?:\s*(?:#|UNIT|APT)\s*\S+)?$/i;
@@ -249,12 +258,18 @@ export function parseTextRows(text, cfg = {}, month = '') {
   for (const line of String(text).replace(/\f/g, '\n').split(/\r?\n/)) {
     const t = line.replace(/\t/g, '  ').trim();
     if (!t) continue;
-    const m = t.match(NUM);
+    let m = t.match(NUM), lead = null;
+    if (!m && cfg.leadDate) {
+      // "10/1/2026 5:36  BR-26-545  Applicant ..." — the date comes first and the permit number second.
+      const d = t.match(/^(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)?\s+/i);
+      const n = d && t.slice(d[0].length).match(NUM);
+      if (n) { m = n; lead = d[0]; }
+    }
     if (!m && HEADER.test(t)) continue;
     const datedLine = !m && cfg.rowMode === 'dated-line' && datesIn(t).length > 0;
     if (m || datedLine) {
       flush();
-      const rest = m ? t.slice(m[0].length) : t;
+      const rest = m ? t.slice((lead ? lead.length : 0) + m[0].length) : t;
       cur = {number: m ? m[1].toUpperCase() : '', head: t, chunks: rest.split(/\s{2,}/).map(s => s.trim()).filter(Boolean), extra: []};
     } else if (cur && cur.extra.length < 6 && datesIn(t).length === 0) cur.extra.push(t);
   }
@@ -297,8 +312,37 @@ export function mapStructured(table, cfg = {}, month = '') {
   return out;
 }
 
+/* ---------- CSV (rows, so title lines above the header are tolerated) ---------- */
+export function csvRows(input) {
+  const text = String(input).replace(/^﻿/, ''), rows = [];
+  let row = [], cell = '', quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') { if (quoted && text[i + 1] === '"') { cell += '"'; i++; } else quoted = !quoted; }
+    else if (c === ',' && !quoted) { row.push(cell); cell = ''; }
+    else if ((c === '\r' || c === '\n') && !quoted) { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); if (row.some(x => x.trim())) rows.push(row); row = []; cell = ''; }
+    else cell += c;
+  }
+  row.push(cell); if (row.some(x => x.trim())) rows.push(row);
+  return rows.map(r => r.map(x => x.trim()));
+}
+
+/* ---------- "newest file" ranking (year + month / quarter / half) ---------- */
+const slugOf = href => { try { const last = decodeURIComponent(new URL(href).pathname.split('/').filter(Boolean).pop() || ''); return /^\d+$/.test(last) ? '' : last; } catch { return ''; } };
+export function periodRank(text) {
+  const t = String(text).toLowerCase(), years = [...t.matchAll(/(?<!\d)(20\d{2})(?!\d)/g)].map(m => Number(m[1]));
+  if (!years.length) return 0;
+  let sub = 0;
+  FULL.forEach((name, i) => { if (new RegExp('(?<![a-z])(?:' + name + '|' + SHORT[i] + (i === 8 ? '|sept' : '') + ')\\b').test(t)) sub = Math.max(sub, i + 1); });
+  const q = t.match(/(?<![a-z0-9])q([1-4])(?!\d)/) || t.match(/\b(first|second|third|fourth|1st|2nd|3rd|4th)[ -]*quarter/);
+  if (q) sub = Math.max(sub, 3 * (Number(q[1]) || ['first', 'second', 'third', 'fourth', '1st', '2nd', '3rd', '4th'].indexOf(q[1]) % 4 + 1));
+  const h = t.match(/(?<![a-z0-9])h([12])(?!\d)/) || t.match(/\b(first|second|1st|2nd)[ -]*(?:half|semester)/) || t.match(/(?:half|semester)[ -]*([12])\b/);
+  if (h) sub = Math.max(sub, 6 * (Number(h[1]) || (['first', '1st'].includes(h[1]) ? 1 : 2)));
+  return Math.max(...years) * 100 + sub;
+}
+
 /* ---------- orchestration ---------- */
-async function parseDocument(doc, cfg, month, deps) {
+async function parseDocument(doc, cfg, month, deps = {}) {
   const format = detectFormat(doc);
   if (format === 'pdf') return parseTextRows(await (deps.pdfToText || pdfToText)(doc.buffer), cfg, month);
   if (format === 'xlsx') {
@@ -306,13 +350,13 @@ async function parseDocument(doc, cfg, month, deps) {
     return (named.length ? named : sheets).flatMap(s => mapStructured(s.rows, cfg, month));
   }
   const text = format === 'html' ? htmlToText(doc.buffer.toString('utf8')) : doc.buffer.toString('utf8').replace(/^﻿/, '');
-  if (format === 'text' && cfg.parser !== 'text' && deps.parseCsv && text.split(/\r?\n/, 1)[0].includes(',')) {
-    const rows = mapStructured(deps.parseCsv(text), cfg, month);
+  if (format === 'text' && cfg.parser !== 'text' && /,/.test(text.split(/\r?\n/, 1)[0])) {
+    const rows = mapStructured(csvRows(text), cfg, month);
     if (rows.length) return rows;
   }
   return parseTextRows(text, cfg, month);
 }
-function toRecord(source, row, month, cfg, url) {
+export function toRecord(source, row, month, cfg, url) {
   if (!row.issued || !row.issued.startsWith(month)) return null;
   const proxy = cfg.dateKind && cfg.dateKind !== 'issued', note = proxy ? ' [Data na fonte: ' + ({paid: 'pagamento', submitted: 'submissão', range: 'período do relatório'}[cfg.dateKind] || cfg.dateKind) + '; emissão exata não informada]' : '';
   const key = row.number || 'row-' + createHash('sha1').update(row.raw.replace(/\s+/g, ' ')).digest('hex').slice(0, 16);
@@ -321,55 +365,102 @@ function toRecord(source, row, month, cfg, url) {
     contractor: row.contractor === 'N/A' ? '' : row.contractor, applicant: row.applicant, sourceUrl: url, status: row.status};
 }
 export async function collectDocuments(source, month, deps = {}) {
-  const cfg = source.collector || {}, scope = cfg.scope || 'month', hosts = [new URL(source.url).hostname, ...(source.allowedHosts || [])];
+  const cfg = source.collector || {}, scope = cfg.scope || 'month', latest = scope === 'latest';
+  const hosts = [new URL(source.url).hostname, ...(source.allowedHosts || [])];
   const net = {hosts, fetchImpl: deps.fetch}, pause = deps.sleep || sleep, allowedHost = h => hosts.some(x => bare(x) === bare(h));
-  const lists = cfg.listUrls || [source.url], pages = [...lists], seen = new Set(), anchors = [], notes = [];
-  let reached = 0;
-  for (let i = 0; i < pages.length && i < 12; i++) {
-    if (seen.has(pages[i])) continue; seen.add(pages[i]);
-    let page;
-    try { page = await fetchBinary(pages[i], net); } catch (e) { if (i === 0 && lists.length === 1) throw e; notes.push('Página não acessada (' + new URL(pages[i]).pathname + '): ' + String(e.message).slice(0, 120)); continue; }
-    reached++;
-    const found = extractAnchors(page.buffer.toString('utf8'), page.url); anchors.push(...found);
-    if (cfg.crawl && i < lists.length) {
-      const re = cfg.crawlRe ? new RegExp(cfg.crawlRe, 'i') : /permit|building|report|archive|inspection/i;
-      for (const a of found.filter(a => !fileLike(a.href) && allowedHost(new URL(a.href).hostname) && re.test(a.text + ' ' + a.href)).slice(0, cfg.crawlLimit || 6)) if (!seen.has(a.href)) pages.push(a.href);
+  const label = month.slice(5) + '/' + month.slice(0, 4), notes = [], skippedHosts = new Set();
+  let candidates, anchors = [];
+  if (cfg.fileUrls) candidates = cfg.fileUrls.map(href => ({href, text: '', own: true, rank: 0}));
+  else {
+    const lists = cfg.listUrls || [source.url], pages = [...lists], seen = new Set();
+    let reached = 0;
+    for (let i = 0; i < pages.length && i < 12; i++) {
+      if (seen.has(pages[i])) continue; seen.add(pages[i]);
+      let page;
+      try { page = await fetchBinary(pages[i], net); } catch (e) {
+        if (i === 0 && lists.length === 1) throw e;
+        notes.push('Página não acessada (' + new URL(pages[i]).pathname + '): ' + String(e.message).slice(0, 120));
+        // A page we only reached by crawling refused us: stop instead of insisting on more pages.
+        if (i >= lists.length && /HTTP 40[13]/.test(e.message)) { notes.push('Rastreamento interrompido: o site bloqueia acesso automático a estas páginas.'); break; }
+        continue;
+      }
+      reached++;
+      const found = extractAnchors(page.buffer.toString('utf8'), page.url); anchors.push(...found);
+      if (cfg.crawl && i < lists.length) {
+        // Only follow links inside the same site section as the listing page (never the site-wide menu).
+        const section = new URL(page.url).pathname.replace(/[^/]*$/, ''), deep = section.split('/').filter(Boolean).length >= 2;
+        const re = cfg.crawlRe ? new RegExp(cfg.crawlRe, 'i') : /permit|building|report|archive|inspection/i;
+        for (const a of found.filter(a => !fileLike(a.href) && allowedHost(new URL(a.href).hostname) && (!deep || new URL(a.href).pathname.startsWith(section)) && re.test(a.text + ' ' + a.href)).slice(0, cfg.crawlLimit || 3)) if (!seen.has(a.href)) pages.push(a.href);
+      }
+      await pause(300);
     }
-    await pause(300);
+    if (!reached) throw new Error('Nenhuma página de listagem acessível.');
+    const filter = cfg.match ? new RegExp(cfg.match, 'i') : null, bySource = new Map();
+    // Some cities name the file after the month it was published (the month after the permits), see cfg.fileLag.
+    const [yy, mm] = month.split('-').map(Number), wanted = [month];
+    if (cfg.fileLag) wanted.push(new Date(Date.UTC(yy, mm, 1)).toISOString().slice(0, 7));
+    const matchesPeriod = text => wanted.some(w => periodMatches(text, w, scope));
+    for (const raw of anchors) {
+      // A link without its own year ("October", "3rd Quarter") takes the year of the heading above it.
+      const a = /(?<!\d)20\d{2}(?!\d)/.test(raw.text + ' ' + slugOf(raw.href)) || !raw.ctx ? raw : {...raw, text: raw.text + ' ' + raw.ctx};
+      const hay = a.text + ' ' + decodeURIComponent(a.href.replace(/%(?![0-9a-f]{2})/gi, ''));
+      // itemPages: each period is a small page of the site that holds the file (followed below), not a file link.
+      if ((!fileLike(a.href) && !(cfg.itemPages && a.text && !latest)) || (filter && !filter.test(hay)) || (!latest && !matchesPeriod(hay))) continue;
+      const host = new URL(a.href).hostname;
+      if (!allowedHost(host)) { skippedHosts.add(host); continue; }
+      if (cfg.textEquals && a.text.trim() !== cfg.textEquals.replace('{year}', month.slice(0, 4))) continue;
+      if (!bySource.has(a.href)) bySource.set(a.href, {...a, own: !latest && matchesPeriod(a.text), rank: periodRank(a.text + ' ' + slugOf(a.href))});
+    }
+    candidates = [...bySource.values()];
+    if (latest) {
+      // Newest period only (all files that share it, e.g. residential + commercial). Unrankable links keep page order.
+      const top = Math.max(0, ...candidates.map(c => c.rank));
+      if (top) candidates = candidates.filter(c => c.rank === top);
+    } else candidates.sort((a, b) => Number(b.own) - Number(a.own));
+    candidates = candidates.slice(0, cfg.maxFiles || (latest ? 4 : 3));
+    if (!candidates.length) {
+      // Say what the page DID offer, so a wrong match rule can be fixed from the job log alone.
+      const seenFiles = [...new Map(anchors.filter(a => fileLike(a.href)).map(a => [a.href, a])).values()];
+      const sample = seenFiles.length
+        ? ' Arquivos vistos na página (' + seenFiles.length + '): ' + seenFiles.slice(0, 6).map(a => '«' + (a.text || a.href.split('/').pop()).slice(0, 60) + '»').join(' · ') + '.'
+        : ' Nenhum link de arquivo encontrado na página (o conteúdo pode ser carregado por JavaScript).';
+      return {status: 'pending', records: [], message: 'Relatório de ' + label + ' não publicado/localizado na página da cidade. Isso não significa zero permits.' + sample + (skippedHosts.size ? ' Links em domínio não revisado ignorados: ' + [...skippedHosts].join(', ') + '.' : '') + (notes.length ? ' ' + notes.slice(0, 2).join(' ') : '')};
+    }
   }
-  if (!reached) throw new Error('Nenhuma página de listagem acessível.');
-  const filter = cfg.match ? new RegExp(cfg.match, 'i') : null, skippedHosts = new Set(), bySource = new Map();
-  // Some cities name the file after the month it was published (the month after the permits), see cfg.fileLag.
-  const [yy, mm] = month.split('-').map(Number), wanted = [month];
-  if (cfg.fileLag) wanted.push(new Date(Date.UTC(yy, mm, 1)).toISOString().slice(0, 7));
-  const matchesPeriod = text => wanted.some(w => periodMatches(text, w, scope));
-  for (const a of anchors) {
-    const hay = a.text + ' ' + decodeURIComponent(a.href.replace(/%(?![0-9a-f]{2})/gi, ''));
-    if (!fileLike(a.href) || !matchesPeriod(hay) || (filter && !filter.test(hay))) continue;
-    const host = new URL(a.href).hostname;
-    if (!allowedHost(host)) { skippedHosts.add(host); continue; }
-    if (cfg.textEquals && a.text.trim() !== cfg.textEquals.replace('{year}', month.slice(0, 4))) continue;
-    if (!bySource.has(a.href)) bySource.set(a.href, {...a, own: matchesPeriod(a.text)});
-  }
-  const candidates = [...bySource.values()].sort((a, b) => Number(b.own) - Number(a.own)).slice(0, cfg.maxFiles || 3);
-  const label = month.slice(5) + '/' + month.slice(0, 4);
-  if (!candidates.length) {
-    return {status: 'pending', records: [], message: 'Relatório de ' + label + ' não publicado/localizado na página da cidade. Isso não significa zero permits.' + (skippedHosts.size ? ' Links em domínio não revisado ignorados: ' + [...skippedHosts].join(', ') + '.' : '') + (notes.length ? ' ' + notes.join(' ') : '')};
-  }
-  const records = new Map(); let parsedRows = 0, files = 0;
+  const records = new Map(), issuedDates = []; let parsedRows = 0, files = 0;
   for (const a of candidates) {
-    let doc = await fetchBinary(a.href, net); await pause(300);
-    if (cfg.followItems && detectFormat(doc) === 'html') {
-      // Archive-center item pages either link to the real file or show the table inline (then parse the page itself).
+    let doc = await fetchBinary(a.href, net), evidence = a.href; await pause(300);
+    if (cfg.followItems !== false && detectFormat(doc) === 'html') {
+      // Item pages either link to the real file or show the table inline (then parse the page itself).
       const inner = extractAnchors(doc.buffer.toString('utf8'), doc.url).find(x => x.href !== a.href && /\.(?:pdf|xlsx?|csv)(?:[?#]|$)|DocumentCenter\/View|ViewFile|showpublisheddocument/i.test(x.href) && allowedHost(new URL(x.href).hostname));
-      if (inner) { doc = await fetchBinary(inner.href, net); await pause(300); }
+      if (inner) { doc = await fetchBinary(inner.href, net); evidence = inner.href; await pause(300); }
     }
     const rows = await parseDocument(doc, cfg, month, deps); files++; parsedRows += rows.length;
-    for (const row of rows) { const rec = toRecord(source, row, month, cfg, doc.url); if (rec && !records.has(rec.id)) records.set(rec.id, rec); }
+    for (const row of rows) { if (row.issued) issuedDates.push(row.issued); const rec = toRecord(source, row, month, cfg, evidence); if (rec && !records.has(rec.id)) records.set(rec.id, rec); }
   }
   if (!files) return {status: 'pending', records: [], message: 'Arquivo de ' + label + ' não pôde ser aberto. ' + notes.join(' ')};
   if (!parsedRows) throw new Error('Layout do documento não reconhecido (nenhuma linha de permit encontrada; o PDF pode ser digitalizado ou o formato mudou). Importe manualmente este mês.');
+  if (!records.size) {
+    issuedDates.sort();
+    return {status: 'pending', records: [], message: files + ' documento(s) lido(s), mas nenhum permit emitido em ' + label + '.' + (issuedDates.length ? ' O que foi lido cobre ' + issuedDates[0] + ' a ' + issuedDates.at(-1) + '.' : '') + ' Pode não estar publicado ainda. Isso não significa zero permits.'};
+  }
   const list = [...records.values()], proxyNote = cfg.dateKind && cfg.dateKind !== 'issued' ? ' A data usada é a de ' + ({paid: 'pagamento', submitted: 'submissão', range: 'período do relatório'}[cfg.dateKind] || cfg.dateKind) + ', não a de emissão.' : '';
-  const message = files + ' documento(s) lido(s); ' + list.length + ' registro(s) em ' + label + '.' + (cfg.verified ? '' : ' Layout ainda não validado contra o documento real: conferir contagem e descrições.') + proxyNote + (notes.length ? ' ' + notes.join(' ') : '');
+  const message = files + ' documento(s) lido(s); ' + list.length + ' registro(s) em ' + label + '.' + (cfg.verified ? '' : ' Layout ainda não validado contra o documento real: conferir contagem e descrições.') + proxyNote + (notes.length ? ' ' + notes.slice(0, 2).join(' ') : '');
   return {status: cfg.verified && list.length ? 'complete' : 'partial', records: list, message};
+}
+
+/* ---------- manual upload (admin): same readers as the collectors, but the file comes from the operator ---------- */
+export async function parseUploadedFile({buffer, source, month, deps = {}}) {
+  const cfg = source.collector || {}, doc = {buffer, contentType: '', url: source.url};
+  const rows = await parseDocument(doc, cfg, month, deps);
+  if (!rows.length) throw new Error('Nenhuma linha de permit reconhecida neste arquivo (PDF digitalizado, planilha sem cabeçalho de permits ou layout diferente). Converta para CSV ou use a importação JSON.');
+  const records = [], dates = []; let outside = 0, undated = 0;
+  for (const row of rows) {
+    if (!row.issued) { undated++; continue; }
+    dates.push(row.issued);
+    const rec = toRecord(source, row, month, cfg, source.url);
+    if (rec) records.push(rec); else outside++;
+  }
+  dates.sort();
+  return {format: detectFormat(doc), rowsRead: rows.length, records: [...new Map(records.map(r => [r.id, r])).values()], outside, undated, range: dates.length ? {from: dates[0], to: dates.at(-1)} : null};
 }

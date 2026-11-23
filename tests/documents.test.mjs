@@ -1,8 +1,8 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {deflateRawSync} from 'node:zlib';
-import {periodMatches, extractAnchors, parseTextRows, mapStructured, readXlsx, collectDocuments, detectFormat} from '../src/documents.mjs';
-import {collect, NATIVE_MODES, parseCsv} from '../src/collectors.mjs';
+import {periodMatches, periodRank, csvRows, extractAnchors, parseTextRows, mapStructured, readXlsx, collectDocuments, detectFormat} from '../src/documents.mjs';
+import {collect, NATIVE_MODES} from '../src/collectors.mjs';
 import {SOURCES} from '../src/sources.mjs';
 import {validatePermit} from '../src/radar.mjs';
 
@@ -20,12 +20,12 @@ function fakeFetch(map, calls = []) {
 const pdfBytes = '%PDF-1.4 fake';
 
 test('every city is either automatic or has an explicit import-only reason', () => {
-  assert.equal(SOURCES.length, 30);
+  assert.equal(SOURCES.length, 26);
   for (const s of SOURCES) {
     if (NATIVE_MODES.includes(s.mode)) continue;
     assert.ok(s.reason, s.id + ' needs a documented reason');
   }
-  assert.equal(SOURCES.filter(s => s.mode === 'documents').length, 19);
+  assert.equal(SOURCES.filter(s => s.mode === 'documents').length, 16);
   for (const s of SOURCES.filter(s => s.mode === 'documents')) {
     assert.ok(s.collector, s.id);
     assert.ok(s.allowedHosts.length >= 1, s.id + ' needs a www/non-www host variant');
@@ -53,7 +53,7 @@ test('period matching handles month names, abbreviations, combined months, quart
 
 test('anchors are extracted and resolved against the page', () => {
   const links = extractAnchors('<a href="/DocumentCenter/View/9/May-2026">May &amp; June 2026</a><a href="javascript:x()">no</a><a href="#top">no</a>', 'https://x.gov/page');
-  assert.deepEqual(links, [{href: 'https://x.gov/DocumentCenter/View/9/May-2026', text: 'May & June 2026'}]);
+  assert.deepEqual(links, [{href: 'https://x.gov/DocumentCenter/View/9/May-2026', text: 'May & June 2026', ctx: ''}]);
 });
 
 test('wakefield-style rows parse by column role; paid date is flagged as a proxy', () => {
@@ -82,7 +82,7 @@ test('heuristic rows (Newton layout) take the last date as the issued date and s
     'BP-22-4482  Building Permit Application  5/27/2022  25-27 Woodrow Ave, Newtonville  14006 0009  6/1/2022  Frank Meehan  $60,967.00  $1,220.00  First-floor bathroom and kitchen remodel',
     'BP-22-4500  Certificate of Occupancy  5/27/2022  1 Main St  6/2/2022  Someone  $0.00'
   ].join('\n');
-  const rows = parseTextRows(text, src('newton').collector, '2022-06');
+  const rows = parseTextRows(text, {dateWhich: 'last'}, '2022-06');
   assert.equal(rows.length, 1);
   assert.equal(rows[0].issued, '2022-06-01');
   assert.equal(rows[0].address, '25-27 Woodrow Ave');
@@ -147,7 +147,7 @@ test('xlsx workbook is read without dependencies and the month tab is preferred'
   const url = 'https://www.arlingtonma.gov/departments/inspectional-services/building-permit-activity';
   const file = 'https://www.arlingtonma.gov/home/showpublisheddocument/1/FY2026-1-or-2-Family-Building-Permits.xlsx';
   const calls = [];
-  const result = await collectDocuments(src('arlington'), '2025-10', {fetch: fakeFetch({[url]: '<a href="' + file + '">FY2026 1 or 2 Family Building Permits (Residential)</a><a href="/home/showpublisheddocument/2/fy2025.xlsx">FY2025 Residential</a>', [file]: {body: book, type: 'application/octet-stream'}}, calls), ...noSleep});
+  const result = await collectDocuments({...src('arlington'), collector: {scope: 'fiscal', match: 'permit'}}, '2025-10', {fetch: fakeFetch({[url]: '<a href="' + file + '">FY2026 1 or 2 Family Building Permits (Residential)</a><a href="/home/showpublisheddocument/2/fy2025.xlsx">FY2025 Residential</a>', [file]: {body: book, type: 'application/octet-stream'}}, calls), ...noSleep});
   assert.equal(calls.length, 2);
   assert.equal(result.records.length, 1);
   assert.equal(result.records[0].number, 'BP-2');
@@ -210,9 +210,98 @@ test('collect() routes document sources and keeps portal-only cities pending wit
   globalThis.fetch = async () => new Response('<p>sem links</p>', {headers: {'content-type': 'text/html'}});
   try {
     assert.equal((await collect(src('reading'), '2026-10')).status, 'pending');
-    const portal = await collect(src('brookline'), '2026-10');
+    const portal = await collect(src('newton'), '2026-10');
     assert.equal(portal.status, 'pending');
-    assert.match(portal.message, /Accela/);
+    assert.match(portal.message, /OpenGov/);
   } finally { globalThis.fetch = old; }
-  assert.equal(typeof parseCsv, 'function');
+});
+
+test('crawl stays inside the listing section, ignores the site menu, and lists the files it saw when nothing matches', async () => {
+  const source = {...src('newton'), collector: {scope: 'month', crawl: true, crawlRe: 'permit'}};
+  const calls = [];
+  const listing = '<a href="/government/city-clerk/burial-permits">Burial permits</a><a href="/government/inspectional-services/permit-forms">Permit forms</a><a href="/home/showpublisheddocument/1/2">Summary June 2026</a>';
+  const result = await collectDocuments(source, '2026-08', {fetch: fakeFetch({[source.url]: listing, 'https://www.newtonma.gov/government/inspectional-services/permit-forms': '<p>forms</p>'}, calls), ...noSleep});
+  assert.ok(!calls.some(u => u.includes('city-clerk')));
+  assert.ok(calls.some(u => u.includes('permit-forms')));
+  assert.equal(result.status, 'pending');
+  assert.match(result.message, /Arquivos vistos na página \(1\).*Summary June 2026/);
+});
+
+test('a refused crawled page stops the crawl instead of hammering the site', async () => {
+  const source = {...src('newton'), collector: {scope: 'month', crawl: true, crawlRe: 'permit|building'}};
+  const calls = [];
+  const base = 'https://www.newtonma.gov/government/inspectional-services/';
+  const result = await collectDocuments(source, '2026-08', {fetch: fakeFetch({[source.url]: '<a href="' + base + 'permit-a">permit a</a><a href="' + base + 'permit-b">permit b</a>', [base + 'permit-a']: new Response('no', {status: 403})}, calls), ...noSleep});
+  assert.ok(!calls.some(u => u.endsWith('permit-b')));
+  assert.match(result.message, /Rastreamento interrompido/);
+});
+
+test('csv rows tolerate title lines and quoted commas; newest-period ranking understands quarter/half/month', () => {
+  const rows = csvRows('\uFEFFTown permits 2026\r\nRecord #,Date Issued,Address,Cost\r\nBP-1,8/5/2026,"1 A ST, REAR","$1,200"\r\n');
+  assert.equal(rows[2][2], '1 A ST, REAR');
+  const mapped = mapStructured(rows, {}, '2026-08');
+  assert.equal(mapped.length, 1);
+  assert.equal(mapped[0].value, 1200);
+  assert.ok(periodRank('2026 Q3 Residential') > periodRank('2026 Q1 Residential'));
+  assert.ok(periodRank('2026 Q1') > periodRank('2025 Q4'));
+  assert.ok(periodRank('Second half 2025') > periodRank('First half 2025'));
+  assert.ok(periodRank('Permit Report - Oct 2025') > periodRank('Permit Report - Sept 2025'));
+  assert.equal(periodRank('Permits'), 0);
+});
+
+test('"latest" scope picks only the newest period (all of its files) and ignores older years', async () => {
+  const source = {...src('needham'), collector: {scope: 'latest', match: 'permit', maxFiles: 4}};
+  const base = 'https://www.needhamma.gov/DocumentCenter/View/';
+  const listing = ['2026 Q1 Building Permits Issued', '2026 Q3 Building Permits Issued - Residential', '2026 Q3 Building Permits Issued - Commercial', '2025 Q4 Building Permits Issued']
+    .map((t, i) => '<a href="/DocumentCenter/View/' + (100 + i) + '">' + t + '</a>').join('') + '<div class="alert"><a href="/news/closure">Town hall closure notice</a></div>';
+  const calls = [], texts = {[base + '101']: 'BP-26-77  8/5/2026  1 A ST  New single family dwelling  $500,000.00\n', [base + '102']: 'CB-26-5  8/9/2026  9 B ST  Commercial fit-out  $90,000.00\n'};
+  const fetchImpl = fakeFetch({[source.url]: listing, [base + '101']: {body: pdfBytes, type: 'application/pdf'}, [base + '102']: {body: pdfBytes + '2', type: 'application/pdf'}}, calls);
+  const result = await collectDocuments(source, '2026-08', {fetch: fetchImpl, pdfToText: async buf => texts[base + (buf.toString().endsWith('2') ? '102' : '101')], ...noSleep});
+  assert.deepEqual(calls.slice(1).sort(), [base + '101', base + '102']);
+  assert.equal(result.records.length, 2);
+  // an older month the newest document does not cover stays pending and says what the document covers
+  const older = await collectDocuments(source, '2026-02', {fetch: fakeFetch({[source.url]: listing, [base + '101']: {body: pdfBytes, type: 'application/pdf'}, [base + '102']: {body: pdfBytes + '2', type: 'application/pdf'}}), pdfToText: async buf => texts[base + (buf.toString().endsWith('2') ? '102' : '101')], ...noSleep});
+  assert.equal(older.status, 'pending');
+  assert.match(older.message, /cobre 2026-08-05 a 2026-08-09/);
+});
+
+test('fixed workbook links: SharePoint gets download=1 and the redirect cookie is carried to the file', async () => {
+  const link = 'https://arlingtonma-my.sharepoint.com/:x:/g/personal/x/IQA?rtime=1', calls = [];
+  const csv = 'Record #,Date Issued,Address,Description,Cost\nBP-1,8/5/2026,1 A ST,New home,"$100,000"\n';
+  const fetchImpl = async (url, opts) => {
+    calls.push({url, cookie: opts.headers.Cookie});
+    if (url.includes('/:x:/')) return new Response('', {status: 302, headers: {location: 'https://arlingtonma-my.sharepoint.com/personal/x/download.aspx?id=1', 'set-cookie': 'FedAuth=abc; path=/; HttpOnly'}});
+    if (opts.headers.Cookie !== 'FedAuth=abc') return new Response('login', {status: 403});
+    return new Response(csv, {headers: {'content-type': 'text/csv'}});
+  };
+  const source = {...src('arlington'), collector: {fileUrls: [link]}};
+  const result = await collectDocuments(source, '2026-08', {fetch: fetchImpl, ...noSleep});
+  assert.match(calls[0].url, /download=1/);
+  assert.equal(result.records.length, 1);
+  assert.equal(result.records[0].number, 'BP-1');
+  assert.doesNotThrow(() => validatePermit(result.records[0], source));
+});
+
+test('a login redirect to an unreviewed host is a visible failure', async () => {
+  const source = {...src('arlington'), collector: {fileUrls: ['https://arlingtonma-my.sharepoint.com/:x:/g/personal/x/IQA']}};
+  await assert.rejects(collectDocuments(source, '2026-08', {fetch: async () => new Response('', {status: 302, headers: {location: 'https://login.microsoftonline.com/x'}}), ...noSleep}), /Redirecionamento/);
+});
+
+test('a link without a year takes the year heading above it', async () => {
+  const source = src('needham'), base = 'https://www.needhamma.gov/DocumentCenter/View/';
+  const listing = '<h3>2026</h3><a href="/DocumentCenter/View/1">1st Quarter</a><a href="/DocumentCenter/View/2">3rd\u200b Quarter</a><h3>2025</h3><a href="/DocumentCenter/View/3">3rd Quarter</a>';
+  const calls = [];
+  const result = await collectDocuments(source, '2026-08', {fetch: fakeFetch({[source.url]: listing, [base + '2']: {body: pdfBytes, type: 'application/pdf'}}, calls), pdfToText: async () => 'BP-26-77  8/5/2026  1 A ST  New single family dwelling  $500,000.00\n', ...noSleep});
+  assert.deepEqual(calls.slice(1), [base + '2']);
+  assert.equal(result.records.length, 1);
+});
+
+test('rows that start with the date and then the permit number are read (Amesbury layout)', () => {
+  const text = 'DATE  RECORD  APPLICANT  ADDRESS  DESCRIPTION  COST\n10/1/2026 5:36  BR-26-545  Trinity Solar, LLC  10 MERRILL AVE, Amesbury, MA 01913  roof  $ 17,000.00\n';
+  const rows = parseTextRows(text, {leadDate: true, columns: ['applicant', 'address', 'description', 'value']}, '2026-10');
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].number, 'BR-26-545');
+  assert.equal(rows[0].issued, '2026-10-01');
+  assert.equal(rows[0].value, 17000);
+  assert.match(rows[0].address, /^10 MERRILL AVE/);
 });
