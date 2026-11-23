@@ -27,7 +27,7 @@ export const SOURCES=[
     "id": "newton",
     "city": "Newton",
     "state": "MA",
-    "url": "https://newtonma.viewpointcloud.com/",
+    "url": "https://newtonma.viewpointcloud.com/search",
     "mode": "portal",
     "allowedHosts": []
   },
