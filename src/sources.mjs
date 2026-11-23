@@ -1,4 +1,4 @@
-import {DOCUMENT_SOURCES,PORTAL_REASONS} from './source-configs.mjs';
+import {DOCUMENT_SOURCES,ACCELA_SOURCES,PORTAL_REASONS} from './source-configs.mjs';
 const BASE=[
   {
     "id": "boston",
@@ -220,6 +220,7 @@ const variants=u=>{const h=new URL(u).hostname;return [h.startsWith('www.')?h.sl
 export const SOURCES=BASE.map(s=>{
   const d=DOCUMENT_SOURCES[s.id];
   if(d)return {...s,mode:'documents',collector:d.collector,allowedHosts:[...new Set([...(s.allowedHosts||[]),...(d.allowedHosts||[]),...variants(s.url)])]};
+  if(ACCELA_SOURCES[s.id])return {...s,mode:'accela',collector:ACCELA_SOURCES[s.id].collector};
   if(PORTAL_REASONS[s.id])return {...s,reason:PORTAL_REASONS[s.id]};
   return s;
 });

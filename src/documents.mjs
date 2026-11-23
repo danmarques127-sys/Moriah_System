@@ -345,7 +345,7 @@ async function parseDocument(doc, cfg, month, deps = {}) {
   }
   return parseTextRows(text, cfg, month);
 }
-function toRecord(source, row, month, cfg, url) {
+export function toRecord(source, row, month, cfg, url) {
   if (!row.issued || !row.issued.startsWith(month)) return null;
   const proxy = cfg.dateKind && cfg.dateKind !== 'issued', note = proxy ? ' [Data na fonte: ' + ({paid: 'pagamento', submitted: 'submissão', range: 'período do relatório'}[cfg.dateKind] || cfg.dateKind) + '; emissão exata não informada]' : '';
   const key = row.number || 'row-' + createHash('sha1').update(row.raw.replace(/\s+/g, ' ')).digest('hex').slice(0, 16);

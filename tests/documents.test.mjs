@@ -210,9 +210,9 @@ test('collect() routes document sources and keeps portal-only cities pending wit
   globalThis.fetch = async () => new Response('<p>sem links</p>', {headers: {'content-type': 'text/html'}});
   try {
     assert.equal((await collect(src('reading'), '2026-10')).status, 'pending');
-    const portal = await collect(src('brookline'), '2026-10');
+    const portal = await collect(src('newton'), '2026-10');
     assert.equal(portal.status, 'pending');
-    assert.match(portal.message, /Accela/);
+    assert.match(portal.message, /OpenGov/);
   } finally { globalThis.fetch = old; }
 });
 

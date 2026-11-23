@@ -36,8 +36,13 @@ export const DOCUMENT_SOURCES = {
   chatham: {collector: {scope: 'month', match: 'Building-Permits-Issued|Building Permits Issued|permit', columns: ['date', 'streetNo', 'street', 'description', 'applicant', 'value', 'skip', 'skip']}}
 };
 
+// Accela Citizen Access portals: the collector fills the public General Search date range and pages through the results.
+// The portal date is the application (opened) date, not the issue date.
+export const ACCELA_SOURCES = {
+  brookline: {collector: {dateKind: 'submitted'}}
+};
+
 // No scriptable bulk source yet. These stay import-only, with the reason shown in the job log.
 export const PORTAL_REASONS = {
-  brookline: 'O portal Accela exige preencher o formulário de busca (datas) e ler a lista de resultados; ainda não há coletor com navegador automatizado. Importe o relatório.',
   newton: 'Os permits ficam em um relatório do OpenGov que só exporta CSV pelo botão Export; ainda não há coletor para isso. Importe o relatório.'
 };

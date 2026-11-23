@@ -1,6 +1,7 @@
 import {monthsBetween} from './radar.mjs';
 import {collectDocuments} from './documents.mjs';
-export const NATIVE_MODES=['boston','cambridge','somerville','milton','worcester','hartford','westerly','documents'];
+import {collectAccela} from './accela.mjs';
+export const NATIVE_MODES=['boston','cambridge','somerville','milton','worcester','hartford','westerly','documents','accela'];
 const clean=v=>String(v??'').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/&nbsp;/g,' ').replace(/&#39;|&apos;/g,"'").replace(/&quot;/g,'"').replace(/\s+/g,' ').trim();
 const amount=v=>Math.max(0,Number(String(v??0).replace(/[$,]/g,''))||0);
 function issueDate(v){if(typeof v==='number')return new Date(v).toISOString().slice(0,10);const s=String(v??''),iso=s.match(/^\d{4}-\d{2}-\d{2}/);if(iso)return iso[0];const m=s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);return m?(m[3].length===2?'20'+m[3]:m[3])+'-'+m[1].padStart(2,'0')+'-'+m[2].padStart(2,'0'):'';}
@@ -22,6 +23,7 @@ export async function collect(source,month){
  monthsBetween(month,month);const start=month+'-01',[y,m]=month.split('-').map(Number),end=new Date(Date.UTC(y,m,1)).toISOString().slice(0,10),records=[];let complete=true;
  if(!NATIVE_MODES.includes(source.mode))return {status:'pending',records:[],message:(source.reason?source.reason+' ':'Sem coletor automático validado para esta fonte. ')+'Importe CSV/JSON ou use o parser determinístico de relatório. Nenhuma emissão foi presumida.'};
  if(source.mode==='documents')return collectDocuments(source,month,{parseCsv});
+ if(source.mode==='accela')return collectAccela(source,month);
  if(source.mode==='boston'){
  const meta=await json('https://data.boston.gov/api/3/action/package_show?id=approved-building-permits'),resource=meta.result.resources.find(r=>r.datastore_active);
  if(!resource||!/^[-a-f0-9]+$/.test(resource.id))throw new Error('Dataset ativo não encontrado.');
