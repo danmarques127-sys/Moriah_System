@@ -20,7 +20,7 @@ function fakeFetch(map, calls = []) {
 const pdfBytes = '%PDF-1.4 fake';
 
 test('every city is either automatic or has an explicit import-only reason', () => {
-  assert.equal(SOURCES.length, 26);
+  assert.equal(SOURCES.length, 32);
   for (const s of SOURCES) {
     if (NATIVE_MODES.includes(s.mode)) continue;
     assert.ok(s.reason, s.id + ' needs a documented reason');
@@ -217,7 +217,7 @@ test('collect() routes document sources and keeps portal-only cities pending wit
 });
 
 test('crawl stays inside the listing section, ignores the site menu, and lists the files it saw when nothing matches', async () => {
-  const source = {...src('newton'), collector: {scope: 'month', crawl: true, crawlRe: 'permit'}};
+  const source = {...src('newton'), url: 'https://www.newtonma.gov/government/inspectional-services/building-permit-summary-report', collector: {scope: 'month', crawl: true, crawlRe: 'permit'}};
   const calls = [];
   const listing = '<a href="/government/city-clerk/burial-permits">Burial permits</a><a href="/government/inspectional-services/permit-forms">Permit forms</a><a href="/home/showpublisheddocument/1/2">Summary June 2026</a>';
   const result = await collectDocuments(source, '2026-08', {fetch: fakeFetch({[source.url]: listing, 'https://www.newtonma.gov/government/inspectional-services/permit-forms': '<p>forms</p>'}, calls), ...noSleep});
@@ -228,7 +228,7 @@ test('crawl stays inside the listing section, ignores the site menu, and lists t
 });
 
 test('a refused crawled page stops the crawl instead of hammering the site', async () => {
-  const source = {...src('newton'), collector: {scope: 'month', crawl: true, crawlRe: 'permit|building'}};
+  const source = {...src('newton'), url: 'https://www.newtonma.gov/government/inspectional-services/building-permit-summary-report', collector: {scope: 'month', crawl: true, crawlRe: 'permit|building'}};
   const calls = [];
   const base = 'https://www.newtonma.gov/government/inspectional-services/';
   const result = await collectDocuments(source, '2026-08', {fetch: fakeFetch({[source.url]: '<a href="' + base + 'permit-a">permit a</a><a href="' + base + 'permit-b">permit b</a>', [base + 'permit-a']: new Response('no', {status: 403})}, calls), ...noSleep});
