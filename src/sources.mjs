@@ -27,8 +27,8 @@ export const SOURCES=[
     "id": "newton",
     "city": "Newton",
     "state": "MA",
-    "url": "https://www.newtonma.gov/government/inspectional-services/building-permit-summary-report",
-    "mode": "report",
+    "url": "https://www.newtonma.gov/government/inspectional-services",
+    "mode": "portal",
     "allowedHosts": []
   },
   {
@@ -249,7 +249,7 @@ export const SOURCES=[
     "id": "springfield",
     "city": "Springfield",
     "state": "MA",
-    "url": "https://www.springfield-ma.gov/permits/permits",
+    "url": "https://springfieldma.portal.opengov.com/",
     "mode": "portal",
     "allowedHosts": []
   },
