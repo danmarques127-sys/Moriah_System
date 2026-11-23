@@ -1,0 +1,162 @@
+{
+  "researchDate": "2026-11-23",
+  "scope": {
+    "MA": 351,
+    "CT": 169,
+    "RI": 39
+  },
+  "status": "partial_discovery_not_559_municipality_audit",
+  "definition": "issued_periodic = municipal site explicitly provides individual issued-building-permit reports; portal_only is not evidence of periodic issuance; applications_report must be checked for issued status",
+  "records": [
+    {
+      "id": "amherst",
+      "city": "Amherst",
+      "state": "MA",
+      "classification": "issued_periodic",
+      "frequency": "monthly",
+      "url": "https://www.amherstma.gov/231/Inspection-Services",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "needham",
+      "city": "Needham",
+      "state": "MA",
+      "classification": "issued_periodic",
+      "frequency": "quarterly",
+      "url": "https://www.needhamma.gov/5024/Building-Permits-Issued",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "reading",
+      "city": "Reading",
+      "state": "MA",
+      "classification": "issued_periodic",
+      "frequency": "monthly",
+      "url": "https://www.readingma.gov/959/Monthly-Building-Permit-Report",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "wakefield",
+      "city": "Wakefield",
+      "state": "MA",
+      "classification": "issued_periodic",
+      "frequency": "monthly",
+      "url": "https://www.wakefieldma.gov/375/Monthly-Building-Reports",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "north-attleborough",
+      "city": "North Attleborough",
+      "state": "MA",
+      "classification": "issued_periodic",
+      "frequency": "monthly_archived",
+      "url": "https://www.northattleborough.gov/202/Monthly-List-of-Building-Permits-Issued",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "provincetown",
+      "city": "Provincetown",
+      "state": "MA",
+      "classification": "issued_periodic",
+      "frequency": "yearly_index",
+      "url": "https://provincetown-ma.gov/374/Building-Permits-Issued",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "wellesley",
+      "city": "Wellesley",
+      "state": "MA",
+      "classification": "issued_periodic",
+      "frequency": "archived_by_type",
+      "url": "https://www.wellesleyma.gov/Archive/36",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "sudbury",
+      "city": "Sudbury",
+      "state": "MA",
+      "classification": "issued_periodic",
+      "frequency": "archive_by_month",
+      "url": "https://sudbury.ma.us/all-documents/archived/",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "west-hartford",
+      "city": "West Hartford",
+      "state": "CT",
+      "classification": "issued_periodic",
+      "frequency": "monthly",
+      "url": "https://www.westhartfordct.gov/town-departments/building/monthly-permit-reports",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "milford",
+      "city": "Milford",
+      "state": "CT",
+      "classification": "issued_periodic",
+      "frequency": "monthly",
+      "url": "https://www.milfordct.us/520/List-of-Permits-Issued-by-Month",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "westerly",
+      "city": "Westerly",
+      "state": "RI",
+      "classification": "issued_periodic",
+      "frequency": "monthly",
+      "url": "https://westerlyri.gov/152/Building-Office",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "chicopee",
+      "city": "Chicopee",
+      "state": "MA",
+      "classification": "issued_portal",
+      "frequency": "searchable_without_login",
+      "url": "https://permiteyes.us/chicopee/publicview.php",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "springfield",
+      "city": "Springfield",
+      "state": "MA",
+      "classification": "portal_only",
+      "frequency": "searchable",
+      "url": "https://springfieldma.portal.opengov.com/",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "ludlow",
+      "city": "Ludlow",
+      "state": "MA",
+      "classification": "unconfirmed_publication",
+      "frequency": "unknown",
+      "url": "https://ludlow.ma.us/building/",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "lowell",
+      "city": "Lowell",
+      "state": "MA",
+      "classification": "applications_report",
+      "frequency": "monthly",
+      "url": "https://www.lowellma.gov/1084/Monthly-Permit-Reports",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false
+    }
+  ]
+}
