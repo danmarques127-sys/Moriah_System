@@ -89,14 +89,6 @@ const BASE=[
     "allowedHosts": []
   },
   {
-    "id": "weston",
-    "city": "Weston",
-    "state": "MA",
-    "url": "https://www.westonma.gov/",
-    "mode": "report",
-    "allowedHosts": []
-  },
-  {
     "id": "brookline",
     "city": "Brookline",
     "state": "MA",
@@ -196,30 +188,6 @@ const BASE=[
     "state": "CT",
     "url": "https://www.milfordct.us/520/List-of-Permits-Issued-by-Month",
     "mode": "report",
-    "allowedHosts": []
-  },
-  {
-    "id": "newport",
-    "city": "Newport",
-    "state": "RI",
-    "url": "https://www.newportri.gov/city-hall/departments/zoning-inspections/inspections",
-    "mode": "portal",
-    "allowedHosts": []
-  },
-  {
-    "id": "warwick",
-    "city": "Warwick",
-    "state": "RI",
-    "url": "https://www.warwickri.gov/187/Building-Department",
-    "mode": "portal",
-    "allowedHosts": []
-  },
-  {
-    "id": "providence",
-    "city": "Providence",
-    "state": "RI",
-    "url": "https://www.providenceri.gov/inspection/online-permitting/",
-    "mode": "portal",
     "allowedHosts": []
   },
   {

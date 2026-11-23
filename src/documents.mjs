@@ -68,13 +68,17 @@ export function htmlToText(html) {
 }
 
 /* ---------- network (HTTPS only, reviewed hosts only, size limited) ---------- */
+const withDownload = u => { const x = new URL(u); if (/\.sharepoint\.com$/i.test(x.hostname) && !x.searchParams.has('download')) x.searchParams.set('download', '1'); return x.href; };
 export async function fetchBinary(url, {hosts = [], fetchImpl, timeout = 45000} = {}) {
-  const doFetch = fetchImpl || globalThis.fetch, start = new URL(url);
+  const doFetch = fetchImpl || globalThis.fetch, start = new URL(withDownload(url));
   if (start.protocol !== 'https:') throw new Error('Fonte deve usar HTTPS.');
-  const allowed = new Set([...hosts.map(bare), bare(start.hostname)]);
-  let target = url;
-  for (let i = 0; i < 5; i++) {
-    const r = await doFetch(target, {redirect: 'manual', signal: AbortSignal.timeout(timeout), headers: {'User-Agent': UA, Accept: '*/*'}});
+  const allowed = new Set([...hosts.map(bare), bare(start.hostname)]), jar = new Map();
+  let target = start.href;
+  for (let i = 0; i < 6; i++) {
+    const headers = {'User-Agent': UA, Accept: '*/*'};
+    if (jar.size) headers.Cookie = [...jar].map(([k, v]) => k + '=' + v).join('; '); // cookies of this download only, like a browser following redirects
+    const r = await doFetch(target, {redirect: 'manual', signal: AbortSignal.timeout(timeout), headers});
+    for (const c of r.headers.getSetCookie?.() || []) { const kv = c.split(';')[0], at = kv.indexOf('='); if (at > 0) jar.set(kv.slice(0, at).trim(), kv.slice(at + 1).trim()); }
     if (r.status >= 300 && r.status < 400 && r.headers.get('location')) {
       const next = new URL(r.headers.get('location'), target);
       if (next.protocol !== 'https:' || !allowed.has(bare(next.hostname))) throw new Error('Redirecionamento para domínio não revisado (' + next.hostname + '). Revise a fonte antes de permitir.');
@@ -297,8 +301,37 @@ export function mapStructured(table, cfg = {}, month = '') {
   return out;
 }
 
+/* ---------- CSV (rows, so title lines above the header are tolerated) ---------- */
+export function csvRows(input) {
+  const text = String(input).replace(/^﻿/, ''), rows = [];
+  let row = [], cell = '', quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') { if (quoted && text[i + 1] === '"') { cell += '"'; i++; } else quoted = !quoted; }
+    else if (c === ',' && !quoted) { row.push(cell); cell = ''; }
+    else if ((c === '\r' || c === '\n') && !quoted) { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); if (row.some(x => x.trim())) rows.push(row); row = []; cell = ''; }
+    else cell += c;
+  }
+  row.push(cell); if (row.some(x => x.trim())) rows.push(row);
+  return rows.map(r => r.map(x => x.trim()));
+}
+
+/* ---------- "newest file" ranking (year + month / quarter / half) ---------- */
+const slugOf = href => { try { const last = decodeURIComponent(new URL(href).pathname.split('/').filter(Boolean).pop() || ''); return /^\d+$/.test(last) ? '' : last; } catch { return ''; } };
+export function periodRank(text) {
+  const t = String(text).toLowerCase(), years = [...t.matchAll(/(?<!\d)(20\d{2})(?!\d)/g)].map(m => Number(m[1]));
+  if (!years.length) return 0;
+  let sub = 0;
+  FULL.forEach((name, i) => { if (new RegExp('(?<![a-z])(?:' + name + '|' + SHORT[i] + (i === 8 ? '|sept' : '') + ')\\b').test(t)) sub = Math.max(sub, i + 1); });
+  const q = t.match(/(?<![a-z0-9])q([1-4])(?!\d)/) || t.match(/\b(first|second|third|fourth|1st|2nd|3rd|4th)[ -]*quarter/);
+  if (q) sub = Math.max(sub, 3 * (Number(q[1]) || ['first', 'second', 'third', 'fourth', '1st', '2nd', '3rd', '4th'].indexOf(q[1]) % 4 + 1));
+  const h = t.match(/(?<![a-z0-9])h([12])(?!\d)/) || t.match(/\b(first|second|1st|2nd)[ -]*(?:half|semester)/) || t.match(/(?:half|semester)[ -]*([12])\b/);
+  if (h) sub = Math.max(sub, 6 * (Number(h[1]) || (['first', '1st'].includes(h[1]) ? 1 : 2)));
+  return Math.max(...years) * 100 + sub;
+}
+
 /* ---------- orchestration ---------- */
-async function parseDocument(doc, cfg, month, deps) {
+async function parseDocument(doc, cfg, month, deps = {}) {
   const format = detectFormat(doc);
   if (format === 'pdf') return parseTextRows(await (deps.pdfToText || pdfToText)(doc.buffer), cfg, month);
   if (format === 'xlsx') {
@@ -306,8 +339,8 @@ async function parseDocument(doc, cfg, month, deps) {
     return (named.length ? named : sheets).flatMap(s => mapStructured(s.rows, cfg, month));
   }
   const text = format === 'html' ? htmlToText(doc.buffer.toString('utf8')) : doc.buffer.toString('utf8').replace(/^﻿/, '');
-  if (format === 'text' && cfg.parser !== 'text' && deps.parseCsv && text.split(/\r?\n/, 1)[0].includes(',')) {
-    const rows = mapStructured(deps.parseCsv(text), cfg, month);
+  if (format === 'text' && cfg.parser !== 'text' && /,/.test(text.split(/\r?\n/, 1)[0])) {
+    const rows = mapStructured(csvRows(text), cfg, month);
     if (rows.length) return rows;
   }
   return parseTextRows(text, cfg, month);
@@ -321,68 +354,83 @@ function toRecord(source, row, month, cfg, url) {
     contractor: row.contractor === 'N/A' ? '' : row.contractor, applicant: row.applicant, sourceUrl: url, status: row.status};
 }
 export async function collectDocuments(source, month, deps = {}) {
-  const cfg = source.collector || {}, scope = cfg.scope || 'month', hosts = [new URL(source.url).hostname, ...(source.allowedHosts || [])];
+  const cfg = source.collector || {}, scope = cfg.scope || 'month', latest = scope === 'latest';
+  const hosts = [new URL(source.url).hostname, ...(source.allowedHosts || [])];
   const net = {hosts, fetchImpl: deps.fetch}, pause = deps.sleep || sleep, allowedHost = h => hosts.some(x => bare(x) === bare(h));
-  const lists = cfg.listUrls || [source.url], pages = [...lists], seen = new Set(), anchors = [], notes = [];
-  let reached = 0;
-  for (let i = 0; i < pages.length && i < 12; i++) {
-    if (seen.has(pages[i])) continue; seen.add(pages[i]);
-    let page;
-    try { page = await fetchBinary(pages[i], net); } catch (e) {
-      if (i === 0 && lists.length === 1) throw e;
-      notes.push('Página não acessada (' + new URL(pages[i]).pathname + '): ' + String(e.message).slice(0, 120));
-      // A page we only reached by crawling refused us: stop instead of insisting on more pages.
-      if (i >= lists.length && /HTTP 40[13]/.test(e.message)) { notes.push('Rastreamento interrompido: o site bloqueia acesso automático a estas páginas.'); break; }
-      continue;
+  const label = month.slice(5) + '/' + month.slice(0, 4), notes = [], skippedHosts = new Set();
+  let candidates, anchors = [];
+  if (cfg.fileUrls) candidates = cfg.fileUrls.map(href => ({href, text: '', own: true, rank: 0}));
+  else {
+    const lists = cfg.listUrls || [source.url], pages = [...lists], seen = new Set();
+    let reached = 0;
+    for (let i = 0; i < pages.length && i < 12; i++) {
+      if (seen.has(pages[i])) continue; seen.add(pages[i]);
+      let page;
+      try { page = await fetchBinary(pages[i], net); } catch (e) {
+        if (i === 0 && lists.length === 1) throw e;
+        notes.push('Página não acessada (' + new URL(pages[i]).pathname + '): ' + String(e.message).slice(0, 120));
+        // A page we only reached by crawling refused us: stop instead of insisting on more pages.
+        if (i >= lists.length && /HTTP 40[13]/.test(e.message)) { notes.push('Rastreamento interrompido: o site bloqueia acesso automático a estas páginas.'); break; }
+        continue;
+      }
+      reached++;
+      const found = extractAnchors(page.buffer.toString('utf8'), page.url); anchors.push(...found);
+      if (cfg.crawl && i < lists.length) {
+        // Only follow links inside the same site section as the listing page (never the site-wide menu).
+        const section = new URL(page.url).pathname.replace(/[^/]*$/, ''), deep = section.split('/').filter(Boolean).length >= 2;
+        const re = cfg.crawlRe ? new RegExp(cfg.crawlRe, 'i') : /permit|building|report|archive|inspection/i;
+        for (const a of found.filter(a => !fileLike(a.href) && allowedHost(new URL(a.href).hostname) && (!deep || new URL(a.href).pathname.startsWith(section)) && re.test(a.text + ' ' + a.href)).slice(0, cfg.crawlLimit || 3)) if (!seen.has(a.href)) pages.push(a.href);
+      }
+      await pause(300);
     }
-    reached++;
-    const found = extractAnchors(page.buffer.toString('utf8'), page.url); anchors.push(...found);
-    if (cfg.crawl && i < lists.length) {
-      // Only follow links inside the same site section as the listing page (never the site-wide menu).
-      const section = new URL(page.url).pathname.replace(/[^/]*$/, ''), deep = section.split('/').filter(Boolean).length >= 2;
-      const re = cfg.crawlRe ? new RegExp(cfg.crawlRe, 'i') : /permit|building|report|archive|inspection/i;
-      for (const a of found.filter(a => !fileLike(a.href) && allowedHost(new URL(a.href).hostname) && (!deep || new URL(a.href).pathname.startsWith(section)) && re.test(a.text + ' ' + a.href)).slice(0, cfg.crawlLimit || 3)) if (!seen.has(a.href)) pages.push(a.href);
+    if (!reached) throw new Error('Nenhuma página de listagem acessível.');
+    const filter = cfg.match ? new RegExp(cfg.match, 'i') : null, bySource = new Map();
+    // Some cities name the file after the month it was published (the month after the permits), see cfg.fileLag.
+    const [yy, mm] = month.split('-').map(Number), wanted = [month];
+    if (cfg.fileLag) wanted.push(new Date(Date.UTC(yy, mm, 1)).toISOString().slice(0, 7));
+    const matchesPeriod = text => wanted.some(w => periodMatches(text, w, scope));
+    for (const a of anchors) {
+      const hay = a.text + ' ' + decodeURIComponent(a.href.replace(/%(?![0-9a-f]{2})/gi, ''));
+      if (!fileLike(a.href) || (filter && !filter.test(hay)) || (!latest && !matchesPeriod(hay))) continue;
+      const host = new URL(a.href).hostname;
+      if (!allowedHost(host)) { skippedHosts.add(host); continue; }
+      if (cfg.textEquals && a.text.trim() !== cfg.textEquals.replace('{year}', month.slice(0, 4))) continue;
+      if (!bySource.has(a.href)) bySource.set(a.href, {...a, own: !latest && matchesPeriod(a.text), rank: periodRank(a.text + ' ' + slugOf(a.href))});
     }
-    await pause(300);
+    candidates = [...bySource.values()];
+    if (latest) {
+      // Newest period only (all files that share it, e.g. residential + commercial). Unrankable links keep page order.
+      const top = Math.max(0, ...candidates.map(c => c.rank));
+      if (top) candidates = candidates.filter(c => c.rank === top);
+    } else candidates.sort((a, b) => Number(b.own) - Number(a.own));
+    candidates = candidates.slice(0, cfg.maxFiles || (latest ? 4 : 3));
+    if (!candidates.length) {
+      // Say what the page DID offer, so a wrong match rule can be fixed from the job log alone.
+      const seenFiles = [...new Map(anchors.filter(a => fileLike(a.href)).map(a => [a.href, a])).values()];
+      const sample = seenFiles.length
+        ? ' Arquivos vistos na página (' + seenFiles.length + '): ' + seenFiles.slice(0, 6).map(a => '«' + (a.text || a.href.split('/').pop()).slice(0, 60) + '»').join(' · ') + '.'
+        : ' Nenhum link de arquivo encontrado na página (o conteúdo pode ser carregado por JavaScript).';
+      return {status: 'pending', records: [], message: 'Relatório de ' + label + ' não publicado/localizado na página da cidade. Isso não significa zero permits.' + sample + (skippedHosts.size ? ' Links em domínio não revisado ignorados: ' + [...skippedHosts].join(', ') + '.' : '') + (notes.length ? ' ' + notes.slice(0, 2).join(' ') : '')};
+    }
   }
-  if (!reached) throw new Error('Nenhuma página de listagem acessível.');
-  const filter = cfg.match ? new RegExp(cfg.match, 'i') : null, skippedHosts = new Set(), bySource = new Map();
-  // Some cities name the file after the month it was published (the month after the permits), see cfg.fileLag.
-  const [yy, mm] = month.split('-').map(Number), wanted = [month];
-  if (cfg.fileLag) wanted.push(new Date(Date.UTC(yy, mm, 1)).toISOString().slice(0, 7));
-  const matchesPeriod = text => wanted.some(w => periodMatches(text, w, scope));
-  for (const a of anchors) {
-    const hay = a.text + ' ' + decodeURIComponent(a.href.replace(/%(?![0-9a-f]{2})/gi, ''));
-    if (!fileLike(a.href) || !matchesPeriod(hay) || (filter && !filter.test(hay))) continue;
-    const host = new URL(a.href).hostname;
-    if (!allowedHost(host)) { skippedHosts.add(host); continue; }
-    if (cfg.textEquals && a.text.trim() !== cfg.textEquals.replace('{year}', month.slice(0, 4))) continue;
-    if (!bySource.has(a.href)) bySource.set(a.href, {...a, own: matchesPeriod(a.text)});
-  }
-  const candidates = [...bySource.values()].sort((a, b) => Number(b.own) - Number(a.own)).slice(0, cfg.maxFiles || 3);
-  const label = month.slice(5) + '/' + month.slice(0, 4);
-  if (!candidates.length) {
-    // Say what the page DID offer, so a wrong match rule can be fixed from the job log alone.
-    const seenFiles = [...new Map(anchors.filter(a => fileLike(a.href)).map(a => [a.href, a])).values()];
-    const sample = seenFiles.length
-      ? ' Arquivos vistos na página (' + seenFiles.length + '): ' + seenFiles.slice(0, 6).map(a => '«' + (a.text || a.href.split('/').pop()).slice(0, 60) + '»').join(' · ') + '.'
-      : ' Nenhum link de arquivo encontrado na página (o conteúdo pode ser carregado por JavaScript).';
-    return {status: 'pending', records: [], message: 'Relatório de ' + label + ' não publicado/localizado na página da cidade. Isso não significa zero permits.' + sample + (skippedHosts.size ? ' Links em domínio não revisado ignorados: ' + [...skippedHosts].join(', ') + '.' : '') + (notes.length ? ' ' + notes.slice(0, 2).join(' ') : '')};
-  }
-  const records = new Map(); let parsedRows = 0, files = 0;
+  const records = new Map(), issuedDates = []; let parsedRows = 0, files = 0;
   for (const a of candidates) {
-    let doc = await fetchBinary(a.href, net); await pause(300);
-    if (cfg.followItems && detectFormat(doc) === 'html') {
-      // Archive-center item pages either link to the real file or show the table inline (then parse the page itself).
+    let doc = await fetchBinary(a.href, net), evidence = a.href; await pause(300);
+    if (cfg.followItems !== false && detectFormat(doc) === 'html') {
+      // Item pages either link to the real file or show the table inline (then parse the page itself).
       const inner = extractAnchors(doc.buffer.toString('utf8'), doc.url).find(x => x.href !== a.href && /\.(?:pdf|xlsx?|csv)(?:[?#]|$)|DocumentCenter\/View|ViewFile|showpublisheddocument/i.test(x.href) && allowedHost(new URL(x.href).hostname));
-      if (inner) { doc = await fetchBinary(inner.href, net); await pause(300); }
+      if (inner) { doc = await fetchBinary(inner.href, net); evidence = inner.href; await pause(300); }
     }
     const rows = await parseDocument(doc, cfg, month, deps); files++; parsedRows += rows.length;
-    for (const row of rows) { const rec = toRecord(source, row, month, cfg, doc.url); if (rec && !records.has(rec.id)) records.set(rec.id, rec); }
+    for (const row of rows) { if (row.issued) issuedDates.push(row.issued); const rec = toRecord(source, row, month, cfg, evidence); if (rec && !records.has(rec.id)) records.set(rec.id, rec); }
   }
   if (!files) return {status: 'pending', records: [], message: 'Arquivo de ' + label + ' não pôde ser aberto. ' + notes.join(' ')};
   if (!parsedRows) throw new Error('Layout do documento não reconhecido (nenhuma linha de permit encontrada; o PDF pode ser digitalizado ou o formato mudou). Importe manualmente este mês.');
+  if (!records.size) {
+    issuedDates.sort();
+    return {status: 'pending', records: [], message: files + ' documento(s) lido(s), mas nenhum permit emitido em ' + label + '.' + (issuedDates.length ? ' O que foi lido cobre ' + issuedDates[0] + ' a ' + issuedDates.at(-1) + '.' : '') + ' Pode não estar publicado ainda. Isso não significa zero permits.'};
+  }
   const list = [...records.values()], proxyNote = cfg.dateKind && cfg.dateKind !== 'issued' ? ' A data usada é a de ' + ({paid: 'pagamento', submitted: 'submissão', range: 'período do relatório'}[cfg.dateKind] || cfg.dateKind) + ', não a de emissão.' : '';
-  const message = files + ' documento(s) lido(s); ' + list.length + ' registro(s) em ' + label + '.' + (cfg.verified ? '' : ' Layout ainda não validado contra o documento real: conferir contagem e descrições.') + proxyNote + (notes.length ? ' ' + notes.join(' ') : '');
+  const message = files + ' documento(s) lido(s); ' + list.length + ' registro(s) em ' + label + '.' + (cfg.verified ? '' : ' Layout ainda não validado contra o documento real: conferir contagem e descrições.') + proxyNote + (notes.length ? ' ' + notes.slice(0, 2).join(' ') : '');
   return {status: cfg.verified && list.length ? 'complete' : 'partial', records: list, message};
 }
