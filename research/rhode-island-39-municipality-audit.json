@@ -498,9 +498,9 @@
       "state": "RI",
       "auditStatus": "source_verified",
       "sourceType": "periodic_issued_list",
-      "sourceUrl": "https://westerlyri.gov/152/Building-Office",
-      "sourceEvidenceUrl": "https://westerlyri.gov/152/Building-Office",
-      "evidence": "Official page explicitly links monthly reports of issued permits",
+      "sourceUrl": "https://www.westerlyri.gov/533/3397/Building-Permit-Reports",
+      "sourceEvidenceUrl": "https://www.westerlyri.gov/533/3397/Building-Permit-Reports",
+      "evidence": "Verified official page has downloadable monthly permit CSV reports for January-October 2026 and historical files back to 2017. CSV fields and live collector are not yet verified.",
       "collectorValidated": false,
       "automatedCollector": "existing_code_unverified_live",
       "phaseOneAnswer": "YES_PUBLIC_PERIODIC_DIRECTORY",
@@ -520,5 +520,14 @@
       "lastReview": "2026-11-23"
     }
   ],
-  "auditDefinition": "First-pass municipality search across all 39 using RI Building Code Commission directory, municipal department pages, targeted web queries. YES means documented bulk-issued-permits by period; NO_VERIFIED means not demonstrated by available evidence, NOT municipality lacks such data. Source candidates do not establish live extractors."
+  "auditDefinition": "First-pass municipality search across all 39 using RI Building Code Commission directory, municipal department pages, targeted web queries. YES means documented bulk-issued-permits by period; NO_VERIFIED means not demonstrated by available evidence, NOT municipality lacks such data. Source candidates do not establish live extractors.",
+  "report": {
+    "scope": 39,
+    "firstPassSearched": 39,
+    "municipalitiesWithOfficialPeriodicIssuedPermitIndex": 1,
+    "otherMunicipalitiesWithoutVerifiedBulkEvidence": 38,
+    "notInspectedAtAll": 0,
+    "interpretation": "NO verified evidence is not proof no bulk source exists. This is a first-pass public web audit, NOT exhaustive manual portal navigation, NOT proof of live collector functionality.",
+    "nextAction": "Second-pass review for 38 unconfirmed, portal interactive checks and official source follow up; user has requested conclusive answers, which cannot be honestly given for unverified sources."
+  }
 }
