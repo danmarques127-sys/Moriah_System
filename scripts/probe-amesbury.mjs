@@ -2,8 +2,8 @@ const home='https://www.amesburyma.gov/203/Inspectional-Services';
 const res=await fetch(home,{signal:AbortSignal.timeout(20000),headers:{'User-Agent':'MoriahSystem/1.0 public source validation'}});
 if(!res.ok)throw Error('Municipal landing page HTTP '+res.status);
 const html=await res.text();
-const links=[...html.matchAll(/<a\\b[^>]*href=["']([^"']+)["'][^>]*>([\\s\\S]*?)<\\/a>/gi)]
- .map(x=>({href:new URL(x[1].replaceAll('&amp;','&'),home).href,label:x[2].replace(/<[^>]+>/g,' ').replace(/\\s+/g,' ').trim()}));
+const links=[...html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\\S]*?)<\\/a>/gi)]
+ .map(x=>({href:new URL(x[1].replaceAll('&amp;','&'),home).href,label:x[2].replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim()}));
 const reports=links.filter(x=>/building permits? (?:october|oct\\.?|sept\\.?)/i.test(x.label));
 console.log(JSON.stringify({source:'amesbury',landingStatus:res.status,candidates:reports.map(x=>({label:x.label,url:x.href}))}));
 if(!reports.length)throw Error('No municipal report link discovered');
