@@ -16,7 +16,10 @@
       "frequency": "monthly",
       "url": "https://www.amherstma.gov/231/Inspection-Services",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": false,
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "needham",
@@ -26,7 +29,10 @@
       "frequency": "quarterly",
       "url": "https://www.needhamma.gov/5024/Building-Permits-Issued",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": false,
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "reading",
@@ -36,7 +42,10 @@
       "frequency": "monthly",
       "url": "https://www.readingma.gov/959/Monthly-Building-Permit-Report",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": false,
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "wakefield",
@@ -46,7 +55,10 @@
       "frequency": "monthly",
       "url": "https://www.wakefieldma.gov/375/Monthly-Building-Reports",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": false,
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "north-attleborough",
@@ -56,7 +68,10 @@
       "frequency": "monthly_archived",
       "url": "https://www.northattleborough.gov/202/Monthly-List-of-Building-Permits-Issued",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": false,
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "provincetown",
@@ -66,7 +81,10 @@
       "frequency": "yearly_index",
       "url": "https://provincetown-ma.gov/374/Building-Permits-Issued",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": false,
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "wellesley",
@@ -76,7 +94,10 @@
       "frequency": "archived_by_type",
       "url": "https://www.wellesleyma.gov/Archive/36",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": false,
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "sudbury",
@@ -88,7 +109,10 @@
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": true,
       "evidence": "Official building department documents include October 2026 Building Permits Issued",
-      "county": "Middlesex"
+      "county": "Middlesex",
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "west-hartford",
@@ -98,7 +122,10 @@
       "frequency": "monthly",
       "url": "https://www.westhartfordct.gov/town-departments/building/monthly-permit-reports",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": false,
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "milford",
@@ -108,7 +135,10 @@
       "frequency": "monthly",
       "url": "https://www.milfordct.us/520/List-of-Permits-Issued-by-Month",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": false,
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "westerly",
@@ -118,7 +148,10 @@
       "frequency": "monthly",
       "url": "https://westerlyri.gov/152/Building-Office",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": false,
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "chicopee",
@@ -132,7 +165,10 @@
       "portalProvider": "PermitEyes",
       "periodicIssuedListStatus": "not_found_yet",
       "futureCollectionMode": "records_search_candidate",
-      "automationValidated": false
+      "automationValidated": false,
+      "phaseOneCandidate": false,
+      "secondaryLookupOnly": true,
+      "directoryValidated": false
     },
     {
       "id": "springfield",
@@ -147,7 +183,10 @@
       "periodicIssuedListStatus": "not_found_yet",
       "addressSearchStatus": "public_lookup_available_unverified_automation",
       "futureCollectionMode": "address_lookup_candidate",
-      "automationValidated": false
+      "automationValidated": false,
+      "phaseOneCandidate": false,
+      "secondaryLookupOnly": true,
+      "directoryValidated": false
     },
     {
       "id": "ludlow",
@@ -157,7 +196,10 @@
       "frequency": "unknown",
       "url": "https://ludlow.ma.us/building/",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": false,
+      "phaseOneCandidate": false,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "lowell",
@@ -167,7 +209,10 @@
       "frequency": "monthly",
       "url": "https://www.lowellma.gov/1084/Monthly-Permit-Reports",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": false,
+      "phaseOneCandidate": false,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "bethel",
@@ -178,7 +223,10 @@
       "url": "https://bethel-ct.gov/index.asp?SEC=780497CC-1470-4443-88A1-525207E6D44D",
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": true,
-      "evidence": "2026 monthly permits issued index January-October 2026; verify individual PDF content before collector"
+      "evidence": "2026 monthly permits issued index January-October 2026; verify individual PDF content before collector",
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "ellington",
@@ -189,7 +237,10 @@
       "url": "https://www.ellington-ct.gov/departments-and-services/building-department",
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": true,
-      "evidence": "August 2026 PDF verified: record ID, property address, status Issued, date, job value, description; municipality monthly report index"
+      "evidence": "August 2026 PDF verified: record ID, property address, status Issued, date, job value, description; municipality monthly report index",
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "carlisle",
@@ -200,7 +251,10 @@
       "url": "https://www.carlislema.gov/1263/Monthly-Permit-Reports",
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": true,
-      "evidence": "Town identifies monthly issued permits residential and other trades, estimated costs, residential work summary"
+      "evidence": "Town identifies monthly issued permits residential and other trades, estimated costs, residential work summary",
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "andover",
@@ -212,7 +266,10 @@
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": true,
       "evidence": "Official archive Building Permits Issued (Updated Monthly); 2026 Building Permits YTD",
-      "county": "Essex"
+      "county": "Essex",
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "manchester-by-the-sea",
@@ -224,7 +281,10 @@
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": true,
       "evidence": "Official issued-building-permit archive through September 2026",
-      "county": "Essex"
+      "county": "Essex",
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "southbury",
@@ -236,7 +296,10 @@
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": true,
       "evidence": "Official monthly building permit reports through September 2026; issue date and status must be confirmed before issued-only classification",
-      "county": "New Haven"
+      "county": "New Haven",
+      "phaseOneCandidate": false,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "amesbury",
@@ -248,7 +311,10 @@
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": true,
       "evidence": "Official October 2026 Building Permits Issued CSV at /DocumentCenter/View/6385/Building-Permits-October-2026",
-      "county": "Essex"
+      "county": "Essex",
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "woburn",
@@ -260,7 +326,10 @@
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": true,
       "evidence": "Official Woburn news index posts October and September 2026 Building Permits Issued",
-      "county": "Middlesex"
+      "county": "Middlesex",
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "orleans",
@@ -272,7 +341,10 @@
       "url": "https://town.orleans.ma.us/DocumentCenter/View/11087/Building-Permits-Issued---April-2026",
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": false,
-      "evidence": "Official Feb-March and April 2026 issued permit reports have record #, issue date, applicant, address/location, work description and estimated cost; recurring index location not established"
+      "evidence": "Official Feb-March and April 2026 issued permit reports have record #, issue date, applicant, address/location, work description and estimated cost; recurring index location not established",
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "tiverton",
@@ -289,7 +361,10 @@
       "periodicIssuedListStatus": "not_found_yet",
       "addressSearchStatus": "records_search_present_address_filter_unverified",
       "futureCollectionMode": "address_lookup_candidate",
-      "automationValidated": false
+      "automationValidated": false,
+      "phaseOneCandidate": false,
+      "secondaryLookupOnly": true,
+      "directoryValidated": false
     },
     {
       "id": "sharon",
@@ -301,7 +376,10 @@
       "url": "https://www.townofsharon.net/",
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": false,
-      "evidence": "2024 town report gives aggregate building permit issuance counts, not individual records/addresses; individual public permit publication not confirmed"
+      "evidence": "2024 town report gives aggregate building permit issuance counts, not individual records/addresses; individual public permit publication not confirmed",
+      "phaseOneCandidate": false,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     },
     {
       "id": "barrington",
@@ -318,7 +396,10 @@
       "periodicIssuedListStatus": "not_found_yet",
       "addressSearchStatus": "unverified",
       "futureCollectionMode": "address_lookup_candidate",
-      "automationValidated": false
+      "automationValidated": false,
+      "phaseOneCandidate": false,
+      "secondaryLookupOnly": true,
+      "directoryValidated": false
     }
   ],
   "lastAuditUpdate": "2026-11-23",
@@ -331,5 +412,35 @@
     "notes": "not_found_yet means no list identified in research, NOT proof no list exists",
     "openGovFallback": "record OpenGov public portal URL, whether records and address search are available, authentication, pagination, automation permission, confidence, verification date; only address-check after separate validation",
     "doNotInfer": "OpenGov portal existence does not prove automated address lookup or bulk collection"
+  },
+  "primaryGoal": "Find official municipal directories containing individual issued building permits grouped by month, quarter, or publication period. Address-only searches do not qualify.",
+  "phaseOneEligibility": {
+    "eligibleClassification": [
+      "issued_periodic"
+    ],
+    "requires": [
+      "Official municipal publication directory or downloadable list grouped by period",
+      "Records represent permits issued, not merely applications",
+      "Records are identifiable per permit and date",
+      "Publication URL and period evidenced"
+    ],
+    "excludedFromPrimary": [
+      "issued_portal",
+      "portal_only",
+      "portal_records_search",
+      "applications_report",
+      "aggregates_only",
+      "unconfirmed_publication",
+      "building_permit_report"
+    ],
+    "note": "Candidate issued_periodic records are not automatically fully validated: stable index and recent files require checks. OpenGov only qualifies if it publishes a browseable complete issued-permit directory by period."
+  },
+  "phaseOneMetrics": {
+    "municipalitiesDocumented": 27,
+    "issuedPeriodPublicationCandidates": 19,
+    "otherPortalOrPendingRecords": 8,
+    "municipalitiesWithoutFullIndividualAudit": 532,
+    "fullyValidatedDirectoryCount": null,
+    "note": "Do not equate catalog entry with full municipality audit; eligibility of each periodic index still needs file/date/issued verification."
   }
 }
