@@ -60,7 +60,7 @@ export async function collect(source,month){
  const html=await http(source.url),name=['January','February','March','April','May','June','July','August','September','October','November','December'][m-1];
  const links=[...html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)],match=links.find(x=>new RegExp(name+'[ -]+'+y,'i').test(clean(x[2])+' '+x[1])&&/csv/i.test(x[1]+' '+x[2]));
  if(!match)return {status:'pending',records:[],message:'Relatório '+name+' '+y+' não publicado/localizado. Isso não significa zero permits.'};
- const url=new URL(match[1].replace(/&amp;/g,'&'),source.url);if(url.hostname!=='www.westerlyri.gov')throw new Error('CSV fora do domínio municipal.');
+ const url=new URL(match[1].replace(/&amp;/g,'&'),source.url);if(url.hostname.replace(/^www\\./,'')!=='westerlyri.gov')throw new Error('CSV fora do domínio municipal.');
  const rows=parseCsv(await http(url.href));if(rows.length&&!('Date Issued' in rows[0]))throw new Error('Colunas do relatório mudaram.');
  for(const r of rows){if(r.Title!=='Building Permit'||r.Type!=='Permit/License')continue;const issued=issueDate(r['Date Issued']);if(!issued)throw new Error('Data não reconhecida no CSV.');if(issued<start||issued>=end)continue;
  const p=record(source,r['Record #'],issued,r['Full Address'],r['Record #'],'Categoria municipal: '+r['Type of Improvement']+'. Descrição integral ausente no CSV.','Building Permit',r['Estimated cost of Labor and Materials'],r['GC Name'],r['Applicant Name'],url.href);if(r['GC Phone #'])p.phone=r['GC Phone #'];records.push(p);}
