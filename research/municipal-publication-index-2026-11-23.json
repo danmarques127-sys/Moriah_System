@@ -157,6 +157,40 @@
       "url": "https://www.lowellma.gov/1084/Monthly-Permit-Reports",
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": false
+    },
+    {
+      "id": "bethel",
+      "city": "Bethel",
+      "state": "CT",
+      "classification": "issued_periodic",
+      "frequency": "monthly",
+      "url": "https://bethel-ct.gov/index.asp?SEC=780497CC-1470-4443-88A1-525207E6D44D",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": true,
+      "evidence": "2026 monthly permits issued index January-October 2026; verify individual PDF content before collector"
+    },
+    {
+      "id": "ellington",
+      "city": "Ellington",
+      "state": "CT",
+      "classification": "issued_periodic",
+      "frequency": "monthly_pdf",
+      "url": "https://www.ellington-ct.gov/departments-and-services/building-department",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": true,
+      "evidence": "August 2026 PDF verified: record ID, property address, status Issued, date, job value, description; municipality monthly report index"
+    },
+    {
+      "id": "carlisle",
+      "city": "Carlisle",
+      "state": "MA",
+      "classification": "issued_periodic",
+      "frequency": "monthly",
+      "url": "https://www.carlislema.gov/1263/Monthly-Permit-Reports",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": true,
+      "evidence": "Town identifies monthly issued permits residential and other trades, estimated costs, residential work summary"
     }
-  ]
+  ],
+  "lastAuditUpdate": "2026-11-23"
 }
