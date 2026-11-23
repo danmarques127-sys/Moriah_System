@@ -10,7 +10,7 @@ services:
       DATABASE_PATH: /data/permit-finder.sqlite
       ADMIN_EMAIL: ${ADMIN_EMAIL:?Set ADMIN_EMAIL}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set a unique initial password}
-      COMPANY_NAME: ${COMPANY_NAME:-H&M Brothers Insulation}
+      COMPANY_NAME: ${COMPANY_NAME:-Moriah System}
       TRUST_PROXY: '1'
       ENABLE_SCHEDULER: ${ENABLE_SCHEDULER:-1}
       SCAN_TIMEZONE: America/New_York

@@ -95,6 +95,6 @@ export async function createApplication(options={}){
  return {server,db,config,async close(){clearInterval(jobTimer);clearInterval(scheduleTimer);await new Promise(r=>server.close(r));db.close();}};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
- const app=await createApplication();app.server.listen(Number(process.env.PORT||3000),'0.0.0.0',()=>console.log('Permit Finder listening on port '+(process.env.PORT||3000)));
+ const app=await createApplication();app.server.listen(Number(process.env.PORT||3000),'0.0.0.0',()=>console.log('Moriah System listening on port '+(process.env.PORT||3000)));
  for(const signal of ['SIGTERM','SIGINT'])process.on(signal,()=>app.close().then(()=>process.exit(0)));
 }
