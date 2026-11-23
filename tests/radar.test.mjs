@@ -17,3 +17,17 @@ test('unsupported municipal portal is pending not zero coverage',async()=>{const
 test('HTTP403 propagates as source failure not empty result',async()=>{const old=globalThis.fetch;globalThis.fetch=async()=>new Response('Forbidden',{status:403});try{await assert.rejects(collect(source,'2026-10'),/HTTP 403/);}finally{globalThis.fetch=old;}});
 test('Milton nested issue-date filter is correctly formed',async()=>{const old=globalThis.fetch;globalThis.fetch=async(url,options)=>{assert.equal(options.body.get('columns[5][search][value]'),'2026-10-01 | 2026-10-31');return Response.json({data:[],recordsFiltered:0});};try{assert.equal((await collect(SOURCES.find(s=>s.id==='milton'),'2026-10')).status,'complete');}finally{globalThis.fetch=old;}});
 test('Westerly absent publication stays pending',async()=>{const old=globalThis.fetch;globalThis.fetch=async()=>new Response('<a href="/old.csv">Monthly Report September 2026.csv</a>');try{assert.equal((await collect(SOURCES.find(s=>s.id==='westerly'),'2026-10')).status,'pending');}finally{globalThis.fetch=old;}});
+
+test('municipal suffix and postal code do not split identical properties',()=>{
+ const base=p({city:'Newton',state:'MA',address:'12 Main Street'});
+ assert.equal(projectKey(base),projectKey({...base,address:'12 Main St, Newton, MA 02458'}));
+ assert.notEqual(projectKey(base),projectKey({...base,address:'12 Main St Apt 2, Newton MA 02458'}));
+ assert.notEqual(projectKey(base),projectKey({...base,city:'Waltham',address:'12 Main St, Waltham MA 02451'}));
+});
+test('new municipal lookup endpoints are registered but not mistaken for live feeds',()=>{
+ const newton=SOURCES.find(s=>s.id==='newton');
+ const springfield=SOURCES.find(s=>s.id==='springfield');
+ assert.equal(new URL(newton.url).hostname,'www.newtonma.gov');
+ assert.equal(newton.mode,'portal');
+ assert.equal(new URL(springfield.url).hostname,'springfieldma.portal.opengov.com');
+});
