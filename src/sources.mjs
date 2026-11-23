@@ -244,6 +244,54 @@ export const SOURCES=[
     "url": "https://chatham-ma.gov/539/Building-Permits-Issued",
     "mode": "report",
     "allowedHosts": []
+  },
+  {
+    "id": "springfield",
+    "city": "Springfield",
+    "state": "MA",
+    "url": "https://springfieldma.portal.opengov.com/",
+    "mode": "portal",
+    "allowedHosts": []
+  },
+  {
+    "id": "lowell",
+    "city": "Lowell",
+    "state": "MA",
+    "url": "https://www.lowellma.gov/1084/Monthly-Permit-Reports",
+    "mode": "report",
+    "allowedHosts": []
+  },
+  {
+    "id": "chicopee",
+    "city": "Chicopee",
+    "state": "MA",
+    "url": "https://www.chicopeema.gov/626/Online-Permits-and-Licenses",
+    "mode": "portal",
+    "allowedHosts": []
+  },
+  {
+    "id": "bridgeport",
+    "city": "Bridgeport",
+    "state": "CT",
+    "url": "https://www.bridgeportct.gov/government/departments/city-attorney/records-request",
+    "mode": "portal",
+    "allowedHosts": []
+  },
+  {
+    "id": "stamford",
+    "city": "Stamford",
+    "state": "CT",
+    "url": "https://www.stamfordct.gov/government/operations/building-department/building-records",
+    "mode": "portal",
+    "allowedHosts": []
+  },
+  {
+    "id": "pawtucket",
+    "city": "Pawtucket",
+    "state": "RI",
+    "url": "https://pawtucketri.gov/zoning-department/zoning-code-enforcement-information/",
+    "mode": "portal",
+    "allowedHosts": []
   }
 ];
 export const sourceById=id=>{const s=SOURCES.find(s=>s.id===id);if(!s)throw new Error('Fonte não cadastrada.');return s;};
