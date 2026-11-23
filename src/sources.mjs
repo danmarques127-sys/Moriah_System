@@ -238,6 +238,22 @@ export const SOURCES=[
     "allowedHosts": []
   },
   {
+    "id": "southbury",
+    "city": "Southbury",
+    "state": "CT",
+    "url": "https://southbury-ct.org/building-permit-reports",
+    "mode": "report",
+    "allowedHosts": []
+  },
+  {
+    "id": "bethel",
+    "city": "Bethel",
+    "state": "CT",
+    "url": "https://bethel-ct.gov/index.asp?SEC=780497CC-1470-4443-88A1-525207E6D44D",
+    "mode": "report",
+    "allowedHosts": []
+  },
+  {
     "id": "chatham",
     "city": "Chatham",
     "state": "MA",
