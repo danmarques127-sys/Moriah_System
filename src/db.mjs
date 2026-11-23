@@ -7,7 +7,8 @@ export function openDatabase(path){
  db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;');
  const version=db.prepare('PRAGMA user_version').get().user_version;
  if(version===0)db.exec(readFileSync(new URL('../migrations/001.sql',import.meta.url),'utf8'));
- else if(version!==1)throw new Error('Unsupported database version: '+version);
+ else if(version>2)throw new Error('Unsupported database version: '+version);
+ if(db.prepare('PRAGMA user_version').get().user_version===1)db.exec(readFileSync(new URL('../migrations/002.sql',import.meta.url),'utf8'));
  return db;
 }
 export function transaction(db,fn){db.exec('BEGIN IMMEDIATE');try{const result=fn();db.exec('COMMIT');return result;}catch(e){db.exec('ROLLBACK');throw e;}}
