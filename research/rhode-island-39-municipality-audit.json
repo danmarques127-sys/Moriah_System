@@ -312,11 +312,11 @@
       "id": "providence",
       "city": "Providence",
       "state": "RI",
-      "auditStatus": "not_yet_reviewed",
-      "sourceType": "unknown",
-      "sourceUrl": null,
-      "sourceEvidenceUrl": null,
-      "evidence": null,
+      "auditStatus": "preliminary",
+      "sourceType": "historical_bulk_dataset_current_coverage_unverified",
+      "sourceUrl": "https://data.providenceri.gov/",
+      "sourceEvidenceUrl": "https://catalog.data.gov/dataset/department-of-inspections-and-standards-permits-2009-2018",
+      "evidence": "Historical issued permits 2009–2018 available as public dataset; latest/current bulk permit coverage not verified; do not count as current qualified source",
       "collectorValidated": false
     },
     {
