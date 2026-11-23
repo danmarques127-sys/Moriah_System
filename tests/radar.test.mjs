@@ -35,3 +35,31 @@ test('ArcGIS repeated full page fails rather than reporting complete',async()=>{
  try{await assert.rejects(collect(SOURCES.find(s=>s.id==='hartford'),'2026-10'),/Paginação ArcGIS repetiu registros/);assert.equal(calls,2);}
  finally{globalThis.fetch=old;}
 });
+
+test('monthly report sources are discoverable but not falsely marked as native',async()=>{
+ for(const name of ['southbury','bethel']){
+  const source=SOURCES.find(s=>s.id===name);
+  assert.ok(source);assert.equal(source.state,'CT');assert.equal(source.mode,'report');
+  const result=await collect(source,'2026-10');assert.equal(result.status,'pending');
+ }
+});
+test('Westerly real CSV-shaped report can produce normalized permits',async()=>{
+ const source=SOURCES.find(s=>s.id==='westerly'),old=globalThis.fetch;
+ const csv='Title,Type,Date Issued,Record #,Full Address,Type of Improvement,Estimated cost of Labor and Materials,GC Name,Applicant Name,GC Phone #\\nBuilding Permit,Permit/License,10/15/2026,2026-001,14 Main St,New single family house,600000,Builder LLC,Applicant,401-555-0100\\n';
+ let calls=0;
+ globalThis.fetch=async url=>{calls++;return new Response(calls===1?'<a href="/DocumentCenter/View/123/Monthly-Report-October-2026csv">Monthly Report October 2026.csv</a>':csv);};
+ try{const result=await collect(source,'2026-10');assert.equal(calls,2);assert.equal(result.status,'complete');assert.equal(result.records.length,1);assert.equal(result.records[0].contractor,'Builder LLC');assert.equal(result.records[0].phone,'401-555-0100');}
+ finally{globalThis.fetch=old;}
+});
+test('unsupported source jobs stay pending rather than showing successful collection',async()=>{
+ const {openDatabase}=await import('../src/db.mjs');
+ const {enqueue,worker}=await import('../src/jobs.mjs');
+ const db=openDatabase(':memory:');
+ try{
+  enqueue(db,['southbury'],'2026-10','2026-10');
+  await worker(db)();
+  const job=db.prepare('SELECT status FROM jobs').get();
+  const coverage=db.prepare('SELECT status,count FROM coverage WHERE source_id=? AND month=?').get('southbury','2026-10');
+  assert.equal(job.status,'pending');assert.equal(coverage.status,'pending');assert.equal(coverage.count,0);
+ }finally{db.close();}
+});
