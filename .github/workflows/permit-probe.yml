@@ -5,6 +5,7 @@ on:
       - 'src/collectors.mjs'
       - 'src/sources.mjs'
       - 'scripts/probe-sources.mjs'
+      - 'scripts/probe-amesbury.mjs'
       - '.github/workflows/permit-probe.yml'
   workflow_dispatch:
 permissions:
@@ -18,6 +19,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+      - name: Inspect Amesbury MA report format
+        continue-on-error: true
+        run: node scripts/probe-amesbury.mjs
       - name: Probe Westerly RI / October 2026
         continue-on-error: true
         run: npm run probe -- 2026-10 westerly
