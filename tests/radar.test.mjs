@@ -27,7 +27,7 @@ test('municipal suffix and postal code do not split identical properties',()=>{
 test('new municipal lookup endpoints are registered but not mistaken for live feeds',()=>{
  const newton=SOURCES.find(s=>s.id==='newton');
  const springfield=SOURCES.find(s=>s.id==='springfield');
- assert.equal(new URL(newton.url).hostname,'www.newtonma.gov');
+ assert.equal(new URL(newton.url).hostname,'newtonma.viewpointcloud.com');
  assert.equal(newton.mode,'portal');
  assert.equal(new URL(springfield.url).hostname,'springfieldma.portal.opengov.com');
 });
