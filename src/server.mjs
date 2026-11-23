@@ -59,6 +59,37 @@ export async function createApplication(options={}){
    if(path==='/api/settings'&&req.method==='PUT'){owner();return send(res,200,{settings:saveSettings(db,user,await body(req))});}
    if(path==='/api/members'&&req.method==='GET'){owner();return send(res,200,{members:db.prepare('SELECT id,email,role FROM users WHERE workspace_id=? ORDER BY email').all(user.workspace_id)});}
    if(path==='/api/members'&&req.method==='POST'){owner();return send(res,201,await createMember(db,user,await body(req)));}
+   // Workspace-scoped operational ledgers: no external payment processing or payroll.
+   if(path==='/api/finances'&&req.method==='GET'){
+    const rows=db.prepare('SELECT id,entry_date AS date,direction,category,description,amount_cents AS amountCents,project_id AS projectId FROM financial_entries WHERE workspace_id=? ORDER BY entry_date DESC,created_at DESC LIMIT 1000').all(user.workspace_id);
+    const summary=rows.reduce((a,r)=>{a[r.direction]+=r.amountCents;return a;},{income:0,expense:0});
+    return send(res,200,{entries:rows,summary:{incomeCents:summary.income,expenseCents:summary.expense,netCents:summary.income-summary.expense}});
+   }
+   if(path==='/api/finances'&&req.method==='POST'){
+    editor();const b=await body(req),direction=String(b.direction||''),date=String(b.date||''),amount=Number(b.amount);
+    if(!['income','expense'].includes(direction)||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||!Number.isFinite(amount)||amount<=0||amount>10000000)throw new HttpError(400,'Invalid financial entry.');
+    const cents=Math.round(amount*100),category=String(b.category||'Other').trim().slice(0,100),description=String(b.description||'').trim().slice(0,1000);
+    if(!category||!description)throw new HttpError(400,'Category and description are required.');
+    const id=randomUUID();db.prepare('INSERT INTO financial_entries VALUES(?,?,?,?,?,?,?,?,?)').run(id,user.workspace_id,date,direction,category,description,cents,null,timestamp());
+    return send(res,201,{id});
+   }
+   if(path==='/api/employees'&&req.method==='GET'){
+    const employees=db.prepare('SELECT id,name,hourly_cents AS hourlyCents,active FROM employees WHERE workspace_id=? ORDER BY name').all(user.workspace_id);
+    const entries=db.prepare('SELECT t.id,t.employee_id AS employeeId,e.name AS employeeName,t.work_date AS date,t.hours_minutes AS minutes,t.hourly_cents AS hourlyCents,t.notes FROM time_entries t JOIN employees e ON e.id=t.employee_id AND e.workspace_id=t.workspace_id WHERE t.workspace_id=? ORDER BY t.work_date DESC,t.created_at DESC LIMIT 1000').all(user.workspace_id);
+    return send(res,200,{employees,entries});
+   }
+   if(path==='/api/employees'&&req.method==='POST'){
+    editor();const b=await body(req),name=String(b.name||'').trim(),hourly=Number(b.hourlyRate);
+    if(!name||name.length>200||!Number.isFinite(hourly)||hourly<0||hourly>10000)throw new HttpError(400,'Invalid employee details.');
+    const id=randomUUID();db.prepare('INSERT INTO employees VALUES(?,?,?,?,?,?)').run(id,user.workspace_id,name,Math.round(hourly*100),1,timestamp());return send(res,201,{id});
+   }
+   if(path==='/api/time-entries'&&req.method==='POST'){
+    editor();const b=await body(req),date=String(b.date||''),hours=Number(b.hours),notes=String(b.notes||'').trim().slice(0,1000);
+    const employee=db.prepare('SELECT id,hourly_cents FROM employees WHERE id=? AND workspace_id=? AND active=1').get(b.employeeId,user.workspace_id);
+    if(!employee||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||!Number.isFinite(hours)||hours<=0||hours>24)throw new HttpError(400,'Invalid time entry.');
+    const minutes=Math.round(hours*60);if(minutes<1)throw new HttpError(400,'Duration is too short.');
+    const id=randomUUID();db.prepare('INSERT INTO time_entries VALUES(?,?,?,?,?,?,?,?,?)').run(id,user.workspace_id,employee.id,date,minutes,null,notes,employee.hourly_cents,timestamp());return send(res,201,{id});
+   }
    if(path==='/api/projects'&&req.method==='GET')return send(res,200,{projects:listProjects(db,user)});
    if(path==='/api/projects'&&req.method==='POST'){editor();return send(res,201,{project:saveProject(db,user,await body(req))});}
    if(path.startsWith('/api/projects/')&&req.method==='GET'){const project=getProject(db,user,decodeURIComponent(path.slice('/api/projects/'.length)));if(!project)throw new HttpError(404,'Projeto não encontrado.');return send(res,200,{project});}
