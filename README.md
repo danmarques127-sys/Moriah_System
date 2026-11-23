@@ -1,6 +1,6 @@
-# Permit Finder · Radar + Insulation Estimator
+# Moriah System · Permit Intelligence (beta)
 
-Private independent web application for H&M Brothers Insulation. One workflow:
+Multi-workspace independent web application evolving into Moriah System. Current working modules are Permit Intelligence and the legacy insulation estimator. The broader finance, time tracking and CRM modules are planned, not implemented. One existing workflow:
 
 **Municipal permit → project/client → insulation takeoff → materials/cost → saved proposal.**
 
