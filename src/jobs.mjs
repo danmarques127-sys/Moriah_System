@@ -12,8 +12,12 @@ export function worker(db){
  return async()=>{if(busy)return;const job=db.prepare("SELECT * FROM jobs WHERE status='queued' ORDER BY created_at LIMIT 1").get();if(!job)return;busy=true;
  try{db.prepare("UPDATE jobs SET status='running',updated_at=? WHERE id=?").run(timestamp(),job.id);
  const source=findSource(db,job.source_id),result=await collect(source,job.month);
- const saved=upsertPermits(db,source,result.records);setCoverage(db,source.id,job.month,result.status,result.message,saved.count);
- db.prepare("UPDATE jobs SET status='done',message=?,updated_at=? WHERE id=?").run(result.status+': '+saved.count+' registros; '+saved.added+' novos, '+saved.updated+' atualizados. '+result.message,timestamp(),job.id);
+ if(!['complete','partial','pending'].includes(result.status))throw new Error('Estado de coleta inválido.');
+ if(result.status==='pending'&&result.records.length)throw new Error('Fonte pendente não pode devolver registros.');
+ const saved=upsertPermits(db,source,result.records);const stored=db.prepare('SELECT COUNT(*) AS n FROM permits WHERE source_id=? AND substr(issued,1,7)=?').get(source.id,job.month).n;
+ setCoverage(db,source.id,job.month,result.status,result.message,stored);
+ const jobStatus=result.status==='pending'?'pending':'done';
+ db.prepare('UPDATE jobs SET status=?,message=?,updated_at=? WHERE id=?').run(jobStatus,result.status+': '+stored+' registros armazenados no período; '+saved.added+' novos, '+saved.updated+' atualizados nesta execução. '+result.message,timestamp(),job.id);
  }catch(e){const count=db.prepare('SELECT COUNT(*) AS n FROM permits WHERE source_id=? AND substr(issued,1,7)=?').get(job.source_id,job.month).n;
  setCoverage(db,job.source_id,job.month,'unavailable',String(e.message)+' Registros anteriores preservados.',count);
  db.prepare("UPDATE jobs SET status='failed',message=?,updated_at=? WHERE id=?").run(String(e.message).slice(0,3000),timestamp(),job.id);
