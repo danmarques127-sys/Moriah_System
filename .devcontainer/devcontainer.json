@@ -1,0 +1,7 @@
+{
+  "name": "Moriah System",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:24",
+  "postCreateCommand": "sudo apt-get update -qq && sudo apt-get install -y -qq poppler-utils",
+  "forwardPorts": [3000],
+  "portsAttributes": {"3000": {"label": "Moriah System", "visibility": "private"}}
+}
