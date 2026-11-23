@@ -400,6 +400,76 @@
       "phaseOneCandidate": false,
       "secondaryLookupOnly": true,
       "directoryValidated": false
+    },
+    {
+      "id": "boston",
+      "city": "Boston",
+      "state": "MA",
+      "classification": "issued_bulk_filterable",
+      "frequency": "date_filterable_dataset",
+      "url": "https://data.boston.gov/dataset/approved-building-permits",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false,
+      "evidence": "Official approved building permit open dataset; src/collectors.mjs implements issued_date range query. Live collection not revalidated this turn.",
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
+    },
+    {
+      "id": "cambridge",
+      "city": "Cambridge",
+      "state": "MA",
+      "classification": "issued_bulk_filterable",
+      "frequency": "date_filterable_dataset",
+      "url": "https://data.cambridgema.gov/General-Government/Cambridge-Permit-Finder/3wsm-e5jx",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false,
+      "evidence": "Code contains date-filtered Cambridge municipal permits dataset queries; live schema and completeness require validation.",
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
+    },
+    {
+      "id": "somerville",
+      "city": "Somerville",
+      "state": "MA",
+      "classification": "issued_bulk_filterable",
+      "frequency": "date_filterable_dataset",
+      "url": "https://data.somervillema.gov/Government-Finance/Applications-for-Permits-and-Licenses/nneb-s3f7",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false,
+      "evidence": "Code queries permits/licenses with issue_date filter; only issued building records and field semantics must be verified.",
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
+    },
+    {
+      "id": "worcester",
+      "city": "Worcester",
+      "state": "MA",
+      "classification": "issued_bulk_filterable",
+      "frequency": "date_filterable_dataset",
+      "url": "https://www.worcesterma.gov/announcements/worcester-revamps-open-data-portal",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false,
+      "evidence": "Existing ArcGIS-based collector queries permit-issued dates; link is municipal portal overview; underlying dataset must be validated.",
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
+    },
+    {
+      "id": "hartford",
+      "city": "Hartford",
+      "state": "CT",
+      "classification": "issued_bulk_filterable",
+      "frequency": "date_filterable_dataset",
+      "url": "https://www.hartfordct.gov/Government/Departments/DDS",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false,
+      "evidence": "Existing ArcGIS-based collector has DateIssued range; municipality source page is general; live extractor needs verification.",
+      "phaseOneCandidate": true,
+      "secondaryLookupOnly": false,
+      "directoryValidated": false
     }
   ],
   "lastAuditUpdate": "2026-11-23",
@@ -413,16 +483,17 @@
     "openGovFallback": "record OpenGov public portal URL, whether records and address search are available, authentication, pagination, automation permission, confidence, verification date; only address-check after separate validation",
     "doNotInfer": "OpenGov portal existence does not prove automated address lookup or bulk collection"
   },
-  "primaryGoal": "Find official municipal directories containing individual issued building permits grouped by month, quarter, or publication period. Address-only searches do not qualify.",
+  "primaryGoal": "Locate municipal sources yielding multiple individual issued building permits for a selectable date range, either (a) published monthly/quarterly/yearly reports or (b) browseable/filterable public datasets without requiring a property address. Address-only lookup is phase 2.",
   "phaseOneEligibility": {
     "eligibleClassification": [
-      "issued_periodic"
+      "issued_periodic",
+      "issued_bulk_filterable"
     ],
     "requires": [
-      "Official municipal publication directory or downloadable list grouped by period",
-      "Records represent permits issued, not merely applications",
-      "Records are identifiable per permit and date",
-      "Publication URL and period evidenced"
+      "Individual building permits rather than aggregate counts",
+      "An issued date or issue-status filter for requested date range",
+      "Browsable records or dated downloadable reports without mandatory address entry",
+      "Official municipal/public data source and traceable record evidence"
     ],
     "excludedFromPrimary": [
       "issued_portal",
@@ -433,14 +504,15 @@
       "unconfirmed_publication",
       "building_permit_report"
     ],
-    "note": "Candidate issued_periodic records are not automatically fully validated: stable index and recent files require checks. OpenGov only qualifies if it publishes a browseable complete issued-permit directory by period."
+    "note": "Datasets filtered by issuance date qualify even without monthly files. Existing collector code is not proof of successful live extraction. Each publication must be tested independently."
   },
   "phaseOneMetrics": {
-    "municipalitiesDocumented": 27,
+    "municipalitiesDocumented": 32,
     "issuedPeriodPublicationCandidates": 19,
+    "bulkFilterableCandidates": 5,
     "otherPortalOrPendingRecords": 8,
-    "municipalitiesWithoutFullIndividualAudit": 532,
+    "municipalitiesWithoutFullIndividualAudit": 527,
     "fullyValidatedDirectoryCount": null,
-    "note": "Do not equate catalog entry with full municipality audit; eligibility of each periodic index still needs file/date/issued verification."
+    "note": "Candidate sources not a completed independent audit. Live results and current report completeness not validated."
   }
 }
