@@ -1,7 +1,7 @@
 const number=(v,label,min=0,max=1e9)=>{const n=Number(v);if(!Number.isFinite(n)||n<min||n>max)throw new Error(label+' inválido.');return n;};
 export const SECTION_TYPES=['Roof / Rafters','Slopes','Ceiling','Gable Walls','Exterior Walls','Basement Walls','Blockers','Crawl Space'];
 export const DEFAULT_SETTINGS={
- company:{name:'H&M Brothers Insulation',address:'175 Millwood Street, Framingham MA 01701',phone:'(508) 400-5407',email:'',salesperson:'Dan Marques',logoUrl:''},
+ company:{name:'Moriah System',address:'',phone:'',email:'',salesperson:'',logoUrl:''},
  pricing:{laborPerSqft:0,overheadPct:0,marginPct:20,taxPct:0,depositPct:0,mobilization:0},
  materials:[
  {id:'cc',name:'Closed Cell Spray Foam',kind:'foam',rPerInch:7.5,yieldBFPerGallon:96,price:50,barrelGallons:45,reference:'Rendimento inicial calibrado à amostra de consumo fornecida; confirmar produto e base de medição.'},

@@ -1,6 +1,6 @@
-# Permit Finder · Radar + Insulation Estimator
+# Moriah System · Permit Radar
 
-Private independent web application for H&M Brothers Insulation. One workflow:
+Private web application. Moriah System collects issued municipal building permits (MA/CT/RI) into a searchable radar and, from any permit, continues into the estimator workflow:
 
 **Municipal permit → project/client → insulation takeoff → materials/cost → saved proposal.**
 
@@ -30,7 +30,7 @@ The registry starts with26 municipal sources. Seven API/CSV collectors and 17 do
 
 Other sources can be added by the system administrator for normalized import. Deterministic CSV/XLSX/PDF-table conversion is available in tools/normalize_report.py. PDF layouts that cannot be extracted reliably require a dedicated parser or a municipal export; no AI fallback runs behind the scenes.
 
-No historical permit database, client records or saved estimates from the original Sites applications are embedded in this repository. The independent application begins empty. The original Sites remain unchanged.
+No historical permit database, client records or saved estimates from earlier applications are embedded in this repository. The application begins empty.
 
 ## Quick start on a local computer
 

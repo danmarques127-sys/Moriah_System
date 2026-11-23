@@ -94,7 +94,7 @@ export async function fetchBinary(url, {hosts = [], fetchImpl, timeout = 45000} 
 }
 export function detectFormat({buffer, contentType = ''}) {
   if (buffer.subarray(0, 4).toString('latin1') === '%PDF') return 'pdf';
-  if (buffer.readUInt32LE(0) === 0x04034b50) return 'xlsx';
+  if (buffer.length >= 4 && buffer.readUInt32LE(0) === 0x04034b50) return 'xlsx';
   const head = buffer.toString('utf8', 0, 400).toLowerCase();
   if (/text\/html/.test(contentType) || head.includes('<html') || head.includes('<!doctype html')) return 'html';
   return 'text';
@@ -179,7 +179,7 @@ export function toIso(v) {
 const datesIn = text => [...String(text).matchAll(DATE_G)].map(m => iso(Number(m[3]), Number(m[1]), Number(m[2]))).filter(Boolean);
 
 /* ---------- text tables (pdftotext -layout / HTML) ---------- */
-const NUM = /^((?:[A-Z]{1,5}-\d{2}-\d{1,7}|P-?\d{8,}))(?![A-Za-z0-9])[,.:;]?\s*/i;
+const NUM = /^((?:[A-Z]{1,6}-\d{2,4}-\d{1,7}|P-?\d{8,}))(?![A-Za-z0-9])[,.:;]?\s*/i;
 const HEADER = /^(?:record\s*(?:#|no)|permit\s*(?:#|no|number)|page\s+\d+|printed|run date|date range|permits? listing|building permits? (?:issued|listing|report)|manager'?s|address\b.*\bfees?\b)/i;
 const CO = /certificate of (?:occupancy|completion)|request for co\b/i;
 const STREET = /\b(?:ST|STREET|AVE|AVENUE|RD|ROAD|DR|DRIVE|LN|LANE|CT|COURT|PL|PLACE|BLVD|BOULEVARD|WAY|TER|TERRACE|CIR|CIRCLE|HWY|HIGHWAY|PKWY|PARKWAY|SQ|SQUARE|PARK|TRL|TRAIL|PATH|LOOP|ROW|XING|COMMON|WHARF)\b\.?(?:\s*(?:#|UNIT|APT)\s*\S+)?$/i;
@@ -433,4 +433,20 @@ export async function collectDocuments(source, month, deps = {}) {
   const list = [...records.values()], proxyNote = cfg.dateKind && cfg.dateKind !== 'issued' ? ' A data usada é a de ' + ({paid: 'pagamento', submitted: 'submissão', range: 'período do relatório'}[cfg.dateKind] || cfg.dateKind) + ', não a de emissão.' : '';
   const message = files + ' documento(s) lido(s); ' + list.length + ' registro(s) em ' + label + '.' + (cfg.verified ? '' : ' Layout ainda não validado contra o documento real: conferir contagem e descrições.') + proxyNote + (notes.length ? ' ' + notes.slice(0, 2).join(' ') : '');
   return {status: cfg.verified && list.length ? 'complete' : 'partial', records: list, message};
+}
+
+/* ---------- manual upload (admin): same readers as the collectors, but the file comes from the operator ---------- */
+export async function parseUploadedFile({buffer, source, month, deps = {}}) {
+  const cfg = source.collector || {}, doc = {buffer, contentType: '', url: source.url};
+  const rows = await parseDocument(doc, cfg, month, deps);
+  if (!rows.length) throw new Error('Nenhuma linha de permit reconhecida neste arquivo (PDF digitalizado, planilha sem cabeçalho de permits ou layout diferente). Converta para CSV ou use a importação JSON.');
+  const records = [], dates = []; let outside = 0, undated = 0;
+  for (const row of rows) {
+    if (!row.issued) { undated++; continue; }
+    dates.push(row.issued);
+    const rec = toRecord(source, row, month, cfg, source.url);
+    if (rec) records.push(rec); else outside++;
+  }
+  dates.sort();
+  return {format: detectFormat(doc), rowsRead: rows.length, records: [...new Map(records.map(r => [r.id, r])).values()], outside, undated, range: dates.length ? {from: dates[0], to: dates.at(-1)} : null};
 }
