@@ -7,7 +7,8 @@ import {bootstrap,workspaceSettings,saveSettings,saveProject,getProject,listProj
 import {checkPassword,hashPassword,newSession,getSession,csrfMatches,cookie,rateLimit,validEmail} from './auth.mjs';
 import {calculateEstimate} from './estimator.mjs';
 import {enqueue,worker,scheduler} from './jobs.mjs';
-import {previousMonth,monthsBetween} from './radar.mjs';
+import {previousMonth,monthsBetween,validatePermit} from './radar.mjs';
+import {parseUploadedFile} from './documents.mjs';
 const assets={'/':'../public/index.html','/app.mjs':'../public/app.mjs','/style.css':'../public/style.css','/shared/estimator.mjs':'./estimator.mjs'};
 const mimes={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
 class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
@@ -16,12 +17,15 @@ async function body(req){
  let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>4000000)throw new HttpError(413,'Arquivo excede 4 MB.');chunks.push(chunk);}
  try{return JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{throw new HttpError(400,'JSON inválido.');}
 }
+async function rawBody(req,limit){
+ let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>limit)throw new HttpError(413,'Arquivo excede 25 MB.');chunks.push(chunk);}return Buffer.concat(chunks);
+}
 export async function createApplication(options={}){
  const config={databasePath:process.env.DATABASE_PATH||'data/permit-finder.sqlite',adminEmail:process.env.ADMIN_EMAIL,adminPassword:process.env.ADMIN_PASSWORD,companyName:process.env.COMPANY_NAME,production:process.env.NODE_ENV==='production',appUrl:process.env.APP_URL||'http://localhost:3000',trustProxy:process.env.TRUST_PROXY==='1',...options};
  if(config.testLoginEmail&&(config.production||process.env.NODE_ENV==='production'))throw new Error('Acesso de teste proibido em produção.');
  const origin=new URL(config.appUrl).origin;if(config.production&&!origin.startsWith('https:'))throw new Error('APP_URL deve usar HTTPS em produção.');
  const db=config.db||openDatabase(config.databasePath);await bootstrap(db,config);
- const loginRate=rateLimit(),mutationRate=rateLimit(60000,120),collectRate=rateLimit(60000,5);
+ const loginRate=rateLimit(),mutationRate=rateLimit(60000,120),collectRate=rateLimit(60000,5),uploadRate=rateLimit(60000,30);
  const send=(res,status,value)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(value));};
  const server=http.createServer(async(req,res)=>{
   const requestId=randomUUID();res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('Cache-Control','no-store');res.setHeader('X-Request-Id',requestId);
@@ -77,6 +81,22 @@ export async function createApplication(options={}){
     const stored=db.prepare('SELECT COUNT(*) AS n FROM permits WHERE source_id=? AND substr(issued,1,7)=?').get(source.id,b.month).n;
     setCoverage(db,source.id,b.month,'partial',String(b.message||'Importação manual; cobertura integral não certificada.'),stored);
     audit(db,user.workspace_id,'Importação: '+source.id+', '+result.added+' novos, '+result.updated+' atualizados');return send(res,200,result);
+   }
+   if(path==='/api/import-file'&&req.method==='POST'){
+    admin();if(!uploadRate(user.id))throw new HttpError(429,'Aguarde para enviar outro arquivo.');
+    const source=findSource(db,url.searchParams.get('sourceId')),month=String(url.searchParams.get('month')||''),filename=String(url.searchParams.get('filename')||'arquivo').slice(0,200),confirm=url.searchParams.get('confirm')==='1';
+    monthsBetween(month,month);const buffer=await rawBody(req,25000000);if(!buffer.length)throw new HttpError(400,'Arquivo vazio.');
+    const parsed=await parseUploadedFile({buffer,source,month}),valid=[],problems=[];
+    for(const r of parsed.records){try{validatePermit(r,source);valid.push(r);}catch(e){problems.push(String(e.message).slice(0,200));}}
+    const summary={format:parsed.format,rowsRead:parsed.rowsRead,inMonth:valid.length,outsideMonth:parsed.outside,undated:parsed.undated,invalid:problems.length,problems:problems.slice(0,3),range:parsed.range,
+     sample:valid.slice(0,15).map(r=>({number:r.number,issued:r.issued,address:r.address,type:r.type,value:r.value,description:r.description.slice(0,160)}))};
+    if(!confirm)return send(res,200,{preview:true,...summary});
+    if(!valid.length)throw new HttpError(400,'Nenhum permit válido de '+month+' neste arquivo.');
+    const result=upsertPermits(db,source,valid);
+    const stored=db.prepare('SELECT COUNT(*) AS n FROM permits WHERE source_id=? AND substr(issued,1,7)=?').get(source.id,month).n;
+    setCoverage(db,source.id,month,'partial','Importação manual do arquivo "'+filename+'" ('+parsed.format.toUpperCase()+'): '+valid.length+' permits de '+month+'. Completude não certificada.',stored);
+    audit(db,user.workspace_id,'Importação de arquivo: '+source.id+' '+month+', '+result.added+' novos, '+result.updated+' atualizados');
+    return send(res,200,{preview:false,...summary,...result});
    }
    if(path==='/api/jobs'&&req.method==='GET')return send(res,200,{jobs:db.prepare('SELECT id,source_id AS sourceId,month,status,message,updated_at AS updatedAt FROM jobs ORDER BY created_at DESC LIMIT 100').all()});
    if(path==='/api/jobs'&&req.method==='POST'){admin();if(!collectRate(user.id))throw new HttpError(429,'Aguarde para iniciar outra coleta.');const b=await body(req);return send(res,202,{queued:enqueue(db,b.sources,b.from,b.to)});}
