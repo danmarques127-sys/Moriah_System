@@ -22,7 +22,9 @@
       "evidence": "Official OpenGov e-permitting; public records access and bulk list not yet confirmed",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "bristol",
@@ -35,7 +37,9 @@
       "evidence": "Official Bristol page says OpenGov Search for Records permits 2018-present; no date-only full list established.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "burrillville",
@@ -48,7 +52,9 @@
       "evidence": "FY2026 Building & Zoning monthly report shows monthly number of permits issued, no individual address or record list.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "central-falls",
@@ -61,7 +67,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "charlestown",
@@ -74,7 +82,13 @@
       "evidence": "Official building/zoning page includes e-permitting; published individual issuance lists not verified",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal",
+      "report2026MunicipalFilesSubmittedToResearchers": true,
+      "report2026FileFormat": "PDF",
+      "report2026DataPubliclyAvailable": "unverified",
+      "researchPriority": "high"
     },
     {
       "id": "coventry",
@@ -87,7 +101,9 @@
       "evidence": "Official Building Official page confirms online ViewPoint permitting; no public bulk permits list established.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "cranston",
@@ -100,7 +116,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "cumberland",
@@ -113,7 +131,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "east-greenwich",
@@ -126,7 +146,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "east-providence",
@@ -139,7 +161,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "exeter",
@@ -152,7 +176,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "foster",
@@ -165,7 +191,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "glocester",
@@ -178,7 +206,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "hopkinton",
@@ -191,7 +221,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "jamestown",
@@ -204,7 +236,9 @@
       "evidence": "Official permit page provides online building permit applications; listing of issued building records by period not confirmed.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "johnston",
@@ -217,7 +251,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "lincoln",
@@ -230,7 +266,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "little-compton",
@@ -243,7 +281,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "middletown",
@@ -256,7 +296,9 @@
       "evidence": "Official Middletown page states search requires address, record number, or plat/lot. No bulk date search established.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "narragansett",
@@ -269,7 +311,9 @@
       "evidence": "Town municipal audit lists aggregate number of permits issued, not individual permits.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "new-shoreham",
@@ -282,7 +326,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "newport",
@@ -295,7 +341,9 @@
       "evidence": "Municipal document describes ViewPoint online applications for Historic District Commission; does not establish bulk building permits or current portal; requires further research",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "north-kingstown",
@@ -308,7 +356,13 @@
       "evidence": "Official online permit applications, no issued-permit directory verified",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal",
+      "report2026MunicipalFilesSubmittedToResearchers": true,
+      "report2026FileFormat": "CSV",
+      "report2026DataPubliclyAvailable": "unverified",
+      "researchPriority": "high"
     },
     {
       "id": "north-providence",
@@ -321,7 +375,9 @@
       "evidence": "Official Town page confirms ViewPoint e-permitting, not public bulk issued records.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "north-smithfield",
@@ -334,7 +390,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "pawtucket",
@@ -347,7 +405,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "portsmouth",
@@ -360,7 +420,9 @@
       "evidence": "Town fiscal report shows historical yearly counts of building permits; not an individual permit directory.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "providence",
@@ -373,7 +435,13 @@
       "evidence": "Historical issued permits 2009–2018 available as public dataset; latest/current bulk permit coverage not verified; do not count as current qualified source",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal",
+      "report2026MunicipalFilesSubmittedToResearchers": true,
+      "report2026FileFormat": "CSV",
+      "report2026DataPubliclyAvailable": "unverified",
+      "researchPriority": "high"
     },
     {
       "id": "richmond",
@@ -386,7 +454,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "scituate",
@@ -399,7 +469,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "smithfield",
@@ -412,7 +484,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "south-kingstown",
@@ -425,7 +499,9 @@
       "evidence": "Municipal news: Permit Search by Property Address; bulk period search not established",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "tiverton",
@@ -438,7 +514,9 @@
       "evidence": "Official OpenGov records search; address query/period listings not yet validated",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "warren",
@@ -451,7 +529,13 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal",
+      "report2026MunicipalFilesSubmittedToResearchers": true,
+      "report2026FileFormat": "CSV",
+      "report2026DataPubliclyAvailable": "unverified",
+      "researchPriority": "high"
     },
     {
       "id": "warwick",
@@ -464,7 +548,9 @@
       "evidence": "2025-2029 official consolidated plan states 1,088 building permits in 2024, only aggregate counts; period-filterable individual records not established",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "west-greenwich",
@@ -477,7 +563,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "west-warwick",
@@ -490,7 +578,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     },
     {
       "id": "westerly",
@@ -504,7 +594,11 @@
       "collectorValidated": false,
       "automatedCollector": "existing_code_unverified_live",
       "phaseOneAnswer": "YES_PUBLIC_PERIODIC_DIRECTORY",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal",
+      "report2026MunicipalFilesSubmittedToResearchers": true,
+      "report2026FileFormat": "CSV"
     },
     {
       "id": "woonsocket",
@@ -517,7 +611,9 @@
       "evidence": "State building commission lists municipal building department; targeted web search and department source did not establish a public issued-permit bulk register searchable by period. This is NOT proof it does not exist.",
       "collectorValidated": false,
       "phaseOneAnswer": "NO_VERIFIED_BULK_SOURCE_IN_RESEARCH",
-      "lastReview": "2026-11-23"
+      "lastReview": "2026-11-23",
+      "stateEPermittingAvailable": true,
+      "stateEPermittingEvidenceUrl": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal"
     }
   ],
   "auditDefinition": "First-pass municipality search across all 39 using RI Building Code Commission directory, municipal department pages, targeted web queries. YES means documented bulk-issued-permits by period; NO_VERIFIED means not demonstrated by available evidence, NOT municipality lacks such data. Source candidates do not establish live extractors.",
@@ -529,5 +625,13 @@
     "notInspectedAtAll": 0,
     "interpretation": "NO verified evidence is not proof no bulk source exists. This is a first-pass public web audit, NOT exhaustive manual portal navigation, NOT proof of live collector functionality.",
     "nextAction": "Second-pass review for 38 unconfirmed, portal interactive checks and official source follow up; user has requested conclusive answers, which cannot be honestly given for unverified sources."
+  },
+  "statewideEvidence": {
+    "source": "https://ribcc.ri.gov/forms-resources-and-e-permitting/statewide-e-permitting-portal",
+    "verifiedFact": "The state Building Code Commission lists all 39 municipalities as available statewide e-permitting sites, with launch dates. This means application portal availability, NOT public issued-record date-filterable bulk querying.",
+    "limitationSource": "https://planning.ri.gov/sites/g/files/xkgbur826/files/2026-02/Technical%20Paper%20170%20-Data%20Collection%20Methodology%20-%20Final_0.pdf",
+    "limitation": "2026 RI Land Use 2050 Technical Paper 170 p.15 states State OpenGov unable to furnish bulk download; only 5 municipalities supplied files to research team (Charlestown PDF; Providence North Kingstown Warren Westerly CSV). Those research submissions are not proof of public availability.",
+    "mandatoryNextTests": "For each municipality: official portal -> unauthenticated Search Records -> can browse all permits without address -> filter issued date and status -> pagination/export -> real examples. For five file-producing towns, search for their actual public file landing page.",
+    "conclusion": "All 39 e-permitting portal presence verified; only Westerly public monthly issued index confirmed. Most others remain inconclusive for PUBLIC bulk access; don't claim confirmed absence."
   }
 }
