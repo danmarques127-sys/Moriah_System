@@ -30,3 +30,12 @@ jobs:
       - name: Probe Boston MA / October 2026
         continue-on-error: true
         run: npm run probe -- 2026-10 boston
+      - name: Probe Cambridge MA / October 2026
+        continue-on-error: true
+        run: npm run probe -- 2026-10 cambridge
+      - name: Probe Milton MA / October 2026
+        continue-on-error: true
+        run: npm run probe -- 2026-10 milton
+      - name: Probe Worcester MA / October 2026
+        continue-on-error: true
+        run: npm run probe -- 2026-10 worcester
