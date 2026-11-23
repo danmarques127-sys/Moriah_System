@@ -6,7 +6,7 @@ The Permit Finder source registry was expanded across Massachusetts, Connecticut
 
 | Municipality | State | Official entry point | Collector | Status |
 |---|---|---|---|---|
-| Springfield | MA | https://www.springfield-ma.gov/permits/permits | none | Registered, pending |
+| Springfield | MA | https://springfieldma.portal.opengov.com/ | none | Registered, pending |
 | Lowell | MA | https://www.lowellma.gov/1084/Monthly-Permit-Reports | monthly application reports (manual normalization and issue-date checks) | Registered, pending |
 | Chicopee | MA | https://www.chicopeema.gov/626/Online-Permits-and-Licenses | none | Registered, pending |
 | Bridgeport | CT | https://www.bridgeportct.gov/government/departments/city-attorney/records-request | Park City Portal lookup | Registered, pending |
@@ -29,7 +29,7 @@ The application currently collects automatically only the seven original native 
 
 ## Existing-source repair and address lookup
 
-Newton: the previous monthly report URL was not a working ingestion endpoint. The catalog now links to the official Inspectional Services portal entry point, which directs citizens to NewGov/OpenGov records lookup. Newton remains pending because no supported bulk endpoint or monthly issued-permits feed has been validated.
+Newton: the previous monthly report URL was not a working ingestion endpoint. The catalog now links directly to the public NewGov/ViewPointCloud record lookup at https://newtonma.viewpointcloud.com/. Newton remains pending because no supported bulk endpoint or monthly issued-permits feed has been validated.
 
 Springfield: the city's official contact page explicitly points the public to its OpenGov portal for individual permit lookup without login. The catalog now uses this public portal destination. This is **address lookup capability**, not proof that automated mass enumeration is supported.
 
