@@ -45,7 +45,7 @@ test('monthly report sources are discoverable but not falsely marked as native',
 });
 test('Westerly real CSV-shaped report can produce normalized permits',async()=>{
  const source=SOURCES.find(s=>s.id==='westerly'),old=globalThis.fetch;
- const csv='Title,Type,Date Issued,Record #,Full Address,Type of Improvement,Estimated cost of Labor and Materials,GC Name,Applicant Name,GC Phone #\\nBuilding Permit,Permit/License,10/15/2026,2026-001,14 Main St,New single family house,600000,Builder LLC,Applicant,401-555-0100\\n';
+ const csv='Title,Type,Date Issued,Record #,Full Address,Type of Improvement,Estimated cost of Labor and Materials,GC Name,Applicant Name,GC Phone #\nBuilding Permit,Permit/License,10/15/2026,2026-001,14 Main St,New single family house,600000,Builder LLC,Applicant,401-555-0100\n';
  let calls=0;
  globalThis.fetch=async url=>{calls++;return new Response(calls===1?'<a href="/DocumentCenter/View/123/Monthly-Report-October-2026csv">Monthly Report October 2026.csv</a>':csv);};
  try{const result=await collect(source,'2026-10');assert.equal(calls,2);assert.equal(result.status,'complete');assert.equal(result.records.length,1);assert.equal(result.records[0].contractor,'Builder LLC');assert.equal(result.records[0].phone,'401-555-0100');}
