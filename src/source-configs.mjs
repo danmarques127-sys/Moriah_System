@@ -5,7 +5,7 @@
 // `dateKind` says which date the document exposes: 'issued' (default), 'paid', 'submitted' or 'range'.
 export const DOCUMENT_SOURCES = {
   // Needham publishes per period (quarter/half-year): take the newest year and period, all its files.
-  needham: {collector: {scope: 'latest', match: 'permit|building|residential|commercial|demolition', maxFiles: 4}},
+  needham: {collector: {scope: 'quarter', match: 'quarter', maxFiles: 2}},
   // Wellesley: the Archive Center category lists one item per year and type; each item is an .aspx page with the table.
   wellesley: {collector: {scope: 'year', listUrls: ['https://www.wellesleyma.gov/Archive.aspx?AMID=36', 'https://www.wellesleyma.gov/168/Report-of-Permits-Issued'], match: 'permit', dateKind: 'submitted', maxFiles: 4}},
   // Belmont: one report per month ("Permit Report - Aug 2025"); the report only exposes its date range.
@@ -18,9 +18,9 @@ export const DOCUMENT_SOURCES = {
     ]},
     allowedHosts: ['arlingtonma-my.sharepoint.com']
   },
-  lexington: {collector: {scope: 'month', match: 'csv|permit|activity|building'}},
+  lexington: {collector: {scope: 'month'}},
   // Sudbury: a monthly PDF in the Building Department permits category.
-  sudbury: {collector: {scope: 'month', match: 'permit', listUrls: ['https://sudbury.ma.us/building/document_categories/permits/', 'https://sudbury.ma.us/all-documents/archived/']}},
+  sudbury: {collector: {scope: 'month', itemPages: true, listUrls: ['https://sudbury.ma.us/building/document_categories/permits/', 'https://sudbury.ma.us/building/document_categories/permits/page/2/']}},
   // Andover: the Archive Center keeps CSV/PDF files; the newest year/period is the current one.
   andover: {collector: {scope: 'latest', listUrls: ['https://andoverma.gov/Archive.aspx?AMID=70', 'https://andoverma.gov/Archive/70'], match: 'permit', rowMode: 'dated-line', maxFiles: 2}},
   wakefield: {collector: {scope: 'month', match: 'Building Permits Issued', dateKind: 'paid', columns: ['type', 'skip', 'date', 'address', 'skip', 'value', 'description', 'contractor']}},
@@ -28,10 +28,9 @@ export const DOCUMENT_SOURCES = {
   // Danvers: the planning page links to a monthly "Permitting Update"; open it and clean the permit list.
   danvers: {collector: {scope: 'month', match: 'Permitting.Update', fileLag: true, dateKind: 'submitted', crawl: true, crawlRe: 'permitting|update'}},
   waltham: {collector: {scope: 'year', textEquals: '{year}', match: 'DocumentCenter', maxFiles: 12}},
-  carlisle: {collector: {scope: 'month', match: 'DocumentCenter|permit'}},
-  'west-hartford': {collector: {scope: 'month', match: 'permit|building', crawl: true, crawlRe: 'monthly|permit report'}, allowedHosts: ['resources.finalsite.net']},
-  milford: {collector: {scope: 'month', match: 'permit|building'}, allowedHosts: ['milfordct.gov']},
-  amesbury: {collector: {scope: 'month', match: 'permit|bldg', dateKind: 'submitted', crawl: true, crawlRe: 'permit|monthly'}},
+  'west-hartford': {collector: {scope: 'month'}, allowedHosts: ['resources.finalsite.net']},
+  milford: {collector: {scope: 'month', match: 'permit', listUrls: ['https://www.milfordct.us/Archive.aspx?AMID=41']}},
+  amesbury: {collector: {scope: 'month', match: 'permit|bldg', dateKind: 'submitted', leadDate: true, columns: ['applicant', 'address', 'description', 'value']}},
   'north-attleborough': {collector: {scope: 'month', match: 'permit|building'}, allowedHosts: ['northattleborough.gov', 'nattleboro.com']},
   chatham: {collector: {scope: 'month', match: 'Building-Permits-Issued|Building Permits Issued|permit', columns: ['date', 'streetNo', 'street', 'description', 'applicant', 'value', 'skip', 'skip']}}
 };
@@ -44,5 +43,6 @@ export const ACCELA_SOURCES = {
 
 // No scriptable bulk source yet. These stay import-only, with the reason shown in the job log.
 export const PORTAL_REASONS = {
+  carlisle: 'O relatório mensal de Carlisle só traz tabelas-resumo de taxas, sem número de permit nem data de emissão. Não dá para coletar com segurança; importe o arquivo se precisar.',
   newton: 'Os permits ficam em um relatório do OpenGov que só exporta CSV pelo botão Export; ainda não há coletor para isso. Importe o relatório.'
 };

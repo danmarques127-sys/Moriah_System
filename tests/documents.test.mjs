@@ -25,7 +25,7 @@ test('every city is either automatic or has an explicit import-only reason', () 
     if (NATIVE_MODES.includes(s.mode)) continue;
     assert.ok(s.reason, s.id + ' needs a documented reason');
   }
-  assert.equal(SOURCES.filter(s => s.mode === 'documents').length, 17);
+  assert.equal(SOURCES.filter(s => s.mode === 'documents').length, 16);
   for (const s of SOURCES.filter(s => s.mode === 'documents')) {
     assert.ok(s.collector, s.id);
     assert.ok(s.allowedHosts.length >= 1, s.id + ' needs a www/non-www host variant');
@@ -53,7 +53,7 @@ test('period matching handles month names, abbreviations, combined months, quart
 
 test('anchors are extracted and resolved against the page', () => {
   const links = extractAnchors('<a href="/DocumentCenter/View/9/May-2026">May &amp; June 2026</a><a href="javascript:x()">no</a><a href="#top">no</a>', 'https://x.gov/page');
-  assert.deepEqual(links, [{href: 'https://x.gov/DocumentCenter/View/9/May-2026', text: 'May & June 2026'}]);
+  assert.deepEqual(links, [{href: 'https://x.gov/DocumentCenter/View/9/May-2026', text: 'May & June 2026', ctx: ''}]);
 });
 
 test('wakefield-style rows parse by column role; paid date is flagged as a proxy', () => {
@@ -250,7 +250,7 @@ test('csv rows tolerate title lines and quoted commas; newest-period ranking und
 });
 
 test('"latest" scope picks only the newest period (all of its files) and ignores older years', async () => {
-  const source = src('needham');
+  const source = {...src('needham'), collector: {scope: 'latest', match: 'permit', maxFiles: 4}};
   const base = 'https://www.needhamma.gov/DocumentCenter/View/';
   const listing = ['2026 Q1 Building Permits Issued', '2026 Q3 Building Permits Issued - Residential', '2026 Q3 Building Permits Issued - Commercial', '2025 Q4 Building Permits Issued']
     .map((t, i) => '<a href="/DocumentCenter/View/' + (100 + i) + '">' + t + '</a>').join('') + '<div class="alert"><a href="/news/closure">Town hall closure notice</a></div>';
@@ -285,4 +285,23 @@ test('fixed workbook links: SharePoint gets download=1 and the redirect cookie i
 test('a login redirect to an unreviewed host is a visible failure', async () => {
   const source = {...src('arlington'), collector: {fileUrls: ['https://arlingtonma-my.sharepoint.com/:x:/g/personal/x/IQA']}};
   await assert.rejects(collectDocuments(source, '2026-08', {fetch: async () => new Response('', {status: 302, headers: {location: 'https://login.microsoftonline.com/x'}}), ...noSleep}), /Redirecionamento/);
+});
+
+test('a link without a year takes the year heading above it', async () => {
+  const source = src('needham'), base = 'https://www.needhamma.gov/DocumentCenter/View/';
+  const listing = '<h3>2026</h3><a href="/DocumentCenter/View/1">1st Quarter</a><a href="/DocumentCenter/View/2">3rd\u200b Quarter</a><h3>2025</h3><a href="/DocumentCenter/View/3">3rd Quarter</a>';
+  const calls = [];
+  const result = await collectDocuments(source, '2026-08', {fetch: fakeFetch({[source.url]: listing, [base + '2']: {body: pdfBytes, type: 'application/pdf'}}, calls), pdfToText: async () => 'BP-26-77  8/5/2026  1 A ST  New single family dwelling  $500,000.00\n', ...noSleep});
+  assert.deepEqual(calls.slice(1), [base + '2']);
+  assert.equal(result.records.length, 1);
+});
+
+test('rows that start with the date and then the permit number are read (Amesbury layout)', () => {
+  const text = 'DATE  RECORD  APPLICANT  ADDRESS  DESCRIPTION  COST\n10/1/2026 5:36  BR-26-545  Trinity Solar, LLC  10 MERRILL AVE, Amesbury, MA 01913  roof  $ 17,000.00\n';
+  const rows = parseTextRows(text, {leadDate: true, columns: ['applicant', 'address', 'description', 'value']}, '2026-10');
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].number, 'BR-26-545');
+  assert.equal(rows[0].issued, '2026-10-01');
+  assert.equal(rows[0].value, 17000);
+  assert.match(rows[0].address, /^10 MERRILL AVE/);
 });

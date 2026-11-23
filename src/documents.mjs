@@ -22,7 +22,7 @@ export const decode = s => String(s)
   .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#0?39;|&apos;/g, "'").replace(/&quot;/g, '"')
   .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
   .replace(/&#(\d+);/g, (_, n) => Number(n) < 1114112 ? String.fromCodePoint(Number(n)) : ' ');
-export const clean = v => decode(String(v ?? '').replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+export const clean = v => decode(String(v ?? '').replace(/<[^>]*>/g, ' ')).replace(/[\u200b-\u200d\u2060\ufeff]/g, '').replace(/\s+/g, ' ').trim();
 const amount = v => Math.max(0, Number(String(v ?? 0).replace(/[^0-9.]/g, '')) || 0);
 
 /* ---------- period matching (month / quarter / year / fiscal year) ---------- */
@@ -48,16 +48,21 @@ export function periodMatches(text, month, scope = 'month') {
 
 /* ---------- HTML helpers ---------- */
 export function extractAnchors(html, base) {
-  const out = [];
-  for (const m of String(html).matchAll(/<a\b[^>]*?\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')[^>]*>([\s\S]*?)<\/a>/gi)) {
+  const out = [], source = String(html);
+  let pos = 0, year = '';
+  for (const m of source.matchAll(/<a\b[^>]*?\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')[^>]*>([\s\S]*?)<\/a>/gi)) {
+    // The year heading above a link (e.g. "2026" over "3rd Quarter") is the year of that link.
+    const between = [...clean(source.slice(pos, m.index)).matchAll(/(?<!\d)(20\d{2})(?!\d)/g)];
+    if (between.length) year = between.at(-1)[1];
+    pos = m.index + m[0].length;
     const raw = decode(m[1] ?? m[2] ?? '').trim();
     if (!raw || /^(?:#|javascript:|mailto:|tel:)/i.test(raw)) continue;
     let href; try { href = new URL(raw, base).href; } catch { continue; }
-    out.push({href, text: clean(m[3])});
+    out.push({href, text: clean(m[3]), ctx: year});
   }
   return out;
 }
-export const fileLike = href => /DocumentCenter\/View|ViewFile|showpublisheddocument|Archive\.aspx\?(?:[^#]*&)?ADID=\d|\.(?:pdf|xlsx?|csv)(?:[?#]|$)|\/files\/|\/media\/|\/documents?\//i.test(href);
+export const fileLike = href => /DocumentCenter\/View|resource-manager\/view|ViewFile|showpublisheddocument|Archive\.aspx\?(?:[^#]*&)?ADID=\d|\.(?:pdf|xlsx?|csv)(?:[?#]|$)|\/files\/|\/media\/|\/documents?\//i.test(href);
 export function htmlToText(html) {
   return decode(String(html)
     .replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, ' ')
@@ -253,12 +258,18 @@ export function parseTextRows(text, cfg = {}, month = '') {
   for (const line of String(text).replace(/\f/g, '\n').split(/\r?\n/)) {
     const t = line.replace(/\t/g, '  ').trim();
     if (!t) continue;
-    const m = t.match(NUM);
+    let m = t.match(NUM), lead = null;
+    if (!m && cfg.leadDate) {
+      // "10/1/2026 5:36  BR-26-545  Applicant ..." — the date comes first and the permit number second.
+      const d = t.match(/^(\d{1,2}\/\d{1,2}\/\d{2,4})(?:\s+\d{1,2}:\d{2}(?::\d{2})?(?:\s*[AP]M)?)?\s+/i);
+      const n = d && t.slice(d[0].length).match(NUM);
+      if (n) { m = n; lead = d[0]; }
+    }
     if (!m && HEADER.test(t)) continue;
     const datedLine = !m && cfg.rowMode === 'dated-line' && datesIn(t).length > 0;
     if (m || datedLine) {
       flush();
-      const rest = m ? t.slice(m[0].length) : t;
+      const rest = m ? t.slice((lead ? lead.length : 0) + m[0].length) : t;
       cur = {number: m ? m[1].toUpperCase() : '', head: t, chunks: rest.split(/\s{2,}/).map(s => s.trim()).filter(Boolean), extra: []};
     } else if (cur && cur.extra.length < 6 && datesIn(t).length === 0) cur.extra.push(t);
   }
@@ -389,9 +400,12 @@ export async function collectDocuments(source, month, deps = {}) {
     const [yy, mm] = month.split('-').map(Number), wanted = [month];
     if (cfg.fileLag) wanted.push(new Date(Date.UTC(yy, mm, 1)).toISOString().slice(0, 7));
     const matchesPeriod = text => wanted.some(w => periodMatches(text, w, scope));
-    for (const a of anchors) {
+    for (const raw of anchors) {
+      // A link without its own year ("October", "3rd Quarter") takes the year of the heading above it.
+      const a = /(?<!\d)20\d{2}(?!\d)/.test(raw.text + ' ' + slugOf(raw.href)) || !raw.ctx ? raw : {...raw, text: raw.text + ' ' + raw.ctx};
       const hay = a.text + ' ' + decodeURIComponent(a.href.replace(/%(?![0-9a-f]{2})/gi, ''));
-      if (!fileLike(a.href) || (filter && !filter.test(hay)) || (!latest && !matchesPeriod(hay))) continue;
+      // itemPages: each period is a small page of the site that holds the file (followed below), not a file link.
+      if ((!fileLike(a.href) && !(cfg.itemPages && a.text && !latest)) || (filter && !filter.test(hay)) || (!latest && !matchesPeriod(hay))) continue;
       const host = new URL(a.href).hostname;
       if (!allowedHost(host)) { skippedHosts.add(host); continue; }
       if (cfg.textEquals && a.text.trim() !== cfg.textEquals.replace('{year}', month.slice(0, 4))) continue;
