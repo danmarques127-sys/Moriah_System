@@ -1,6 +1,7 @@
 FROM node:24-bookworm-slim
 ENV NODE_ENV=production PORT=3000 DATABASE_PATH=/data/permit-finder.sqlite
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends poppler-utils && rm -rf /var/lib/apt/lists/*
 COPY --chown=node:node package.json ./
 COPY --chown=node:node src ./src
 COPY --chown=node:node public ./public
