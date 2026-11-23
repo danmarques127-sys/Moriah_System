@@ -17,3 +17,21 @@ test('unsupported municipal portal is pending not zero coverage',async()=>{const
 test('HTTP403 propagates as source failure not empty result',async()=>{const old=globalThis.fetch;globalThis.fetch=async()=>new Response('Forbidden',{status:403});try{await assert.rejects(collect(source,'2026-10'),/HTTP 403/);}finally{globalThis.fetch=old;}});
 test('Milton nested issue-date filter is correctly formed',async()=>{const old=globalThis.fetch;globalThis.fetch=async(url,options)=>{assert.equal(options.body.get('columns[5][search][value]'),'2026-10-01 | 2026-10-31');return Response.json({data:[],recordsFiltered:0});};try{assert.equal((await collect(SOURCES.find(s=>s.id==='milton'),'2026-10')).status,'complete');}finally{globalThis.fetch=old;}});
 test('Westerly absent publication stays pending',async()=>{const old=globalThis.fetch;globalThis.fetch=async()=>new Response('<a href="/old.csv">Monthly Report September 2026.csv</a>');try{assert.equal((await collect(SOURCES.find(s=>s.id==='westerly'),'2026-10')).status,'pending');}finally{globalThis.fetch=old;}});
+
+test('ArcGIS invalid response is a failure, not complete coverage',async()=>{
+ const old=globalThis.fetch;globalThis.fetch=async()=>Response.json({error:'unavailable'});
+ try{await assert.rejects(collect(SOURCES.find(s=>s.id==='hartford'),'2026-10'),/Consulta municipal não disponível/);}
+ finally{globalThis.fetch=old;}
+});
+test('ArcGIS full page followed by an empty page confirms pagination',async()=>{
+ const old=globalThis.fetch;let calls=0;
+ globalThis.fetch=async()=>{calls++;return Response.json({features:calls===1?Array.from({length:1000},(_,i)=>({attributes:{OBJECTID:i+1,DateIssued:Date.UTC(2026,9,15),PROPERTY_ADDRESS:'1 Main St',DESCRIPTION:'New house',RECORD_TYPE_TYPE:'Building Permit'}})):[]});};
+ try{const result=await collect(SOURCES.find(s=>s.id==='hartford'),'2026-10');assert.equal(calls,2);assert.equal(result.status,'complete');assert.equal(result.records.length,1000);}
+ finally{globalThis.fetch=old;}
+});
+test('ArcGIS repeated full page fails rather than reporting complete',async()=>{
+ const old=globalThis.fetch;let calls=0;
+ globalThis.fetch=async()=>{calls++;return Response.json({features:Array.from({length:1000},(_,i)=>({attributes:{OBJECTID:i+1,DateIssued:Date.UTC(2026,9,15),PROPERTY_ADDRESS:'1 Main St',DESCRIPTION:'New house',RECORD_TYPE_TYPE:'Building Permit'}}))});};
+ try{await assert.rejects(collect(SOURCES.find(s=>s.id==='hartford'),'2026-10'),/Paginação ArcGIS repetiu registros/);assert.equal(calls,2);}
+ finally{globalThis.fetch=old;}
+});
