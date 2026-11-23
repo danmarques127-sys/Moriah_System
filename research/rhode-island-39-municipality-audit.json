@@ -246,11 +246,11 @@
       "id": "newport",
       "city": "Newport",
       "state": "RI",
-      "auditStatus": "not_yet_reviewed",
-      "sourceType": "unknown",
-      "sourceUrl": null,
-      "sourceEvidenceUrl": null,
-      "evidence": null,
+      "auditStatus": "preliminary",
+      "sourceType": "viewpoint_portal_bulk_unverified",
+      "sourceUrl": "https://www.cityofnewport.com/CityOfNewport/media/City-Hall/Boards-Commissions/Commissions/Historic%20District%20Commission/2022-06-07_HDC%20Agenda%20Materials/HDC-Application_DRAFT-CoA-July-2022.pdf",
+      "sourceEvidenceUrl": "https://www.cityofnewport.com/CityOfNewport/media/City-Hall/Boards-Commissions/Commissions/Historic%20District%20Commission/2022-06-07_HDC%20Agenda%20Materials/HDC-Application_DRAFT-CoA-July-2022.pdf",
+      "evidence": "Municipal document describes ViewPoint online applications for Historic District Commission; does not establish bulk building permits or current portal; requires further research",
       "collectorValidated": false
     },
     {
@@ -389,11 +389,11 @@
       "id": "warwick",
       "city": "Warwick",
       "state": "RI",
-      "auditStatus": "not_yet_reviewed",
-      "sourceType": "unknown",
-      "sourceUrl": null,
-      "sourceEvidenceUrl": null,
-      "evidence": null,
+      "auditStatus": "preliminary",
+      "sourceType": "aggregated_counts_only_bulk_records_unverified",
+      "sourceUrl": "https://www.warwickri.gov/sites/g/files/vyhlif12206/f/uploads/warwick_con_plan_2025-2029_cew_april_1_2025.pdf",
+      "sourceEvidenceUrl": "https://www.warwickri.gov/sites/g/files/vyhlif12206/f/uploads/warwick_con_plan_2025-2029_cew_april_1_2025.pdf",
+      "evidence": "2025-2029 official consolidated plan states 1,088 building permits in 2024, only aggregate counts; period-filterable individual records not established",
       "collectorValidated": false
     },
     {
