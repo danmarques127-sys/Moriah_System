@@ -1,4 +1,5 @@
-export const SOURCES=[
+import {DOCUMENT_SOURCES,PORTAL_REASONS} from './source-configs.mjs';
+const BASE=[
   {
     "id": "boston",
     "city": "Boston",
@@ -246,4 +247,12 @@ export const SOURCES=[
     "allowedHosts": []
   }
 ];
+
+const variants=u=>{const h=new URL(u).hostname;return [h.startsWith('www.')?h.slice(4):'www.'+h];};
+export const SOURCES=BASE.map(s=>{
+  const d=DOCUMENT_SOURCES[s.id];
+  if(d)return {...s,mode:'documents',collector:d.collector,allowedHosts:[...new Set([...(s.allowedHosts||[]),...(d.allowedHosts||[]),...variants(s.url)])]};
+  if(PORTAL_REASONS[s.id])return {...s,reason:PORTAL_REASONS[s.id]};
+  return s;
+});
 export const sourceById=id=>{const s=SOURCES.find(s=>s.id===id);if(!s)throw new Error('Fonte não cadastrada.');return s;};
