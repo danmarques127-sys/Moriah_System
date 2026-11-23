@@ -1,0 +1,45 @@
+name: Live municipal permit probes (diagnostic)
+on:
+  pull_request:
+    paths:
+      - 'src/collectors.mjs'
+      - 'src/sources.mjs'
+      - 'scripts/probe-sources.mjs'
+      - 'scripts/probe-amesbury.mjs'
+      - '.github/workflows/permit-probe.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  municipal-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Inspect Amesbury MA report format
+        continue-on-error: true
+        run: node scripts/probe-amesbury.mjs
+      - name: Probe Westerly RI / October 2026
+        continue-on-error: true
+        run: npm run probe -- 2026-10 westerly
+      - name: Probe Hartford CT / October 2026
+        continue-on-error: true
+        run: npm run probe -- 2026-10 hartford
+      - name: Probe Somerville MA / October 2026
+        continue-on-error: true
+        run: npm run probe -- 2026-10 somerville
+      - name: Probe Boston MA / October 2026
+        continue-on-error: true
+        run: npm run probe -- 2026-10 boston
+      - name: Probe Cambridge MA / October 2026
+        continue-on-error: true
+        run: npm run probe -- 2026-10 cambridge
+      - name: Probe Milton MA / October 2026
+        continue-on-error: true
+        run: npm run probe -- 2026-10 milton
+      - name: Probe Worcester MA / October 2026
+        continue-on-error: true
+        run: npm run probe -- 2026-10 worcester

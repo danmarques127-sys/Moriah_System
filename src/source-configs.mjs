@@ -42,6 +42,14 @@ export const ACCELA_SOURCES = {
 
 // No scriptable bulk source yet. These stay import-only, with the reason shown in the job log.
 export const PORTAL_REASONS = {
+  southbury: 'Southbury publica relatórios mensais sem coleta automática validada. Importe o relatório do mês.',
+  bethel: 'Bethel publica relatórios mensais sem coleta automática validada. Importe o relatório do mês.',
+  springfield: 'Springfield publica os permits em um portal OpenGov sem exportação automática. Importe o relatório pela tela de importação.',
+  lowell: 'Lowell guarda os relatórios mensais em pastas por ano (DocumentCenter), e ainda não há coletor para essas pastas. Importe o arquivo do mês.',
+  chicopee: 'Chicopee usa o portal PermitEyes de consulta; não há exportação em massa. Importe o relatório.',
+  bridgeport: 'Bridgeport só fornece permits por pedido de registros públicos (records request). Importe o arquivo recebido.',
+  stamford: 'Stamford só fornece os registros por pedido ao Building Department. Importe o arquivo recebido.',
+  pawtucket: 'Pawtucket não publica uma lista de permits emitidos; só informações do departamento. Importe quando houver arquivo.',
   brookline: 'Brookline usa um portal Accela que exige busca manual. Os permits são importados à mão pela tela de importação (PDF/CSV/XLSX).',
   carlisle: 'O relatório mensal de Carlisle só traz tabelas-resumo de taxas, sem número de permit nem data de emissão. Não dá para coletar com segurança; importe o arquivo se precisar.',
   newton: 'Os permits ficam em um relatório do OpenGov que só exporta CSV pelo botão Export; ainda não há coletor para isso. Importe o relatório.'

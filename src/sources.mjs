@@ -28,8 +28,8 @@ const BASE=[
     "id": "newton",
     "city": "Newton",
     "state": "MA",
-    "url": "https://www.newtonma.gov/government/inspectional-services/building-permit-summary-report",
-    "mode": "report",
+    "url": "https://newtonma.viewpointcloud.com/search",
+    "mode": "portal",
     "allowedHosts": []
   },
   {
@@ -207,11 +207,75 @@ const BASE=[
     "allowedHosts": []
   },
   {
+    "id": "southbury",
+    "city": "Southbury",
+    "state": "CT",
+    "url": "https://southbury-ct.org/building-permit-reports",
+    "mode": "report",
+    "allowedHosts": []
+  },
+  {
+    "id": "bethel",
+    "city": "Bethel",
+    "state": "CT",
+    "url": "https://bethel-ct.gov/index.asp?SEC=780497CC-1470-4443-88A1-525207E6D44D",
+    "mode": "report",
+    "allowedHosts": []
+  },
+  {
     "id": "chatham",
     "city": "Chatham",
     "state": "MA",
     "url": "https://chatham-ma.gov/539/Building-Permits-Issued",
     "mode": "report",
+    "allowedHosts": []
+  },
+  {
+    "id": "springfield",
+    "city": "Springfield",
+    "state": "MA",
+    "url": "https://springfieldma.portal.opengov.com/",
+    "mode": "portal",
+    "allowedHosts": []
+  },
+  {
+    "id": "lowell",
+    "city": "Lowell",
+    "state": "MA",
+    "url": "https://www.lowellma.gov/1084/Monthly-Permit-Reports",
+    "mode": "report",
+    "allowedHosts": []
+  },
+  {
+    "id": "chicopee",
+    "city": "Chicopee",
+    "state": "MA",
+    "url": "https://permiteyes.us/chicopee/publicview.php",
+    "mode": "portal",
+    "allowedHosts": []
+  },
+  {
+    "id": "bridgeport",
+    "city": "Bridgeport",
+    "state": "CT",
+    "url": "https://www.bridgeportct.gov/government/departments/city-attorney/records-request",
+    "mode": "portal",
+    "allowedHosts": []
+  },
+  {
+    "id": "stamford",
+    "city": "Stamford",
+    "state": "CT",
+    "url": "https://www.stamfordct.gov/government/operations/building-department/building-records",
+    "mode": "portal",
+    "allowedHosts": []
+  },
+  {
+    "id": "pawtucket",
+    "city": "Pawtucket",
+    "state": "RI",
+    "url": "https://pawtucketri.gov/zoning-department/zoning-code-enforcement-information/",
+    "mode": "portal",
     "allowedHosts": []
   }
 ];

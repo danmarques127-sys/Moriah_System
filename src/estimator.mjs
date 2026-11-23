@@ -1,7 +1,7 @@
 const number=(v,label,min=0,max=1e9)=>{const n=Number(v);if(!Number.isFinite(n)||n<min||n>max)throw new Error(label+' inválido.');return n;};
 export const SECTION_TYPES=['Roof / Rafters','Slopes','Ceiling','Gable Walls','Exterior Walls','Basement Walls','Blockers','Crawl Space'];
 export const DEFAULT_SETTINGS={
- company:{name:'Moriah System',address:'',phone:'',email:'',salesperson:'',logoUrl:''},
+ company:{industry:'Insulation',name:'Moriah System',address:'',phone:'',email:'',salesperson:'',logoUrl:''},
  pricing:{laborPerSqft:0,overheadPct:0,marginPct:20,taxPct:0,depositPct:0,mobilization:0},
  materials:[
  {id:'cc',name:'Closed Cell Spray Foam',kind:'foam',rPerInch:7.5,yieldBFPerGallon:96,price:50,barrelGallons:45,reference:'Rendimento inicial calibrado à amostra de consumo fornecida; confirmar produto e base de medição.'},
@@ -24,6 +24,7 @@ export function feet(value){
 export function settingsFrom(raw={}){
  const base=structuredClone(DEFAULT_SETTINGS);const company=raw.company||{},pricing=raw.pricing||{};
  for(const key of Object.keys(base.company)){if(company[key]!==undefined){if(typeof company[key]!=='string'||company[key].length>1000)throw new Error('Perfil inválido.');base.company[key]=company[key];}}
+ if(!['Insulation','Painting','Flooring','General Contracting','Other'].includes(base.company.industry))throw new Error('Unsupported business type.');
  if(base.company.logoUrl){const u=new URL(base.company.logoUrl);if(u.protocol!=='https:')throw new Error('Logo deve usar HTTPS.');}
  for(const key of Object.keys(base.pricing))if(pricing[key]!==undefined)base.pricing[key]=number(pricing[key],key,0,key==='marginPct'?95:key.endsWith('Pct')?100:1e6);
  if(raw.materials!==undefined){if(!Array.isArray(raw.materials)||!raw.materials.length||raw.materials.length>100)throw new Error('Catálogo inválido.');

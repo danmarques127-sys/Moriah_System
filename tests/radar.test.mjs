@@ -17,3 +17,62 @@ test('unsupported municipal portal is pending not zero coverage',async()=>{const
 test('HTTP403 propagates as source failure not empty result',async()=>{const old=globalThis.fetch;globalThis.fetch=async()=>new Response('Forbidden',{status:403});try{await assert.rejects(collect(source,'2026-10'),/HTTP 403/);}finally{globalThis.fetch=old;}});
 test('Milton nested issue-date filter is correctly formed',async()=>{const old=globalThis.fetch;globalThis.fetch=async(url,options)=>{assert.equal(options.body.get('columns[5][search][value]'),'2026-10-01 | 2026-10-31');return Response.json({data:[],recordsFiltered:0});};try{assert.equal((await collect(SOURCES.find(s=>s.id==='milton'),'2026-10')).status,'complete');}finally{globalThis.fetch=old;}});
 test('Westerly absent publication stays pending',async()=>{const old=globalThis.fetch;globalThis.fetch=async()=>new Response('<a href="/old.csv">Monthly Report September 2026.csv</a>');try{assert.equal((await collect(SOURCES.find(s=>s.id==='westerly'),'2026-10')).status,'pending');}finally{globalThis.fetch=old;}});
+
+test('ArcGIS invalid response is a failure, not complete coverage',async()=>{
+ const old=globalThis.fetch;globalThis.fetch=async()=>Response.json({error:'unavailable'});
+ try{await assert.rejects(collect(SOURCES.find(s=>s.id==='hartford'),'2026-10'),/Consulta municipal não disponível/);}
+ finally{globalThis.fetch=old;}
+});
+test('ArcGIS full page followed by an empty page confirms pagination',async()=>{
+ const old=globalThis.fetch;let calls=0;
+ globalThis.fetch=async()=>{calls++;return Response.json({features:calls===1?Array.from({length:1000},(_,i)=>({attributes:{OBJECTID:i+1,DateIssued:Date.UTC(2026,9,15),PROPERTY_ADDRESS:'1 Main St',DESCRIPTION:'New house',RECORD_TYPE_TYPE:'Building Permit'}})):[]});};
+ try{const result=await collect(SOURCES.find(s=>s.id==='hartford'),'2026-10');assert.equal(calls,2);assert.equal(result.status,'complete');assert.equal(result.records.length,1000);}
+ finally{globalThis.fetch=old;}
+});
+test('ArcGIS repeated full page fails rather than reporting complete',async()=>{
+ const old=globalThis.fetch;let calls=0;
+ globalThis.fetch=async()=>{calls++;return Response.json({features:Array.from({length:1000},(_,i)=>({attributes:{OBJECTID:i+1,DateIssued:Date.UTC(2026,9,15),PROPERTY_ADDRESS:'1 Main St',DESCRIPTION:'New house',RECORD_TYPE_TYPE:'Building Permit'}}))});};
+ try{await assert.rejects(collect(SOURCES.find(s=>s.id==='hartford'),'2026-10'),/Paginação ArcGIS repetiu registros/);assert.equal(calls,2);}
+ finally{globalThis.fetch=old;}
+});
+
+test('monthly report sources are discoverable but not falsely marked as native',async()=>{
+ for(const name of ['southbury','bethel']){
+  const source=SOURCES.find(s=>s.id===name);
+  assert.ok(source);assert.equal(source.state,'CT');assert.equal(source.mode,'report');
+  const result=await collect(source,'2026-10');assert.equal(result.status,'pending');
+ }
+});
+test('Westerly real CSV-shaped report can produce normalized permits',async()=>{
+ const source=SOURCES.find(s=>s.id==='westerly'),old=globalThis.fetch;
+ const csv='Title,Type,Date Issued,Record #,Full Address,Type of Improvement,Estimated cost of Labor and Materials,GC Name,Applicant Name,GC Phone #\nBuilding Permit,Permit/License,10/15/2026,2026-001,14 Main St,New single family house,600000,Builder LLC,Applicant,401-555-0100\n';
+ let calls=0;
+ globalThis.fetch=async url=>{calls++;return new Response(calls===1?'<a href="/DocumentCenter/View/123/Monthly-Report-October-2026csv">Monthly Report October 2026.csv</a>':csv);};
+ try{const result=await collect(source,'2026-10');assert.equal(calls,2);assert.equal(result.status,'complete');assert.equal(result.records.length,1);assert.equal(result.records[0].contractor,'Builder LLC');assert.equal(result.records[0].phone,'401-555-0100');}
+ finally{globalThis.fetch=old;}
+});
+test('unsupported source jobs stay pending rather than showing successful collection',async()=>{
+ const {openDatabase}=await import('../src/db.mjs');
+ const {enqueue,worker}=await import('../src/jobs.mjs');
+ const db=openDatabase(':memory:');
+ try{
+  enqueue(db,['southbury'],'2026-10','2026-10');
+  await worker(db)();
+  const job=db.prepare('SELECT status FROM jobs').get();
+  const coverage=db.prepare('SELECT status,count FROM coverage WHERE source_id=? AND month=?').get('southbury','2026-10');
+  assert.equal(job.status,'pending');assert.equal(coverage.status,'pending');assert.equal(coverage.count,0);
+ }finally{db.close();}
+});
+test('municipal suffix and postal code do not split identical properties',()=>{
+ const base=p({city:'Newton',state:'MA',address:'12 Main Street'});
+ assert.equal(projectKey(base),projectKey({...base,address:'12 Main St, Newton, MA 02458'}));
+ assert.notEqual(projectKey(base),projectKey({...base,address:'12 Main St Apt 2, Newton MA 02458'}));
+ assert.notEqual(projectKey(base),projectKey({...base,city:'Waltham',address:'12 Main St, Waltham MA 02451'}));
+});
+test('new municipal lookup endpoints are registered but not mistaken for live feeds',()=>{
+ const newton=SOURCES.find(s=>s.id==='newton');
+ const springfield=SOURCES.find(s=>s.id==='springfield');
+ assert.equal(new URL(newton.url).hostname,'newtonma.viewpointcloud.com');
+ assert.equal(newton.mode,'portal');
+ assert.equal(new URL(springfield.url).hostname,'springfieldma.portal.opengov.com');
+});

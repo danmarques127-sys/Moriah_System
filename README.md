@@ -22,7 +22,7 @@ No OpenAI/ChatGPT login, API, model, embedding, AI agent, or AI token is used by
 
 ## Coverage is measured, not promised
 
-The registry starts with26 municipal sources. Seven API/CSV collectors, 16 document collectors are implemented (Brookline and Newton are imported by hand) (see below). Source availability can change.
+The registry starts with 32 municipal sources. Seven API/CSV collectors and 16 document collectors are implemented (Brookline and Newton are imported by hand) (see below). Source availability can change.
 
 **Newton and other report/OpenGov/Accela sources are listed but are not presented as automatically connected.** A homepage or search link does not prove bulk collection works. CAPTCHA, login barriers and HTTP403 are not bypassed. Missing/unpublished reports are pending, never an invented zero. No indiscriminate all-address crawl is implemented. This is not a claim that all559municipalities in the three states are connected.
 
