@@ -252,6 +252,42 @@
       "publicationCurrentPeriodValidated": true,
       "evidence": "Official Woburn news index posts October and September 2026 Building Permits Issued",
       "county": "Middlesex"
+    },
+    {
+      "id": "orleans",
+      "city": "Orleans",
+      "state": "MA",
+      "county": "Barnstable",
+      "classification": "issued_periodic",
+      "frequency": "periodic_pdf_xlsx",
+      "url": "https://town.orleans.ma.us/DocumentCenter/View/11087/Building-Permits-Issued---April-2026",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false,
+      "evidence": "Official Feb-March and April 2026 issued permit reports have record #, issue date, applicant, address/location, work description and estimated cost; recurring index location not established"
+    },
+    {
+      "id": "tiverton",
+      "city": "Tiverton",
+      "state": "RI",
+      "county": "Newport",
+      "classification": "portal_only",
+      "frequency": "online_opengov",
+      "url": "https://www.tiverton.ri.gov/223/Building-Code-Zoning",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false,
+      "evidence": "Official municipal page says applications submitted through OpenGov e-permitting portal; no monthly public issuance listing confirmed"
+    },
+    {
+      "id": "sharon",
+      "city": "Sharon",
+      "state": "MA",
+      "county": "Norfolk",
+      "classification": "aggregates_only",
+      "frequency": "annual_summary",
+      "url": "https://www.townofsharon.net/",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false,
+      "evidence": "2024 town report gives aggregate building permit issuance counts, not individual records/addresses; individual public permit publication not confirmed"
     }
   ],
   "lastAuditUpdate": "2026-11-23"
