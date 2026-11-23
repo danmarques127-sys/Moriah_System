@@ -83,10 +83,12 @@
       "city": "Sudbury",
       "state": "MA",
       "classification": "issued_periodic",
-      "frequency": "archive_by_month",
-      "url": "https://sudbury.ma.us/all-documents/archived/",
+      "frequency": "monthly_pdf",
+      "url": "https://sudbury.ma.us/building/documents/",
       "collectorValidated": false,
-      "publicationCurrentPeriodValidated": false
+      "publicationCurrentPeriodValidated": true,
+      "evidence": "Official building department documents include October 2026 Building Permits Issued",
+      "county": "Middlesex"
     },
     {
       "id": "west-hartford",
@@ -226,6 +228,30 @@
       "publicationCurrentPeriodValidated": true,
       "evidence": "Official monthly building permit reports through September 2026; issue date and status must be confirmed before issued-only classification",
       "county": "New Haven"
+    },
+    {
+      "id": "amesbury",
+      "city": "Amesbury",
+      "state": "MA",
+      "classification": "issued_periodic",
+      "frequency": "monthly_csv",
+      "url": "https://www.amesburyma.gov/203/Inspectional-Services",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": true,
+      "evidence": "Official October 2026 Building Permits Issued CSV at /DocumentCenter/View/6385/Building-Permits-October-2026",
+      "county": "Essex"
+    },
+    {
+      "id": "woburn",
+      "city": "Woburn",
+      "state": "MA",
+      "classification": "issued_periodic",
+      "frequency": "monthly_news",
+      "url": "https://woburnma.gov/News/",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": true,
+      "evidence": "Official Woburn news index posts October and September 2026 Building Permits Issued",
+      "county": "Middlesex"
     }
   ],
   "lastAuditUpdate": "2026-11-23"
