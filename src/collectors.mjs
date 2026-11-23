@@ -38,11 +38,16 @@ export async function collect(source,month){
  if(page.length<500)break;if(offset===9500)complete=false;}
  }else if(['hartford','worcester'].includes(source.mode)){
  const hart=source.mode==='hartford',endpoint=hart?'https://utility.arcgis.com/usrsvcs/servers/d595ae995fb049d3ac54919ebf24b1ac/rest/services/HartfordOpenDataTables/FeatureServer/0/query':'https://services1.arcgis.com/j8dqo2DJE7mVUBU1/arcgis/rest/services/Building_Permits/FeatureServer/0/query';
- for(let offset=0;offset<20000;offset+=1000){const where=hart?"DateIssued >= TIMESTAMP '"+start+" 00:00:00' AND DateIssued < TIMESTAMP '"+end+" 00:00:00'":"Permit_License_Issued_Date LIKE '"+m+"/%/"+y+"'";
+ let previousPageKey='';for(let offset=0;offset<20000;offset+=1000){const where=hart?"DateIssued >= TIMESTAMP '"+start+" 00:00:00' AND DateIssued < TIMESTAMP '"+end+" 00:00:00'":"Permit_License_Issued_Date LIKE '"+m+"/%/"+y+"'";
  const page=await json(endpoint+'?'+new URLSearchParams({f:'json',where,outFields:'*',returnGeometry:'false',resultRecordCount:'1000',resultOffset:String(offset),orderByFields:hart?'DateIssued DESC,OBJECTID ASC':'ObjectId'}));
+ if(!Array.isArray(page.features))throw new Error('Resposta ArcGIS sem lista de registros; cobertura não certificada.');
+ const pageKey=page.features.map(f=>String(f.attributes?.OBJECTID??f.attributes?.ObjectId??'')).join('|');
+ if(offset>0&&page.features.length&&pageKey===previousPageKey)throw new Error('Paginação ArcGIS repetiu registros; cobertura não certificada.');
+ previousPageKey=pageKey;
  for(const feature of page.features){const r=feature.attributes,type=hart?[r.RECORD_TYPE_TYPE,r.B1_APP_TYPE_ALIAS].filter(Boolean).join(' '):r.Record_Type;if(/certificate|occupancy|completion|complaint|zoning/i.test(type)&&!/building|construction|addition|alteration/i.test(type))continue;
  records.push(record(source,r.OBJECTID??r.ObjectId,hart?r.DateIssued:r.Permit_License_Issued_Date,hart?r.PROPERTY_ADDRESS:r.Address,hart?r.RECORD_ID:r.Record__,hart?r.DESCRIPTION:r.Permit_For==='N/A'?'Descrição não disponibilizada; escopo desconhecido.':r.Permit_For,type,hart?r.Total_Construction_Cost:0,hart?'':r.Contractor_Name,'',source.url,hart?r.RECORD_STATUS:r.Record_Status));}
- if(!page.exceededTransferLimit)break;if(offset===19000)complete=false;}
+ if(page.features.length<1000&&page.exceededTransferLimit!==true)break;
+ if(offset===19000)complete=false;}
  }else if(source.mode==='milton'){
  const last=new Date(Date.parse(end+'T00:00:00Z')-86400000).toISOString().slice(0,10);
  for(let offset=0;offset<10000;offset+=200){const form=new URLSearchParams({draw:'1',start:String(offset),length:'200','order[0][column]':'5','order[0][dir]':'desc','search[value]':'','search[regex]':'false'});
