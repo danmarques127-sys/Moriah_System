@@ -265,7 +265,7 @@ export const SOURCES=[
     "id": "chicopee",
     "city": "Chicopee",
     "state": "MA",
-    "url": "https://www.chicopeema.gov/626/Online-Permits-and-Licenses",
+    "url": "https://permiteyes.us/chicopee/publicview.php",
     "mode": "portal",
     "allowedHosts": []
   },
