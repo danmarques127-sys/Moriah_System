@@ -190,6 +190,42 @@
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": true,
       "evidence": "Town identifies monthly issued permits residential and other trades, estimated costs, residential work summary"
+    },
+    {
+      "id": "andover",
+      "city": "Andover",
+      "state": "MA",
+      "classification": "issued_periodic",
+      "frequency": "monthly_updated_year_to_date",
+      "url": "https://andoverma.gov/Archive.aspx?ADID=&AMID=70&Type=",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": true,
+      "evidence": "Official archive Building Permits Issued (Updated Monthly); 2026 Building Permits YTD",
+      "county": "Essex"
+    },
+    {
+      "id": "manchester-by-the-sea",
+      "city": "Manchester-by-the-Sea",
+      "state": "MA",
+      "classification": "issued_periodic",
+      "frequency": "monthly_archive",
+      "url": "https://www.manchester.ma.us/Archive/36",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": true,
+      "evidence": "Official issued-building-permit archive through September 2026",
+      "county": "Essex"
+    },
+    {
+      "id": "southbury",
+      "city": "Southbury",
+      "state": "CT",
+      "classification": "building_permit_report",
+      "frequency": "monthly_pdf",
+      "url": "https://www.southbury-ct.org/building-permit-reports",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": true,
+      "evidence": "Official monthly building permit reports through September 2026; issue date and status must be confirmed before issued-only classification",
+      "county": "New Haven"
     }
   ],
   "lastAuditUpdate": "2026-11-23"
