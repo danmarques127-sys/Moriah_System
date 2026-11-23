@@ -270,12 +270,12 @@
       "city": "Tiverton",
       "state": "RI",
       "county": "Newport",
-      "classification": "portal_only",
+      "classification": "portal_records_search",
       "frequency": "online_opengov",
       "url": "https://www.tiverton.ri.gov/223/Building-Code-Zoning",
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": false,
-      "evidence": "Official municipal page says applications submitted through OpenGov e-permitting portal; no monthly public issuance listing confirmed"
+      "evidence": "Official Building/Code/Zoning page instructs users to select Search for Records in OpenGov. Address-search criteria and automated access remain unverified."
     },
     {
       "id": "sharon",
@@ -288,6 +288,18 @@
       "collectorValidated": false,
       "publicationCurrentPeriodValidated": false,
       "evidence": "2024 town report gives aggregate building permit issuance counts, not individual records/addresses; individual public permit publication not confirmed"
+    },
+    {
+      "id": "barrington",
+      "city": "Barrington",
+      "state": "RI",
+      "county": "Bristol",
+      "classification": "portal_only",
+      "frequency": "online_opengov",
+      "url": "https://www.barrington.ri.gov/204/Planning-Building-and-Resilience",
+      "collectorValidated": false,
+      "publicationCurrentPeriodValidated": false,
+      "evidence": "Official Planning, Building and Resilience page confirms OpenGov e-permitting; a public search of issued permits, address lookup, or monthly list is not yet verified"
     }
   ],
   "lastAuditUpdate": "2026-11-23"
