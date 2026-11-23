@@ -27,7 +27,7 @@ export const SOURCES=[
     "id": "newton",
     "city": "Newton",
     "state": "MA",
-    "url": "https://www.newtonma.gov/government/inspectional-services",
+    "url": "https://newtonma.viewpointcloud.com/",
     "mode": "portal",
     "allowedHosts": []
   },
