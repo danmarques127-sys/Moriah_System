@@ -45,3 +45,18 @@ Public data may change over time. Never identify a portal home page as proof of 
 ## Next phase
 
 Investigate/report-test CT and RI sources individually (starting with published monthly reports). Only then add municipal adapters or vetted import workflows, source-by-source, with provenance and per-month completeness.
+
+## Read-only live verification (Node 24)
+
+Run from the repository root (on Codespaces or a machine with outbound HTTPS):
+
+```bash
+npm run check
+npm test
+npm run probe -- 2026-10 westerly
+npm run probe -- 2026-10 hartford somerville boston
+```
+
+The probe **does not write to SQLite**, does not output contact details and exits nonzero if any selected source fails, is partial or is pending. Its JSON lines show each source's record count and any error. Live results can vary by publication dates, network controls and municipal API changes. The PR diagnostic workflow runs these requests separately with non-blocking steps; a green workflow is **not proof** that all live probes succeeded, so inspect individual step logs.
+
+Southbury and Bethel are now registered CT report sources, not automated PDF collectors. They must remain pending until a tested structured parser exists.
