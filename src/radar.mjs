@@ -3,8 +3,23 @@ export function monthsBetween(from,to){
  const out=[];let cursor=from;while(cursor<=to){out.push(cursor);if(out.length>24)throw new Error('Selecione até 24 meses por consulta.');const [y,m]=cursor.split('-').map(Number);cursor=new Date(Date.UTC(y,m,1)).toISOString().slice(0,7);}return out;
 }
 export function previousMonth(now=new Date()){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit'}).formatToParts(now);return new Date(Date.UTC(Number(p.find(x=>x.type==='year').value),Number(p.find(x=>x.type==='month').value)-2,1)).toISOString().slice(0,7);}
-export function normalizeAddress(value){return String(value).toUpperCase().replace(/,\s*(?:CAMBRIDGE|SOMERVILLE|BOSTON|HARTFORD)\b.*$/,'').replace(/\b(STREET|AVENUE|ROAD|DRIVE|LANE|COURT|PLACE|BOULEVARD|TERRACE)\b/g,w=>({STREET:'ST',AVENUE:'AVE',ROAD:'RD',DRIVE:'DR',LANE:'LN',COURT:'CT',PLACE:'PL',BOULEVARD:'BLVD',TERRACE:'TER'})[w]).replace(/\b(?:APT|APARTMENT|UNIT)\s*#?\s*|#\s*(?=[A-Z0-9])/g,' UNIT ').replace(/[^A-Z0-9 /-]/g,' ').replace(/\s+/g,' ').trim();}
-export function projectKey(p){return p.state+'|'+p.city.toUpperCase()+'|'+(p.address?normalizeAddress(p.address):p.id);}
+export function normalizeAddress(value){
+ return String(value??'').toUpperCase()
+ .replace(/\\b(STREET|AVENUE|ROAD|DRIVE|LANE|COURT|PLACE|BOULEVARD|TERRACE)\\b/g,w=>({STREET:'ST',AVENUE:'AVE',ROAD:'RD',DRIVE:'DR',LANE:'LN',COURT:'CT',PLACE:'PL',BOULEVARD:'BLVD',TERRACE:'TER'})[w])
+ .replace(/\\b(?:APT|APARTMENT|UNIT)\\s*#?\\s*|#\\s*(?=[A-Z0-9])/g,' UNIT ')
+ .replace(/[^A-Z0-9 /-]/g,' ').replace(/\\s+/g,' ').trim();
+}
+export function projectKey(p){
+ // Remove only the municipality/state/postcode that belongs to THIS record.
+ // Never strip arbitrary trailing address text or equate units/streets in different cities.
+ const city=String(p.city??'').toUpperCase().replace(/[^A-Z0-9 ]/g,' ').replace(/\\s+/g,' ').trim();
+ let address=normalizeAddress(p.address);
+ if(city){
+   const suffix=city.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&');
+   address=address.replace(new RegExp('(?:[ ,]+)'+suffix+'(?:[ ,]+(?:MA|CT|RI))?(?:[ ,]+\\\\d{5}(?:-\\\\d{4})?)?$'), '').trim();
+ }
+ return p.state+'|'+city+'|'+(address||p.id);
+}
 export function validatePermit(raw,source){
  if(!raw||typeof raw!=='object')throw new Error('Registro inválido.');const p={};
  for(const k of ['id','address','number','issued','description','type','status','contractor','applicant','sourceUrl']){p[k]=String(raw[k]??'');if(p[k].length>(k==='description'?20000:2000))throw new Error('Campo de permit muito longo.');}
