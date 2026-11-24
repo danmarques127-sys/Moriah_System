@@ -488,5 +488,7 @@ export async function parseUploadedFile({buffer, source, month, deps = {}}) {
     if (rec) records.push(rec); else outside++;
   }
   dates.sort();
-  return {format: detectFormat(doc), approx: records.filter(r => r.dateApprox).length, rowsRead: rows.length, records: [...new Map(records.map(r => [r.id, r])).values()], outside, undated, range: dates.length ? {from: dates[0], to: dates.at(-1)} : null};
+  const monthCounts = {}; for (const d of dates) monthCounts[d.slice(0, 7)] = (monthCounts[d.slice(0, 7)] || 0) + 1;
+  const suggestedMonth = Object.entries(monthCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+  return {suggestedMonth, addresses: rows.slice(0, 300).map(r => String(r.address || '')), format: detectFormat(doc), approx: records.filter(r => r.dateApprox).length, rowsRead: rows.length, records: [...new Map(records.map(r => [r.id, r])).values()], outside, undated, range: dates.length ? {from: dates[0], to: dates.at(-1)} : null};
 }
