@@ -40,7 +40,7 @@ export function clientCities(db, clientId, sources) {
   const ids = new Set(db.prepare('SELECT source_id AS s FROM client_cities WHERE client_id=?').all(clientId).map(r => r.s));
   return sources.filter(s => ids.has(s.id)).map(s => ({key: opaque(s.id), city: s.city, state: s.state, id: s.id}));
 }
-const opaque = v => createHash('sha256').update('pf-client:' + v).digest('hex').slice(0, 16);
+export const opaque = v => createHash('sha256').update('pf-client:' + v).digest('hex').slice(0, 16);
 const stripLinks = text => String(text || '').replace(/https?:\/\/\S+|www\.\S+/gi, '').replace(/\s{2,}/g, ' ').trim();
 
 // The only shape that leaves the server for a client.
@@ -64,6 +64,7 @@ export function clientPermits(db, client, query, sources) {
   if (companyTrades.length) list = list.filter(r => tradesOf(r).some(t => companyTrades.includes(t)));
   const wantTrade = String(query.trade || '');
   if (wantTrade && (!companyTrades.length || companyTrades.includes(wantTrade))) list = list.filter(r => tradesOf(r).includes(wantTrade));
+  if (query.keys) { const ks = new Set(String(query.keys).split(',').filter(Boolean)); list = list.filter(r => ks.has(opaque(r.id))); }
   const favs = favoriteKeys(db, client);
   if (query.fav === '1') list = list.filter(r => favs.has(opaque(r.id)));
   const total = list.length, page = Math.max(1, Math.floor(Number(query.page)) || 1), exp = query.export === '1';
@@ -92,7 +93,7 @@ export const EMPLOYEE_SPOTS = 5;
 const fail = (m, s = 400) => { const e = new Error(m); e.status = s; throw e; };
 export const isOwner = c => c.role === 'owner';
 
-function permitByKey(db, client, key, sources) {
+export function permitByKey(db, client, key, sources) {
   const ids = clientCities(db, client.id, sources).map(c => c.id);
   if (!ids.length) return null;
   const rows = db.prepare('SELECT data FROM permits WHERE source_id IN (' + ids.map(() => '?').join(',') + ') LIMIT 30000').all(...ids);
