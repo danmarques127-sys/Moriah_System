@@ -23,7 +23,9 @@ export const decode = s => String(s)
   .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&#0?39;|&apos;/g, "'").replace(/&quot;/g, '"')
   .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
   .replace(/&#(\d+);/g, (_, n) => Number(n) < 1114112 ? String.fromCodePoint(Number(n)) : ' ');
-export const clean = v => decode(String(v ?? '').replace(/<[^>]*>/g, ' ')).replace(/[\u200b-\u200d\u2060\ufeff]/g, '').replace(/\s+/g, ' ').trim();
+// Text from some PDFs arrives as UTF-8 read as Latin-1 ("Â" before a space, "â€™"); repair the common cases.
+export const fixMojibake = s => String(s).replace(/\u00c2(?=[\s\u00a0.,;:)\-]|$)/g, '').replace(/\u00c2\u00a0/g, ' ').replace(/\u00e2\u20ac\u2122/g, "'").replace(/\u00e2\u20ac\u0153|\u00e2\u20ac\u009d/g, '"').replace(/\u00e2\u20ac\u201c/g, '-');
+export const clean = v => fixMojibake(decode(String(v ?? '').replace(/<[^>]*>/g, ' '))).replace(/[\u200b-\u200d\u2060\ufeff]/g, '').replace(/\s+/g, ' ').trim();
 const amount = v => Math.max(0, Number(String(v ?? 0).replace(/[^0-9.]/g, '')) || 0);
 
 /* ---------- period matching (month / quarter / year / fiscal year) ---------- */
