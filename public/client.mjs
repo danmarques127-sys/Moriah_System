@@ -25,13 +25,13 @@ function loginView() {
   return '<main class="login"><section class="lcard"><div class="lbrand"><img src="/logo-mark.png" alt=""><b>MORIAH</b><small>SYSTEM</small></div><h1>Sign in</h1><form data-form="login"><label>Email or username<input name="email" type="text" required autocomplete="username" autocapitalize="none" spellcheck="false"></label><label>Password<input name="password" type="password" required autocomplete="current-password"></label>' + (st.error ? '<p class="form-error" role="alert"><span>' + e(st.error) + '</span></p>' : '') + '<button class="primary">Sign in</button></form></section></main>';
 }
 const NAV = () => owner()
-  ? [['radar', 'Permit Radar', 'radar'], ['lists', 'My Lists', 'list'], ['estimates', 'Estimates', 'calc'], ['followups', 'Follow-ups', 'cal'], ['visits', 'Site visits', 'cam'], ['team', 'Team', 'users']]
-  : [['radar', 'Permit Radar', 'radar'], ['lists', 'My Lists', 'list'], ['estimates', 'Estimate Requests', 'calc'], ['followups', 'Follow-ups', 'cal'], ['visits', 'My visits', 'cam']];
+  ? [['radar', 'Permit Radar', 'radar'], ['lists', 'My Lists', 'list'], ['estimates', 'Estimates', 'calc'], ['followups', 'Follow-ups', 'cal'], ['visits', 'Site visits', 'cam'], ['team', 'Team', 'users'], ['profile', 'Profile', 'users']]
+  : [['radar', 'Permit Radar', 'radar'], ['lists', 'My Lists', 'list'], ['estimates', 'Estimate Requests', 'calc'], ['followups', 'Follow-ups', 'cal'], ['visits', 'My visits', 'cam'], ['profile', 'Profile', 'users']];
 function shell(inner) {
   const nav = st.me.role === 'employee' ? '' : NAV().map(([id, l, ic]) => '<button type="button" data-action="tab" data-id="' + id + '" class="' + (st.tab === id ? 'active' : '') + '">' + icon(ic) + '<span>' + l + '</span></button>').join('');
   const name = st.me.name || String(st.me.email).split('@')[0];
-  return '<div class="shell">' + '<aside class="side">' + brand + '<nav>' + nav + '</nav><div class="usercard"><span class="avatar">' + e(name.slice(0, 2).toUpperCase()) + '</span><span class="who"><b>' + e(name) + '</b><small>' + ({owner: 'Owner', seller: 'Sales Workspace', employee: 'Employee'}[st.me.role]) + '</small></span><button type="button" data-action="logout">Sign out</button></div></aside>'
-    + '<div class="main-col"><main class="workspace"><div class="cl-co">' + icon('bld') + '<b>' + e(st.me.company) + '</b></div>' + inner + '</main></div>' + (st.drawer ? drawerView() : '') + (st.modal ? modalView() : '') + '</div>';
+  return '<div class="shell">' + '<aside class="side">' + brand + '<nav>' + nav + '</nav><div class="usercard">' + avatarHtml(st.me.photo, name) + '<span class="who"><b>' + e(name) + '</b><small>' + ({owner: 'Owner', seller: 'Sales Workspace', employee: 'Employee'}[st.me.role]) + '</small></span><button type="button" data-action="logout">Sign out</button></div></aside>'
+    + '<div class="main-col"><main class="workspace"><div class="cl-co">' + (st.me.logo ? '<img class="cl-logo" src="' + e(st.me.logo) + '" alt="">' : icon('bld')) + '<b>' + e(st.me.company) + '</b></div>' + inner + '</main></div>' + (st.drawer ? drawerView() : '') + (st.modal ? modalView() : '') + '</div>';
 }
 const title = (h, p) => '<section class="title"><div><h1>' + h + '</h1><p>' + p + '</p></div></section>';
 
@@ -129,6 +129,18 @@ function visitsView() {
   return title(owner() ? 'Site visits' : 'My visits', 'Measurements, notes and photos sent from the field for estimates.')
     + (v.length ? v.map(x => '<section class="panel cl-visit"><header><b>' + e(x.address || 'Permit') + '</b><small>' + when(x.createdAt) + ' · ' + e(x.byName || x.byEmail) + '</small></header>' + (x.measurements ? '<h3>Measurements</h3><p>' + e(x.measurements) + '</p>' : '') + (x.notes ? '<h3>Notes</h3><p>' + e(x.notes) + '</p>' : '') + '<div class="cl-photos">' + x.photos.map(id => '<a href="/api/client/photo?id=' + id + '" target="_blank" rel="noopener"><img src="/api/client/photo?id=' + id + '" alt="Site photo" loading="lazy"></a>').join('') + '</div></section>').join('') : '<p class="empty">No visits yet. Open a permit and press "Add site visit".</p>');
 }
+const avatarHtml = (photo, name, big = '') => photo ? '<img class="avatar ' + big + '" src="' + e(photo) + '" alt="">' : '<span class="avatar ' + big + '">' + e(String(name || '?').slice(0, 2).toUpperCase()) + '</span>';
+function profileView() {
+  const p = st.profile; if (!p) return '<p class="muted">Loading…</p>';
+  const m = p.me, c = p.company, nm = m.name || String(m.email).split('@')[0];
+  const photoBox = (kind, url, label, initials) => '<div class="photo-box" data-box="' + kind + '">' + avatarHtml(url, initials, 'big') + '<label class="filebtn">' + label + '<input type="file" accept="image/png,image/jpeg,image/webp" data-pphoto="' + kind + '" hidden></label><button type="button" data-action="rmphoto" data-id="' + kind + '">Remove</button><input type="hidden" name="' + (kind === 'me' ? 'photo' : 'logo') + '" value="' + e(url || '') + '"></div>';
+  return title('Profile', 'Your personal details, your business information and your password.')
+    + '<form class="panel settings-panel" data-form="profile"><h2>Personal details</h2><div class="cl-prof">' + photoBox('me', m.photo, 'Change photo', nm)
+    + '<div class="form-grid"><label>Full name<input name="name" value="' + e(m.name) + '" maxlength="120" required></label><label>Job title<input name="title" value="' + e(m.title) + '" maxlength="80" placeholder="' + (m.role === 'owner' ? 'Owner' : 'Sales') + '"></label><label>Phone<input name="phone" type="tel" value="' + e(m.phone) + '" maxlength="40"></label><label>Sign-in e-mail<input value="' + e(m.email) + '" disabled></label></div></div>'
+    + (p.canEditCompany ? '<h2 class="cl-h2">Business</h2><div class="cl-prof">' + photoBox('co', c.logo, 'Change logo', c.name) + '<div class="form-grid"><label>Business name<input name="co_name" value="' + e(c.name) + '" maxlength="120" required></label><label>Contact name<input name="co_contactName" value="' + e(c.contactName) + '" maxlength="120"></label><label>Business e-mail<input name="co_contactEmail" type="email" value="' + e(c.contactEmail) + '"></label><label>Business phone<input name="co_contactPhone" type="tel" value="' + e(c.contactPhone) + '" maxlength="40"></label><label>Address<input name="co_address" value="' + e(c.address) + '" maxlength="200"></label><label>Website<input name="co_website" value="' + e(c.website) + '" maxlength="200"></label></div></div>' : '<p class="muted">Business details are managed by the account owner (' + e(c.name) + ').</p>')
+    + '<button class="primary" type="submit">Save profile</button></form>'
+    + '<form class="panel settings-panel" data-form="mypw"><h2>Change password</h2><div class="form-grid"><label>Current password<input name="current" type="password" autocomplete="current-password" required></label><label>New password (16+ characters)<input name="password" type="password" autocomplete="new-password" minlength="16" required></label></div><button class="primary" type="submit">Update password</button></form>';
+}
 function teamView() {
   const t = st.team; if (!t) return '<p class="muted">Loading…</p>';
   const rows = t.members.map(m => '<tr><td><b>' + e(m.name || m.email) + '</b><small>' + e(m.email) + '</small></td><td>' + (m.role === 'seller' ? 'Seller' : 'Employee') + '</td><td>' + (m.role === 'seller' ? e(m.cities.map(k => t.cities.find(x => x.key === k)?.city).filter(Boolean).join(', ') || '—') : '—') + '</td><td>' + (m.active ? 'Active' : 'Inactive') + '</td><td class="cl-act"><button type="button" data-action="setActive" data-id="' + m.id + '" data-on="' + (m.active ? 0 : 1) + '">' + (m.active ? 'Deactivate' : 'Activate') + '</button><button type="button" data-action="pw" data-id="' + m.id + '">New password</button></td></tr>').join('');
@@ -164,7 +176,7 @@ function modalView() {
 }
 
 function render() {
-  const r = !st.me ? loginView() : st.me.role === 'employee' ? shell(employeeView()) : shell(({radar: radarView, lists: listsView, estimates: estimatesView, followups: followupsView, visits: visitsView, team: teamView})[st.tab]());
+  const r = !st.me ? loginView() : st.me.role === 'employee' ? shell(employeeView()) : shell(({radar: radarView, lists: listsView, estimates: estimatesView, followups: followupsView, visits: visitsView, team: teamView, profile: profileView})[st.tab]());
   $('#app').innerHTML = r;
   for (const i of document.querySelectorAll('[data-w]')) i.style.width = i.dataset.w + '%';
   recalc();
@@ -177,6 +189,7 @@ async function enter(tab) {
   if (tab === 'estimates') { st.estimates = (await api('/api/client/estimates')).estimates; return render(); }
   if (tab === 'followups') { st.followups = await api('/api/client/followups'); return render(); }
   if (tab === 'visits') { st.visits = (await api('/api/client/visits')).visits; return render(); }
+  if (tab === 'profile') { st.profile = await api('/api/client/profile'); return render(); }
   if (tab === 'team') { st.team = await api('/api/client/team'); return render(); }
 }
 async function openList(id) { st.listId = id; st.listData = null; render(); st.listData = await api('/api/client/list-permits?listId=' + id + '&page=' + st.f.page); render(); }
@@ -209,6 +222,7 @@ document.addEventListener('click', async ev => {
     if (a === 'rtab') { st.radarTab = id; st.f.page = 1; return load(); }
     if (a === 'list') { st.f.page = 1; return openList(id); }
     if (a === 'dellist') { await api('/api/client/lists', {op: 'delete', id: Number(id)}); st.lists = (await api('/api/client/lists')).lists; st.listId = 'fav'; return openList('fav'); }
+    if (a === 'rmphoto') { const box = t.closest('.photo-box'); box.querySelector('input[type=hidden]').value = ''; const old = box.querySelector('.avatar'), sp = document.createElement('span'); sp.className = 'avatar big'; sp.textContent = '·'; old.replaceWith(sp); return; }
     if (a === 'prev') { st.f.page = Math.max(1, st.f.page - 1); return st.tab === 'lists' ? openList(st.listId) : load(); }
     if (a === 'next') { st.f.page += 1; return st.tab === 'lists' ? openList(st.listId) : load(); }
     if (a === 'route') { const r = await api('/api/client/permits?fav=1&page=1'), stops = r.permits.filter(p => p.address).slice(0, 9).map(p => encodeURIComponent([p.address, p.city, p.state].join(', '))); if (!stops.length) return toast('Favorite some permits first.'); window.open('https://www.google.com/maps/dir/' + stops.join('/'), '_blank', 'noopener'); return; }
@@ -233,6 +247,7 @@ document.addEventListener('input', ev => { if (ev.target.closest('[data-estform]
 document.addEventListener('change', async ev => {
   const el = ev.target;
   try {
+    if (el.matches('[data-pphoto]')) { const f = el.files[0]; if (!f) return; const bmp = await createImageBitmap(f), kind = el.dataset.pphoto, sz = kind === 'co' ? 320 : 256, c = document.createElement('canvas'); c.width = c.height = sz; const k = Math.max(sz / bmp.width, sz / bmp.height), w = bmp.width * k, h = bmp.height * k; c.getContext('2d').drawImage(bmp, (sz - w) / 2, (sz - h) / 2, w, h); const url = c.toDataURL('image/jpeg', .85), box = el.closest('.photo-box'); box.querySelector('input[type=hidden]').value = url; const old = box.querySelector('.avatar'), im = document.createElement('img'); im.className = 'avatar big'; im.src = url; im.alt = ''; old.replaceWith(im); return; }
     if (el.matches('[data-photos]')) { st.modal.photos = []; for (const f of [...el.files].slice(0, 6)) st.modal.photos.push(await shrink(f)); $('#vthumbs').innerHTML = st.modal.photos.map(u => '<img src="' + u + '" alt="">').join(''); return; }
     if (el.matches('[data-city]')) { st.f.city = [...document.querySelectorAll('[data-city]')].filter(x => x.checked).map(x => x.dataset.city); return; }
     if (el.matches('[data-addlist]') && el.value) { await api('/api/client/lists', {op: 'item', id: Number(el.value), permitKey: st.drawer.permit.key, on: true}); st.drawer.lists.push(Number(el.value)); st.lists = (await api('/api/client/lists')).lists; return render(); }
@@ -258,6 +273,8 @@ document.addEventListener('submit', async ev => {
     }
     if (kind === 'feedback') { await api('/api/client/estimates', {op: 'feedback', id: Number(v.id), approve: act === 'approve', text: v.text}); st.estimates = (await api('/api/client/estimates')).estimates; render(); return toast(act === 'approve' ? 'Approved for the Owner to send.' : 'Changes requested.'); }
     if (kind === 'team') { await api('/api/client/team', {name: v.name, email: v.email, role: v.role, password: v.password, cities: new FormData(form).getAll('city')}); st.team = await api('/api/client/team'); render(); return toast('Team member added.'); }
+    if (kind === 'profile') { const body = {name: v.name, title: v.title, phone: v.phone, photo: v.photo}; if (st.profile.canEditCompany) body.company = {name: v.co_name, contactName: v.co_contactName, contactEmail: v.co_contactEmail, contactPhone: v.co_contactPhone, address: v.co_address, website: v.co_website, logo: v.logo}; st.profile = await api('/api/client/profile', body); st.me = (await api('/api/client/me')).client; render(); return toast('Profile saved.'); }
+    if (kind === 'mypw') { await api('/api/client/profile', {op: 'password', current: v.current, password: v.password}); form.reset(); return toast('Password updated.'); }
     if (kind === 'pw') { await api('/api/client/team', {op: 'setPassword', id: Number(v.id), password: v.password}); st.modal = null; render(); return toast('Password updated.'); }
   } catch (err) { if (kind === 'login') { st.error = err.message; render(); } else toast(err.message); }
 });

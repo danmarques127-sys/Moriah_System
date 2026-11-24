@@ -463,3 +463,9 @@ textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-
 .cl-li{display:grid;grid-template-columns:1fr 72px 110px 34px;gap:8px;margin-bottom:8px;align-items:center}.cl-li button.dots{padding:4px 8px;font-size:20px}
 .cl-sums{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cl-sum{display:grid;padding:12px 16px;border-radius:14px;border:1px solid var(--line);background:var(--card2)}
 .cl-sum span{font-size:13px;color:var(--muted)}.cl-sum b{font-size:24px}.cl-sum small{color:var(--muted)}.cl-sum.prev{border-color:var(--accent2);background:#251a52}.cl-sum.priv b{color:#86efac}
+.cl-prof{display:grid;grid-template-columns:150px minmax(0,1fr);gap:20px;align-items:start}
+.cl-prof .photo-box{border-right:1px solid var(--line);padding-right:18px}
+.cl-h2{margin-top:22px}
+.cl-logo{width:22px;height:22px;border-radius:6px;object-fit:cover}
+.cl-prof .avatar.big{width:96px;height:96px;font-size:30px}
+@media (max-width:700px){.cl-prof{grid-template-columns:1fr}.cl-prof .photo-box{border-right:0;padding-right:0}}

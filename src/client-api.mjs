@@ -174,3 +174,33 @@ export async function teamAction(db, owner, b, hash) {
   } else fail('Operação inválida.');
   return {ok: true};
 }
+
+// ---- Profile: personal details + photo for every account; company details + logo for the owner. ----
+const IMGDATA = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+const txt = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, ' ').trim().slice(0, n);
+const img = (v, cur) => { if (v === undefined) return cur; const s = String(v || ''); if (s && (!IMGDATA.test(s) || s.length > 200000)) fail('A imagem deve ser PNG, JPEG ou WebP de até 150 KB.'); return s; };
+export function getProfile(db, client) {
+  const me = db.prepare('SELECT name,email,phone,title,photo,role FROM client_accounts WHERE id=?').get(client.id);
+  const company = db.prepare('SELECT name,contact_name AS contactName,contact_email AS contactEmail,contact_phone AS contactPhone,address,website,logo FROM companies WHERE id=?').get(client.companyId);
+  return {me, company, canEditCompany: isOwner(client)};
+}
+export async function saveProfile(db, client, b, hash) {
+  if (b.op === 'password') {
+    const row = db.prepare('SELECT password_hash FROM client_accounts WHERE id=?').get(client.id);
+    if (!(await checkPassword(String(b.current || ''), row.password_hash))) fail('A senha atual está incorreta.');
+    if (String(b.password || '').length < 16) fail('A nova senha precisa ter pelo menos 16 caracteres.');
+    db.prepare('UPDATE client_accounts SET password_hash=? WHERE id=?').run(await hash(b.password), client.id);
+    db.prepare('DELETE FROM client_sessions WHERE client_id=? AND token_hash<>?').run(client.id, client.token_hash);
+    return {ok: true};
+  }
+  const cur = db.prepare('SELECT photo FROM client_accounts WHERE id=?').get(client.id);
+  db.prepare('UPDATE client_accounts SET name=?,phone=?,title=?,photo=? WHERE id=?').run(txt(b.name, 120), txt(b.phone, 40), txt(b.title, 80), img(b.photo, cur.photo), client.id);
+  if (b.company && isOwner(client)) {
+    const c = b.company, old = db.prepare('SELECT logo,name FROM companies WHERE id=?').get(client.companyId);
+    const name = txt(c.name, 120) || old.name, email = txt(c.contactEmail, 254);
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) fail('E-mail de contato inválido.');
+    try { db.prepare('UPDATE companies SET name=?,contact_name=?,contact_email=?,contact_phone=?,address=?,website=?,logo=? WHERE id=?').run(name, txt(c.contactName, 120), email, txt(c.contactPhone, 40), txt(c.address, 200), txt(c.website, 200), img(c.logo, old.logo), client.companyId); }
+    catch (e) { if (/UNIQUE/.test(e.message)) fail('Já existe uma empresa com esse nome.'); throw e; }
+  }
+  return getProfile(db, client);
+}

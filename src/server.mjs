@@ -11,7 +11,7 @@ import {parseUploadedFile} from './documents.mjs';
 import {checkAllSources} from './source-audit.mjs';
 import {partnersOverview,partnersAction} from './partners.mjs';
 import {listLists,listAction,listKeys,permitDetail,saveNote,listFollowups,followupAction,listEstimates,estimateAction} from './business.mjs';
-import {setFavorite,addVisit,listVisits,photoFor,listTeam,saveTeamMember,teamAction,isOwner,clientLogin,getClientSession,clientCookie,clientPermits,clientCities,recordClientUsage,portalEnabled} from './client-api.mjs';
+import {getProfile,saveProfile,setFavorite,addVisit,listVisits,photoFor,listTeam,saveTeamMember,teamAction,isOwner,clientLogin,getClientSession,clientCookie,clientPermits,clientCities,recordClientUsage,portalEnabled} from './client-api.mjs';
 import {NATIVE_MODES} from './collectors.mjs';
 import {runDailyMaintenance,automationStatus,alertEmail} from './maintenance.mjs';
 import {mailConfig,deliver} from './mailer.mjs';
@@ -71,8 +71,10 @@ export async function createApplication(options={}){
      audit(db,null,'Login de cliente',String(b.email).toLowerCase(),'client-login');res.setHeader('Set-Cookie',clientCookie(token,config.production));return send(res,200,{ok:true});
     }
     const client=getClientSession(db,req);if(!client)throw new HttpError(401,'Entre na sua conta.');
-    if(path==='/api/client/me'&&req.method==='GET')return send(res,200,{client:{email:client.email,name:client.name,company:client.company,role:client.role}});
+    if(path==='/api/client/me'&&req.method==='GET'){const pr=getProfile(db,client);return send(res,200,{client:{email:client.email,name:pr.me.name,company:pr.company.name,role:client.role,photo:pr.me.photo,logo:pr.company.logo}});}
     if(client.role==='employee'&&!['/api/client/logout'].includes(path))throw new HttpError(403,'Seu perfil de funcionário ainda não tem telas disponíveis.');
+    if(path==='/api/client/profile'&&req.method==='GET')return send(res,200,getProfile(db,client));
+    if(path==='/api/client/profile'&&req.method==='POST')return send(res,200,await saveProfile(db,client,await body(req),hashPassword));
     if(path==='/api/client/favorite'&&req.method==='POST'){const b=await body(req);return send(res,200,setFavorite(db,client,b.permitKey,!!b.on));}
     if(path==='/api/client/lists'&&req.method==='GET')return send(res,200,listLists(db,client));
     if(path==='/api/client/lists'&&req.method==='POST')return send(res,200,listAction(db,client,await body(req)));
