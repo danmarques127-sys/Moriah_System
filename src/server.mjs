@@ -10,7 +10,7 @@ import {previousMonth,monthsBetween,validatePermit} from './radar.mjs';
 import {parseUploadedFile} from './documents.mjs';
 import {checkAllSources} from './source-audit.mjs';
 import {partnersOverview,partnersAction} from './partners.mjs';
-import {clientLogin,getClientSession,clientCookie,clientPermits,recordClientUsage,portalEnabled} from './client-api.mjs';
+import {setFavorite,addVisit,listVisits,photoFor,listTeam,saveTeamMember,teamAction,isOwner,clientLogin,getClientSession,clientCookie,clientPermits,clientCities,recordClientUsage,portalEnabled} from './client-api.mjs';
 import {NATIVE_MODES} from './collectors.mjs';
 import {runDailyMaintenance,automationStatus,alertEmail} from './maintenance.mjs';
 import {mailConfig,deliver} from './mailer.mjs';
@@ -70,7 +70,17 @@ export async function createApplication(options={}){
      audit(db,null,'Login de cliente',String(b.email).toLowerCase(),'client-login');res.setHeader('Set-Cookie',clientCookie(token,config.production));return send(res,200,{ok:true});
     }
     const client=getClientSession(db,req);if(!client)throw new HttpError(401,'Entre na sua conta.');
-    if(path==='/api/client/me'&&req.method==='GET')return send(res,200,{client:{email:client.email,name:client.name,company:client.company}});
+    if(path==='/api/client/me'&&req.method==='GET')return send(res,200,{client:{email:client.email,name:client.name,company:client.company,role:client.role}});
+    if(client.role==='employee'&&!['/api/client/logout'].includes(path))throw new HttpError(403,'Seu perfil de funcionário ainda não tem telas disponíveis.');
+    if(path==='/api/client/favorite'&&req.method==='POST'){const b=await body(req);return send(res,200,setFavorite(db,client,b.permitKey,!!b.on));}
+    if(path==='/api/client/visits'&&req.method==='GET')return send(res,200,{visits:listVisits(db,client,url.searchParams.get('permitKey')||'')});
+    if(path==='/api/client/visits'&&req.method==='POST'){if(!uploadRate('cv:'+client.id))throw new HttpError(429,'Aguarde para enviar outra visita.');return send(res,201,addVisit(db,client,allSources(db),await body(req)));}
+    if(path==='/api/client/photo'&&req.method==='GET'){const ph=photoFor(db,client,url.searchParams.get('id'));if(!ph)throw new HttpError(404,'Foto não encontrada.');res.writeHead(200,{'Content-Type':ph.mime,'Cache-Control':'private, max-age=3600'});return res.end(ph.data);}
+    if(path.startsWith('/api/client/team')){
+     if(!isOwner(client))throw new HttpError(403,'Somente o responsável pela empresa gerencia a equipe.');
+     if(path==='/api/client/team'&&req.method==='GET')return send(res,200,listTeam(db,client,allSources(db)));
+     if(path==='/api/client/team'&&req.method==='POST'){const b=await body(req);if(b.op)return send(res,200,await teamAction(db,client,b,hashPassword));return send(res,200,await saveTeamMember(db,client,allSources(db),b,hashPassword));}
+    }
     if(path==='/api/client/logout'&&req.method==='POST'){db.prepare('DELETE FROM client_sessions WHERE token_hash=?').run(client.token_hash);res.setHeader('Set-Cookie',clientCookie('',config.production,0));return send(res,200,{ok:true});}
     if(path==='/api/client/permits'&&req.method==='GET'){const q=Object.fromEntries(url.searchParams),r=clientPermits(db,client,q,allSources(db));recordClientUsage(db,client,q.export==='1'?'exported':'seen',r.permits.length);return send(res,200,r);}
     throw new HttpError(404,'Operação não encontrada.');
