@@ -22,7 +22,7 @@ const pill = s => '<span class="pill ' + (STATUS[s]?.[1] || '') + '">' + e(STATU
 
 const brand = '<a class="brand" href="/client"><img src="/logo-mark.png" alt="" class="brand-img"><span class="brand-text"><b>MORIAH</b><small>SYSTEM</small></span></a>';
 function loginView() {
-  return '<main class="login"><section class="lcard"><div class="lbrand"><img src="/logo-mark.png" alt=""><b>MORIAH</b><small>SYSTEM</small></div><h1>Sign in</h1><form data-form="login"><label>Email<input name="email" type="email" required autocomplete="username"></label><label>Password<input name="password" type="password" required autocomplete="current-password"></label>' + (st.error ? '<p class="form-error" role="alert"><span>' + e(st.error) + '</span></p>' : '') + '<button class="primary">Sign in</button></form></section></main>';
+  return '<main class="login"><section class="lcard"><div class="lbrand"><img src="/logo-mark.png" alt=""><b>MORIAH</b><small>SYSTEM</small></div><h1>Sign in</h1><form data-form="login"><label>Email or username<input name="email" type="text" required autocomplete="username" autocapitalize="none" spellcheck="false"></label><label>Password<input name="password" type="password" required autocomplete="current-password"></label>' + (st.error ? '<p class="form-error" role="alert"><span>' + e(st.error) + '</span></p>' : '') + '<button class="primary">Sign in</button></form></section></main>';
 }
 const NAV = () => owner()
   ? [['radar', 'Permit Radar', 'radar'], ['lists', 'My Lists', 'list'], ['estimates', 'Estimates', 'calc'], ['followups', 'Follow-ups', 'cal'], ['visits', 'Site visits', 'cam'], ['team', 'Team', 'users']]

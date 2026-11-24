@@ -60,3 +60,14 @@ test('favorites and site visits: seller sees own, owner sees all, photos are pri
   assert.throws(() => addVisit(db, seller, SRC, {permitKey: key, photos: ['data:text/html;base64,AAAA']}), /Foto inválida/);
   assert.ok(v.id);
 });
+
+import {seedDemoClients} from '../scripts/demo-clients.mjs';
+import {clientLogin} from '../src/client-api.mjs';
+test('demo clients can sign in with a user name, are idempotent, and have the right roles', async () => {
+  const db = openDatabase(':memory:');
+  seedDemoClients(db); seedDemoClients(db);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM client_accounts').get().n, 3);
+  assert.equal(db.prepare("SELECT role FROM client_accounts WHERE email='johnhmbrothersinsulation'").get().role, 'seller');
+  assert.ok(await clientLogin(db, 'HomeroSampaio', 'Ahesqueci1'));
+  assert.equal(await clientLogin(db, 'homerosampaio', 'wrong-password-xx'), null);
+});
