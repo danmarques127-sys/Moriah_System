@@ -99,7 +99,7 @@ export async function fetchBinary(url, {hosts = [], fetchImpl, timeout = 45000} 
 }
 export function detectFormat({buffer, contentType = ''}) {
   if (buffer.subarray(0, 4).toString('latin1') === '%PDF') return 'pdf';
-  if (buffer.length >= 4 && buffer.readUInt32LE(0) === 0x04034b50) return 'xlsx';
+  if (buffer.length >= 4 && buffer.readUInt32LE(0) === 0x04034b50) return buffer.includes('word/document.xml') ? 'docx' : 'xlsx';
   const head = buffer.toString('utf8', 0, 400).toLowerCase();
   if (/text\/html/.test(contentType) || head.includes('<html') || head.includes('<!doctype html')) return 'html';
   return 'text';
@@ -342,9 +342,18 @@ export function periodRank(text) {
 }
 
 /* ---------- orchestration ---------- */
+// Word documents: paragraphs become lines and table cells are separated by two spaces, like a PDF layout.
+export function docxToText(buf) {
+  const xml = unzip(buf).get('word/document.xml');
+  if (!xml) throw new Error('Arquivo DOCX inválido.');
+  return decode(xml.toString('utf8').replace(/<w:tab\/>/g, ' ').replace(/<\/w:tc>/g, '  ').replace(/<\/w:p>(?!\s*<\/w:tc>)/g, '\n').replace(/<\/w:tr>/g, '\n').replace(/<[^>]+>/g, '')).replace(/[ \t]+\n/g, '\n');
+}
+// Keeps the first lines of what was read, so an unrecognized layout can be diagnosed from the error message alone.
+const withPeek = (rows, text) => { rows.peek = String(text).split(/\r?\n/).map(l => l.trim()).filter(Boolean).slice(0, 4).map(l => l.slice(0, 110)).join(' ¶ '); return rows; };
 async function parseDocument(doc, cfg, month, deps = {}) {
   const format = detectFormat(doc);
-  if (format === 'pdf') return parseTextRows(await (deps.pdfToText || pdfToText)(doc.buffer), cfg, month);
+  if (format === 'pdf') { const text = await (deps.pdfToText || pdfToText)(doc.buffer); return withPeek(parseTextRows(text, cfg, month), text); }
+  if (format === 'docx') { const text = docxToText(doc.buffer); return withPeek(parseTextRows(text, cfg, month), text); }
   if (format === 'xlsx') {
     const sheets = readXlsx(doc.buffer), named = sheets.filter(s => periodMatches(s.name, month, 'month') || new RegExp('^0?' + Number(month.slice(5)) + '[-/ .]').test(s.name));
     return (named.length ? named : sheets).flatMap(s => mapStructured(s.rows, cfg, month));
@@ -354,7 +363,7 @@ async function parseDocument(doc, cfg, month, deps = {}) {
     const rows = mapStructured(csvRows(text), cfg, month);
     if (rows.length) return rows;
   }
-  return parseTextRows(text, cfg, month);
+  return withPeek(parseTextRows(text, cfg, month), text);
 }
 export function toRecord(source, row, month, cfg, url) {
   if (!row.issued || !row.issued.startsWith(month)) return null;
@@ -400,6 +409,16 @@ export async function collectDocuments(source, month, deps = {}) {
     const [yy, mm] = month.split('-').map(Number), wanted = [month];
     if (cfg.fileLag) wanted.push(new Date(Date.UTC(yy, mm, 1)).toISOString().slice(0, 7));
     const matchesPeriod = text => wanted.some(w => periodMatches(text, w, scope));
+    if (cfg.inferYear) {
+      // Lists of "October, September, ... January, December ..." without any year: the order tells the year (newest first).
+      const now = (deps.now ? deps.now() : new Date()), monthOf = t => { const i = FULL.findIndex((f, k) => new RegExp('^(?:' + f + '|' + SHORT[k] + (k === 8 ? '|sept' : '') + ')\\.?$', 'i').test(t.trim())); return i + 1; };
+      let year = now.getUTCFullYear(), prev = 0;
+      for (const a of anchors) {
+        const m = monthOf(a.text); if (!m) continue;
+        if (!prev && m > now.getUTCMonth() + 1) year--; else if (prev && m > prev) year--;
+        prev = m; a.ctx = String(year);
+      }
+    }
     for (const raw of anchors) {
       // A link without its own year ("October", "3rd Quarter") takes the year of the heading above it.
       const a = /(?<!\d)20\d{2}(?!\d)/.test(raw.text + ' ' + slugOf(raw.href)) || !raw.ctx ? raw : {...raw, text: raw.text + ' ' + raw.ctx};
@@ -427,7 +446,7 @@ export async function collectDocuments(source, month, deps = {}) {
       return {status: 'pending', records: [], message: 'Relatório de ' + label + ' não publicado/localizado na página da cidade. Isso não significa zero permits.' + sample + (skippedHosts.size ? ' Links em domínio não revisado ignorados: ' + [...skippedHosts].join(', ') + '.' : '') + (notes.length ? ' ' + notes.slice(0, 2).join(' ') : '')};
     }
   }
-  const records = new Map(), issuedDates = []; let parsedRows = 0, files = 0;
+  const records = new Map(), issuedDates = []; let parsedRows = 0, files = 0, lastPeek = '', undatedSample = '';
   for (const a of candidates) {
     let doc = await fetchBinary(a.href, net), evidence = a.href; await pause(300);
     if (cfg.followItems !== false && detectFormat(doc) === 'html') {
@@ -435,14 +454,14 @@ export async function collectDocuments(source, month, deps = {}) {
       const inner = extractAnchors(doc.buffer.toString('utf8'), doc.url).find(x => x.href !== a.href && /\.(?:pdf|xlsx?|csv)(?:[?#]|$)|DocumentCenter\/View|ViewFile|showpublisheddocument/i.test(x.href) && allowedHost(new URL(x.href).hostname));
       if (inner) { doc = await fetchBinary(inner.href, net); evidence = inner.href; await pause(300); }
     }
-    const rows = await parseDocument(doc, cfg, month, deps); files++; parsedRows += rows.length;
-    for (const row of rows) { if (row.issued) issuedDates.push(row.issued); const rec = toRecord(source, row, month, cfg, evidence); if (rec && !records.has(rec.id)) records.set(rec.id, rec); }
+    const rows = await parseDocument(doc, cfg, month, deps); files++; parsedRows += rows.length; if (!rows.length) lastPeek = rows.peek || '';
+    for (const row of rows) { if (row.issued) issuedDates.push(row.issued); else if (!undatedSample) undatedSample = String(row.raw || '').slice(0, 160); const rec = toRecord(source, row, month, cfg, evidence); if (rec && !records.has(rec.id)) records.set(rec.id, rec); }
   }
   if (!files) return {status: 'pending', records: [], message: 'Arquivo de ' + label + ' não pôde ser aberto. ' + notes.join(' ')};
-  if (!parsedRows) throw new Error('Layout do documento não reconhecido (nenhuma linha de permit encontrada; o PDF pode ser digitalizado ou o formato mudou). Importe manualmente este mês.');
+  if (!parsedRows) throw new Error('Layout do documento não reconhecido (nenhuma linha de permit encontrada; o PDF pode ser digitalizado ou o formato mudou). Importe manualmente este mês.' + (lastPeek ? ' Início do que foi lido: ' + lastPeek : ' O arquivo não trouxe texto legível.'));
   if (!records.size) {
     issuedDates.sort();
-    return {status: 'pending', records: [], message: files + ' documento(s) lido(s), mas nenhum permit emitido em ' + label + '.' + (issuedDates.length ? ' O que foi lido cobre ' + issuedDates[0] + ' a ' + issuedDates.at(-1) + '.' : '') + ' Pode não estar publicado ainda. Isso não significa zero permits.'};
+    return {status: 'pending', records: [], message: files + ' documento(s) lido(s), mas nenhum permit emitido em ' + label + '.' + (issuedDates.length ? ' O que foi lido cobre ' + issuedDates[0] + ' a ' + issuedDates.at(-1) + '.' : ' As ' + parsedRows + ' linhas lidas não trazem data reconhecida. Exemplo de linha: «' + undatedSample + '»') + ' Pode não estar publicado ainda. Isso não significa zero permits.'};
   }
   const list = [...records.values()], proxyNote = cfg.dateKind && cfg.dateKind !== 'issued' ? ' A data usada é a de ' + ({paid: 'pagamento', submitted: 'submissão', range: 'período do relatório'}[cfg.dateKind] || cfg.dateKind) + ', não a de emissão.' : '';
   const message = files + ' documento(s) lido(s); ' + list.length + ' registro(s) em ' + label + '.' + (cfg.verified ? '' : ' Layout ainda não validado contra o documento real: conferir contagem e descrições.') + proxyNote + (notes.length ? ' ' + notes.slice(0, 2).join(' ') : '');

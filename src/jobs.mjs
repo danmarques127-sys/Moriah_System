@@ -11,7 +11,7 @@ export function worker(db){
  let busy=false;
  return async()=>{if(busy)return;const job=db.prepare("SELECT * FROM jobs WHERE status='queued' ORDER BY created_at LIMIT 1").get();if(!job)return;busy=true;
  try{db.prepare("UPDATE jobs SET status='running',updated_at=? WHERE id=?").run(timestamp(),job.id);
- const source=findSource(db,job.source_id),result=await collect(source,job.month);
+ const source=findSource(db,job.source_id);let result;for(let attempt=1;;attempt++){try{result=await collect(source,job.month);break;}catch(err){if(attempt>=3||!/HTTP 50[234]/.test(String(err.message)))throw err;await new Promise(r=>setTimeout(r,attempt*2500));}}
  if(!['complete','partial','pending'].includes(result.status)||!Array.isArray(result.records))throw new Error('Resposta inválida do coletor municipal.');
  if(result.status==='pending'&&result.records.length)throw new Error('Fonte pendente não pode declarar registros coletados.');
  const saved=result.status==='pending'?{added:0,updated:0,count:0}:upsertPermits(db,source,result.records);
