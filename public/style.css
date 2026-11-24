@@ -355,3 +355,16 @@ td.rowact{white-space:nowrap}
 
 .wordmark{width:250px}
 .wordmark path,.wordmark circle{stroke-width:12}
+
+/* login v5: bigger, aligned wordmark with one clean slit through every letter */
+.login-wrap{width:min(540px,94vw)}
+.login .panel{width:min(440px,100%)}
+.login-mark{width:104px;height:104px;border-radius:26px}
+.login-brand{gap:16px}
+.wordmark{width:330px;filter:drop-shadow(0 0 16px #7c3aed99)}
+.wordmark path,.wordmark rect{stroke-width:14}
+.login-brand .brand-text small{font-size:22px;letter-spacing:.66em;margin-top:2px}
+@media (max-width:600px){.wordmark{width:200px}.login-mark{width:64px;height:64px}}
+.login-brand .brand-text small.sys{display:flex;justify-content:space-between;width:330px;font-size:24px;font-weight:800;letter-spacing:0;color:#c9a0ff;text-shadow:0 0 14px #9b5cff,0 0 2px #e6d4ff}
+.login-brand .brand-text small.sys i{font-style:normal}
+@media (max-width:600px){.login-brand .brand-text small.sys{width:200px;font-size:15px}}
