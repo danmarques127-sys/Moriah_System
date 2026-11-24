@@ -1,6 +1,7 @@
 import {randomBytes,scryptSync} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {createApplication} from '../src/server.mjs';
+import {seedDemoClients} from './demo-clients.mjs';
 
 // Sign-in e-mail of the test master (user name "mestre"). Override with MASTER_EMAIL.
 const MASTER_EMAIL=process.env.MASTER_EMAIL||'marquesdangelo@hotmail.com',OLD_MASTER_EMAIL='mestre@permit-finder.example';
@@ -22,6 +23,7 @@ export async function createTestApplication(options={}){
  const key=scryptSync(process.env.TEST_PASSWORD||'shazam123@',salt,64,{N:32768,r:8,p:1,maxmem:67108864});
  app.db.prepare('UPDATE users SET password_hash=? WHERE email=?').run(salt+':'+key.toString('hex'),app.config.testLoginEmail);
  app.db.prepare('DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE email=?)').run(app.config.testLoginEmail);
+ seedDemoClients(app.db); // demo business accounts (H&M Brothers Insulation)
  return app;
 }
 
@@ -30,6 +32,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  app.server.listen(Number(process.env.PORT||3000),'0.0.0.0',()=>{
   console.log('MODO DE TESTE — login: mestre. Use a senha de teste combinada.');
   console.log('Abra: '+app.config.appUrl);
+  console.log('Clientes demo em /client: homerosampaio, hmbrothersinsulation (donos) e johnhmbrothersinsulation (vendedor).');
   console.log('Dados de teste separados: data/permit-finder-test.sqlite. Mantenha a porta privada.');
  });
  for(const signal of ['SIGTERM','SIGINT'])process.on(signal,()=>app.close().then(()=>process.exit(0)));
