@@ -15,3 +15,5 @@ export function openDatabase(path){
 export function transaction(db,fn){db.exec('BEGIN IMMEDIATE');try{const result=fn();db.exec('COMMIT');return result;}catch(e){db.exec('ROLLBACK');throw e;}}
 export const timestamp=()=>new Date().toISOString();
 export function audit(db,workspace,event){db.prepare('INSERT INTO audit(workspace_id,event,created_at) VALUES(?,?,?)').run(workspace,event,timestamp());}
+// Every failure the administrator should be able to read later (area: collection, source-link, import, server).
+export function logError(db,area,message,{sourceId='',month=''}={}){try{db.prepare('INSERT INTO error_log(created_at,area,source_id,month,message) VALUES(?,?,?,?,?)').run(timestamp(),area,sourceId,month,String(message||'Erro sem mensagem.').slice(0,2000));db.prepare('DELETE FROM error_log WHERE id<=(SELECT MAX(id)-2000 FROM error_log)').run();}catch{/* logging must never break a request */}}

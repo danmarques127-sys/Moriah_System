@@ -28,3 +28,13 @@ test('admin tab shows accounts, health filters and escapes values',()=>{
  assert.doesNotMatch(html,/<td><b>Beta/); // manual cities are hidden by the default "needs attention" filter
  x.s.adminFilter='all';x.render();assert.match(x.root.innerHTML,/Import by hand\./);
 });
+
+test('errors tab lists every recorded failure with its reason and filters by area',()=>{
+ const x=ui();x.s.me={role:'owner',email:'o@x.test',systemAdmin:true};x.s.settings=structuredClone(DEFAULT_SETTINGS);
+ x.s.radar={total:0,recordsLoaded:0,cityCounts:[],projects:[],pages:1,page:1,coverage:[],months:['2026-10']};x.s.tab='errors';
+ x.s.admin={users:[],sources:[{id:'danvers',city:'Danvers',state:'MA',mode:'documents',automatic:true,reason:'',url:'https://d.gov'}],coverage:[],checks:[],failedJobs:[],
+  errors:[{id:2,createdAt:'2026-11-23T10:00:00Z',area:'collection',sourceId:'danvers',month:'2026-10',message:'Fonte respondeu HTTP 403 <i>x</i>'},{id:1,createdAt:'2026-11-22T10:00:00Z',area:'import',sourceId:'',month:'',message:'Arquivo inválido'}]};
+ x.render();let html=x.root.innerHTML;
+ assert.match(html,/Danvers/);assert.match(html,/HTTP 403 &lt;i&gt;/);assert.match(html,/Arquivo inválido/);assert.match(html,/City collection/);
+ x.s.errorArea='import';x.render();html=x.root.innerHTML;assert.doesNotMatch(html,/HTTP 403/);assert.match(html,/Arquivo inválido/);
+});

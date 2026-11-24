@@ -3,7 +3,7 @@ const $=s=>document.querySelector(s),e=v=>String(v??'').replace(/[&<>"']/g,c=>({
 const money=v=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(v||0),n=(v,d=2)=>Number(v||0).toLocaleString('en-US',{maximumFractionDigits:d}),date=v=>v?new Date(v.length===10?v+'T12:00:00Z':v).toLocaleDateString('en-US'):'—';
 const current=new Date(),monthParts=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit'}).formatToParts(current),year=Number(monthParts.find(p=>p.type==='year').value),mon=Number(monthParts.find(p=>p.type==='month').value);
 const previous=new Date(Date.UTC(year,mon-2,1)).toISOString().slice(0,7),first=new Date(Date.UTC(year,mon-4,1)).toISOString().slice(0,7);
-const s={me:null,admin:null,adminFilter:'attention',settings:null,tab:'radar',radar:null,sources:[],projects:[],estimates:[],jobs:[],members:[],finances:null,staff:null,filters:{from:first,to:previous,state:'Todos',cities:[],mode:'qualified',kind:'All',tier:'All',status:'All',order:'cities',q:'',includeArchived:'',page:1},chosen:null,project:null,estimate:null,result:null,dirty:true,modal:null,upload:null,busy:false};
+const s={me:null,admin:null,adminFilter:'attention',errorArea:'all',settings:null,tab:'radar',radar:null,sources:[],projects:[],estimates:[],jobs:[],members:[],finances:null,staff:null,filters:{from:first,to:previous,state:'Todos',cities:[],mode:'qualified',kind:'All',tier:'All',status:'All',order:'cities',q:'',includeArchived:'',page:1},chosen:null,project:null,estimate:null,result:null,dirty:true,modal:null,upload:null,busy:false};
 const statuses=['Novo','Analisar','Contatado','Orçamento enviado','Ganho','Perdido','Descartado'];const statusLabel={'Novo':'New','Analisar':'Review','Contatado':'Contacted','Orçamento enviado':'Proposal sent','Ganho':'Won','Perdido':'Lost','Descartado':'Discarded'};
 const opt=(value,label,selected)=>'<option value="'+e(value)+'"'+(value===selected?' selected':'')+'>'+e(label)+'</option>';
 const input=(label,name,value='',type='text',extra='')=>'<label>'+e(label)+'<input name="'+e(name)+'" type="'+type+'" value="'+e(value)+'" '+extra+'></label>';
@@ -26,7 +26,7 @@ async function uploadFile(u,confirm){
  const res=await fetch('/api/import-file?'+q,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/octet-stream','X-CSRF-Token':s.csrf||''},body:u.file});
  const j=await res.json();if(!res.ok)throw new Error(j.error||'File import failed.');return j;
 }
-function header(){return '<header class="top"><a class="brand" href="/"><span class="brand-mark">MS</span><span>Moriah System<small>PERMIT INTELLIGENCE · BETA</small></span></a><nav>'+[['radar','Permit Radar'],['projects','Projects & Estimates'],['payments','Payments'],['employees','Employees'],['coverage','Sources & Coverage'],...(s.me.systemAdmin?[['admin','Admin']]:[]),['settings','Settings']].map(([id,label])=>action('tab',label,id,s.tab===id?'active':'')).join('')+'</nav><div class="account"><span>'+e(s.me.email)+'</span>'+action('logout','Sign out')+'</div></header>';}
+function header(){return '<header class="top"><a class="brand" href="/"><span class="brand-mark">MS</span><span>Moriah System<small>PERMIT INTELLIGENCE · BETA</small></span></a><nav>'+[['radar','Permit Radar'],['projects','Projects & Estimates'],['payments','Payments'],['employees','Employees'],['coverage','Sources & Coverage'],...(s.me.systemAdmin?[['admin','Admin'],['errors','Errors']]:[]),['settings','Settings']].map(([id,label])=>action('tab',label,id,s.tab===id?'active':'')).join('')+'</nav><div class="account"><span>'+e(s.me.email)+'</span>'+action('logout','Sign out')+'</div></header>';}
 function filters(){return '<form class="filterbar" data-form="filters">'+input('From','from',s.filters.from,'month','required')+input('To','to',s.filters.to,'month','required')+'<label>State<select name="state">'+['Todos','MA','CT','RI'].map(x=>opt(x,x==='Todos'?'All states':x,s.filters.state)).join('')+'</select></label><details class="cities"><summary>Cities · '+(s.filters.cities.length?s.filters.cities.length+' selected':'All')+'</summary><div class="city-picker"><input type="search" placeholder="Search cities…" data-city-search aria-label="Search cities">'+action('allCities','Clear city selection')+s.sources.filter(x=>s.filters.state==='Todos'||x.state===s.filters.state).map(c=>'<label class="city-option"><input type="checkbox" data-city="'+e(c.id)+'" '+(s.filters.cities.includes(c.id)?'checked':'')+'>'+e(c.city)+' <small>'+c.state+'</small></label>').join('')+'</div></details><label class="search-label">Search<input name="q" value="'+e(s.filters.q)+'" placeholder="Address, permit or contractor"></label><label class="archive-toggle"><input type="checkbox" name="includeArchived" value="1" '+(s.filters.includeArchived==='1'?'checked':'')+'> Include archived (12+ months)</label><button class="primary" type="submit">Search permits</button></form>';}
 function radarView(){
  const d=s.radar;if(!d)return '<p class="empty">Loading projects…</p>';
@@ -75,6 +75,14 @@ function adminView(){
  +shown.map(r=>'<tr><td><b>'+e(r.src.city)+'</b> <small>'+e(r.src.state)+'</small></td><td><span class="badge">'+e(labels[r.level])+'</span></td><td>'+r.counts.complete+' / '+r.counts.partial+' / '+r.counts.pending+' / '+r.counts.failed+'</td><td>'+(r.good?e(r.good.month)+' · '+r.good.count+' permits':'—')+'</td><td>'+e(r.bad?r.bad.message:(r.src.reason||'No collection yet.'))+'</td><td>'+(r.check?(r.check.ok?'OK':'<b>Problem</b>')+' · '+e(r.check.note)+' <small>'+date(r.check.checkedAt)+'</small>':'<small>not checked</small>')+'</td></tr>').join('')
  +'</tbody></table></div></section>';
 }
+function errorsView(){
+ const d=s.admin;if(!d)return '<section class="title"><div><p class="eyebrow">ADMINISTRATOR</p><h1>Errors.</h1><p>Loading…</p></div></section>';
+ const names={collection:'City collection','source-link':'City link check',import:'File import',server:'Server'},byId=new Map(d.sources.map(x=>[x.id,x]));
+ const all=d.errors||[],shown=all.filter(x=>s.errorArea==='all'||x.area===s.errorArea);
+ const opts=[['all','All areas'],...Object.entries(names)].map(([v,l])=>opt(v,l+(v==='all'?' ('+all.length+')':' ('+all.filter(x=>x.area===v).length+')'),s.errorArea)).join('');
+ return '<section class="title"><div><p class="eyebrow">ADMINISTRATOR</p><h1>Errors.</h1><p>Every failure recorded by the system, newest first, with the full reason. Old permits are never deleted when a collection fails.</p></div><div class="actions">'+action('retryFailed','Retry failed collections')+action('checkSources','Check source links','','primary')+'</div></section>'
+ +'<section class="panel"><label>Area<select data-error-area>'+opts+'</select></label>'+(shown.length?'<div class="table-scroll"><table><thead><tr><th>When</th><th>Area</th><th>City</th><th>Month</th><th>Reason</th></tr></thead><tbody>'+shown.map(x=>'<tr><td>'+date(x.createdAt)+'</td><td><span class="badge">'+e(names[x.area]||x.area)+'</span></td><td>'+e(byId.get(x.sourceId)?.city||x.sourceId||'—')+'</td><td>'+e(x.month||'—')+'</td><td>'+e(x.message)+'</td></tr>').join('')+'</tbody></table></div>':'<p>No errors recorded.</p>')+'</section>';
+}
 function paymentsView(){
  const data=s.finances||{entries:[],summary:{incomeCents:0,expenseCents:0,netCents:0}},summary=data.summary;
  return '<section class="title"><div><p class="eyebrow">FINANCIAL OPERATIONS</p><h1>Payments & Cash Flow</h1><p>Record income and expenses for your workspace. This is a manual ledger, not a bank connection.</p></div></section>'+
@@ -105,7 +113,7 @@ function modalView(){
 }
 function render(){
  const root=$('#app');if(!s.me){root.innerHTML='<main class="login"><a class="brand" href="/"><span class="brand-mark">MS</span><span>Moriah System<small>PERMIT INTELLIGENCE · BETA</small></span></a><section class="panel"><p class="eyebrow">WELCOME TO YOUR WORKSPACE</p><h1>Projects and proposals.<br>One place.</h1><p>Sign in to your company account.</p><form data-form="login">'+input('Email or username','email','','text','required autocomplete="username"')+input('Password','password','','password','required autocomplete="current-password"')+'<button class="primary">Sign in</button></form></section><small>Sem serviços of IA no funcionamento. Acesso e dados protegidos pelo seu servidor.</small></main>';return;}
- root.innerHTML=header()+'<main class="workspace">'+(s.tab==='radar'?radarView():s.tab==='projects'?projectsView():s.tab==='estimate'?estimateView():s.tab==='coverage'?coverageView():s.tab==='admin'?adminView():s.tab==='payments'?paymentsView():s.tab==='employees'?employeesView():settingsView())+'<footer class="app-footer">Moriah System · Permit Intelligence <span>Radar → Projetos → Estimativas → Propostas</span></footer></main>'+modalView()+'<input id="import-file" type="file" accept=".json,application/json" hidden>';
+ root.innerHTML=header()+'<main class="workspace">'+(s.tab==='radar'?radarView():s.tab==='projects'?projectsView():s.tab==='estimate'?estimateView():s.tab==='coverage'?coverageView():s.tab==='admin'?adminView():s.tab==='errors'?errorsView():s.tab==='payments'?paymentsView():s.tab==='employees'?employeesView():settingsView())+'<footer class="app-footer">Moriah System · Permit Intelligence <span>Radar → Projetos → Estimativas → Propostas</span></footer></main>'+modalView()+'<input id="import-file" type="file" accept=".json,application/json" hidden>';
  if(s.me.role==='viewer')for(const el of root.querySelectorAll('button[data-action="newEstimate"],button[data-action="newProject"],button[data-action="convert"],button[data-action="calculate"],button[data-action="saveEstimate"]'))el.disabled=true;
  if(s.me.role!=='owner'&&s.tab==='settings')for(const el of root.querySelectorAll('form[data-form="settings"] input,form[data-form="settings"] textarea,form[data-form="settings"] button'))el.disabled=true;
 }
@@ -120,14 +128,14 @@ function proposal(quote){
 }
 
 async function run(task){if(s.busy)return;s.busy=true;document.body.classList.add('busy');try{await task();}catch(err){notice(err.message,true);}finally{s.busy=false;document.body.classList.remove('busy');}}
-async function navigate(tab){s.chosen=null;s.modal=null;s.tab=tab;if(tab==='payments')s.finances=await api('/api/finances');if(tab==='employees')s.staff=await api('/api/employees');if(tab==='settings'&&s.me.role==='owner')s.members=(await api('/api/members')).members;if(tab==='coverage')s.jobs=(await api('/api/jobs')).jobs;if(tab==='admin'&&s.me.systemAdmin)s.admin=await api('/api/admin/overview');await refresh();}
+async function navigate(tab){s.chosen=null;s.modal=null;s.tab=tab;if(tab==='payments')s.finances=await api('/api/finances');if(tab==='employees')s.staff=await api('/api/employees');if(tab==='settings'&&s.me.role==='owner')s.members=(await api('/api/members')).members;if(tab==='coverage')s.jobs=(await api('/api/jobs')).jobs;if((tab==='admin'||tab==='errors')&&s.me.systemAdmin)s.admin=await api('/api/admin/overview');await refresh();}
 async function collectSelected(id){
  if(!s.me.systemAdmin)throw new Error('Somente o administrador do sistema pode iniciar coletas.');
  const ids=id?[id]:s.sources.filter(native).filter(c=>(s.filters.state==='Todos'||c.state===s.filters.state)&&(!s.filters.cities.length||s.filters.cities.includes(c.id))).map(c=>c.id);
  if(!ids.length){notice('Selected cities have no automated collector yet. See Sources & Coverage for their official reports.',true);return;}
  const r=await api('/api/jobs',{sources:ids,from:s.filters.from,to:s.filters.to});notice(r.queued+' source/month queries queued. Results will refresh when collection finishes.');s.poll=true;await pollJobs();
 }
-async function pollJobs(){if(!s.me)return;s.jobs=(await api('/api/jobs')).jobs;const active=s.jobs.some(j=>['queued','running'].includes(j.status));if(s.tab==='coverage')render();if(s.poll&&!active){s.poll=false;await radar();if(s.tab==='admin')s.admin=await api('/api/admin/overview');render();notice('Collection finished. Check coverage for incomplete sources.');}}
+async function pollJobs(){if(!s.me)return;s.jobs=(await api('/api/jobs')).jobs;const active=s.jobs.some(j=>['queued','running'].includes(j.status));if(s.tab==='coverage')render();if(s.poll&&!active){s.poll=false;await radar();if(['admin','errors'].includes(s.tab))s.admin=await api('/api/admin/overview');render();notice('Collection finished. Check coverage for incomplete sources.');}}
 async function importPermits(file){
  if(!file)return;if(file.size>12000000)throw new Error('Use arquivos JSON of até 12 MB; o envio é dividido em lotes.');
  const obj=JSON.parse(await file.text()),records=Array.isArray(obj)?obj:obj.permits||obj.records;if(!Array.isArray(records))throw new Error('O JSON precisa conter records ou permits.');
@@ -167,7 +175,7 @@ document.addEventListener('click',event=>{
   if(a==='checkSources'){const r=await api('/api/admin/check-sources',{});notice('Checking '+r.started+' source pages in the background. Reopen this page in about a minute.');return;}
   if(a==='retryFailed'){const r=await api('/api/admin/retry-failed',{});notice(r.queued+' failed collections queued again.');s.poll=true;return;}
   if(a==='openUpload'){s.upload=null;s.modal='upload';return render();}
-  if(a==='confirmUpload'){const r=await uploadFile(s.upload,true);s.modal=null;s.upload=null;await radar();if(s.tab==='admin')s.admin=await api('/api/admin/overview');render();notice(r.added+' new and '+r.updated+' updated. Manual coverage is marked partial.');return;}
+  if(a==='confirmUpload'){const r=await uploadFile(s.upload,true);s.modal=null;s.upload=null;await radar();if(['admin','errors'].includes(s.tab))s.admin=await api('/api/admin/overview');render();notice(r.added+' new and '+r.updated+' updated. Manual coverage is marked partial.');return;}
   if(a==='newSource'){s.modal='source';return render();}
   if(a==='import'){$('#import-file').click();return;}
  });
@@ -187,6 +195,7 @@ document.addEventListener('change',event=>{
  const el=event.target;
  if(el.dataset.city){s.filters.cities=el.checked?[...new Set([...s.filters.cities,el.dataset.city])]:s.filters.cities.filter(x=>x!==el.dataset.city);const picker=el.closest('details');if(picker){const summary=picker.querySelector('summary');if(summary)summary.textContent='Cities · '+(s.filters.cities.length?s.filters.cities.length+' selected':'All');picker.open=false;}return;}
  if(el.name==='state'&&el.closest('[data-form="filters"]')){s.filters.state=el.value;s.filters.cities=[];const form=el.closest('form');s.filters.from=form.elements.from.value;s.filters.to=form.elements.to.value;s.filters.q=form.elements.q.value;return render();}
+ if(el.hasAttribute('data-error-area')){s.errorArea=el.value;return render();}
  if(el.hasAttribute('data-admin-filter')){s.adminFilter=el.value;return render();}
  if(el.dataset.filter){s.filters[el.dataset.filter]=el.value;s.filters.page=1;return run(refresh);}
  if(el.id==='import-file')return run(()=>importPermits(el.files[0]));

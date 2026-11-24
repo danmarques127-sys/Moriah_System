@@ -43,3 +43,14 @@ test('admin overview lists accounts without secrets and is closed to non-admins'
   app.db.prepare('UPDATE users SET system_admin=0').run();
   assert.equal((await fetch(base + '/api/admin/overview', {headers: {Cookie: cookie}})).status, 403);
 });
+
+test('failures are written to the error log with area, city, month and reason', async () => {
+  const {logError} = await import('../src/db.mjs');
+  const db = openDatabase(':memory:');
+  logError(db, 'collection', 'HTTP 403', {sourceId: 'danvers', month: '2026-10'});
+  await checkAllSources(db, [source], {fetchImpl: async () => res(404), pause: async () => {}});
+  const rows = db.prepare('SELECT area,source_id AS sourceId,month,message FROM error_log ORDER BY id').all();
+  assert.deepEqual(rows.map(r => r.area), ['collection', 'source-link']);
+  assert.equal(rows[0].message, 'HTTP 403'); assert.equal(rows[0].month, '2026-10'); assert.match(rows[1].message, /HTTP 404/);
+  db.close();
+});

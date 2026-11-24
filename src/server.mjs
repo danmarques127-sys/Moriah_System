@@ -2,7 +2,7 @@ import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
-import {openDatabase,audit,timestamp} from './db.mjs';
+import {openDatabase,audit,timestamp,logError} from './db.mjs';
 import {bootstrap,workspaceSettings,saveSettings,saveProject,getProject,listProjects,saveEstimate,getEstimate,listEstimates,saveReview,radarData,allSources,findSource,upsertPermits,setCoverage,addSource,createMember} from './service.mjs';
 import {checkPassword,hashPassword,newSession,getSession,csrfMatches,cookie,rateLimit,validEmail} from './auth.mjs';
 import {calculateEstimate} from './estimator.mjs';
@@ -141,7 +141,8 @@ export async function createApplication(options={}){
     const coverage=db.prepare('SELECT source_id AS sourceId,month,status,message,count,checked_at AS checkedAt FROM coverage ORDER BY month DESC LIMIT 3000').all();
     const checks=db.prepare('SELECT source_id AS sourceId,checked_at AS checkedAt,ok,http_status AS httpStatus,note FROM source_checks').all().map(c=>({...c,ok:!!c.ok}));
     const failedJobs=db.prepare("SELECT source_id AS sourceId,month,message,updated_at AS updatedAt FROM jobs WHERE status='failed' ORDER BY updated_at DESC LIMIT 50").all();
-    return send(res,200,{users,sources,coverage,checks,failedJobs});}
+    const errors=db.prepare('SELECT id,created_at AS createdAt,area,source_id AS sourceId,month,message FROM error_log ORDER BY id DESC LIMIT 300').all();
+    return send(res,200,{users,sources,coverage,checks,failedJobs,errors});}
    if(path==='/api/admin/check-sources'&&req.method==='POST'){admin();if(!collectRate(user.id))throw new HttpError(429,'Aguarde para iniciar outra verificação.');
     const list=allSources(db);checkAllSources(db,list).catch(()=>{});audit(db,user.workspace_id,'admin:check-sources');return send(res,202,{started:list.length});}
    if(path==='/api/admin/retry-failed'&&req.method==='POST'){admin();if(!collectRate(user.id))throw new HttpError(429,'Aguarde para iniciar outra coleta.');
@@ -152,6 +153,7 @@ export async function createApplication(options={}){
    throw new HttpError(404,'Operação não encontrada.');
   }catch(e){
    const status=e.status||400;if(status>=500)console.error('Request failed',requestId,e.name);
+   try{const pathname=new URL(req.url,'http://x').pathname;if(status>=500)logError(db,'server',pathname+': '+e.message);else if(/^\/api\/import/.test(pathname)&&status!==401&&status!==403)logError(db,'import',e.message,{sourceId:String(new URL(req.url,'http://x').searchParams.get('sourceId')||''),month:String(new URL(req.url,'http://x').searchParams.get('month')||'')});}catch{/* ignore */}
    send(res,status,{error:e.message?.includes('UNIQUE')?'Registro já existente.':String(e.message||'Não foi possível concluir a operação.').slice(0,1000)});
   }
  });

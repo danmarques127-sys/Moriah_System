@@ -1,5 +1,5 @@
 // Health check of the official source pages (issue #2). Read-only: one polite GET per page, no login, no CAPTCHA, no workaround of blocks.
-import {timestamp} from './db.mjs';
+import {timestamp,logError} from './db.mjs';
 const bare = h => String(h).replace(/^www\./, '');
 
 export async function checkSource(source, fetchImpl = fetch) {
@@ -26,6 +26,7 @@ export async function checkAllSources(db, sources, {fetchImpl = fetch, pause = m
   for (const source of sources) {
     const r = await checkSource(source, fetchImpl);
     db.prepare('INSERT INTO source_checks VALUES(?,?,?,?,?) ON CONFLICT(source_id) DO UPDATE SET checked_at=excluded.checked_at,ok=excluded.ok,http_status=excluded.http_status,note=excluded.note').run(source.id, timestamp(), r.ok ? 1 : 0, r.status, r.note);
+    if (!r.ok) logError(db, 'source-link', source.city + ': ' + r.note, {sourceId: source.id});
     out.push({sourceId: source.id, ...r});
     await pause(400);
   }

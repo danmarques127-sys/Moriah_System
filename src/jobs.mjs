@@ -1,5 +1,5 @@
 import {randomUUID} from 'node:crypto';
-import {timestamp} from './db.mjs';
+import {timestamp,logError} from './db.mjs';
 import {monthsBetween,previousMonth} from './radar.mjs';
 import {collect,NATIVE_MODES} from './collectors.mjs';
 import {allSources,findSource,upsertPermits,setCoverage} from './service.mjs';
@@ -24,6 +24,7 @@ export function worker(db){
  db.prepare('UPDATE jobs SET status=?,message=?,updated_at=? WHERE id=?').run(jobStatus,summary,timestamp(),job.id);
  }catch(e){const count=db.prepare('SELECT COUNT(*) AS n FROM permits WHERE source_id=? AND substr(issued,1,7)=?').get(job.source_id,job.month).n;
  setCoverage(db,job.source_id,job.month,'unavailable',String(e.message)+' Registros anteriores preservados.',count);
+ logError(db,'collection',e.message,{sourceId:job.source_id,month:job.month});
  db.prepare("UPDATE jobs SET status='failed',message=?,updated_at=? WHERE id=?").run(String(e.message).slice(0,3000),timestamp(),job.id);
  }finally{busy=false;}};
 }
