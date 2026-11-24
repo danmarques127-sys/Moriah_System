@@ -350,3 +350,9 @@ td.rowact{white-space:nowrap}
 
 /* signature script: Great Vibes (SIL Open Font License, see public/fonts) */
 .lbrand span{font-family:"Great Vibes","Brush Script MT","Segoe Script",cursive;font-size:3.4em;font-weight:400;letter-spacing:.01em;transform:rotate(-2deg);text-shadow:0 0 .3em #7c5cff88}
+
+/* pen-written look: ink edges (SVG filter) and a quick pen stroke under the name */
+.ink-defs{position:absolute;width:0;height:0}
+.lbrand span.pen{display:grid;transform:rotate(-2deg);text-shadow:none}
+.lbrand span.pen b{font-family:"Great Vibes","Brush Script MT","Segoe Script",cursive;font-size:1em;font-weight:400;filter:url(#ink);color:#f4f0ff;text-shadow:0 0 .22em #8b6bffaa;letter-spacing:.01em;line-height:1.05}
+.lbrand span.pen .stroke{width:100%;height:.28em;color:#cbbaff;opacity:.85;margin-top:-.05em;filter:url(#ink)}
