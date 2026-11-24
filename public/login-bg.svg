@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1672 941" preserveAspectRatio="xMidYMid slice">
+<rect width="1672" height="941" fill="#0b0a1c"/>
+<defs><radialGradient id="g" cx=".5" cy=".45" r=".7"><stop offset="0" stop-color="#1c1642"/><stop offset="1" stop-color="#0b0a1c"/></radialGradient></defs>
+<rect width="1672" height="941" fill="url(#g)"/>
+<g fill="none" stroke="#8f86d8" stroke-opacity=".28" stroke-width="2" stroke-linejoin="round">
+<!-- left building -->
+<path d="M0 330 L140 255 L430 400 L430 760 L0 880 Z"/>
+<path d="M0 470 L430 580M0 600 L430 690M0 400 L140 255M140 255 L140 640M230 300 L230 680M330 350 L330 720"/>
+<path d="M0 700 L430 790M0 780 L430 850M60 330 L60 840"/>
+<path d="M140 255 L330 350M140 400 L430 520"/>
+<!-- right building -->
+<path d="M1672 40 L1545 40 L1250 200 L1250 640 L1672 780 Z"/>
+<path d="M1250 330 L1672 190M1250 470 L1672 330M1250 600 L1672 470M1545 40 L1545 700M1450 90 L1450 680M1350 150 L1350 660"/>
+<path d="M1250 200 L1545 330M1250 640 L1672 640M1600 100 L1600 760"/>
+<!-- ground lines -->
+<path d="M0 900 L520 780M1672 880 L1180 760"/>
+</g>
+</svg>
