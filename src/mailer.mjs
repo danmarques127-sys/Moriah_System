@@ -24,7 +24,7 @@ function reader(socket) {
   return {read: () => new Promise((resolve, reject) => { waiting = {resolve, reject}; pump(); })};
 }
 const enc = s => /^[\x20-\x7e]*$/.test(s) ? s : '=?UTF-8?B?' + Buffer.from(s).toString('base64') + '?=';
-export async function sendMail({to, subject, text}, config = mailConfig(), {timeoutMs = 20000} = {}) {
+export async function sendMail({to, subject, text, attachments = []}, config = mailConfig(), {timeoutMs = 20000} = {}) {
   if (!config) return {sent: false, reason: 'E-mail não configurado (defina SMTP_HOST, SMTP_USER e SMTP_PASS).'};
   if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(String(to))) return {sent: false, reason: 'Endereço de e-mail inválido.'};
   let socket = config.port === 465 ? tls.connect({host: config.host, port: 465, servername: config.host}) : net.connect({host: config.host, port: config.port});
@@ -49,8 +49,15 @@ export async function sendMail({to, subject, text}, config = mailConfig(), {time
     await cmd('MAIL FROM:<' + config.from.replace(/.*<|>.*/g, '') + '>', [250], 'MAIL FROM');
     await cmd('RCPT TO:<' + to + '>', [250, 251], 'RCPT TO');
     await cmd('DATA', [354], 'DATA');
-    const body = Buffer.from(String(text).replace(/\r?\n/g, '\r\n')).toString('base64').replace(/(.{76})/g, '$1\r\n');
-    const msg = ['From: ' + config.from, 'To: ' + to, 'Subject: ' + enc(String(subject).replace(/[\r\n]+/g, ' ')), 'Date: ' + new Date().toUTCString(), 'MIME-Version: 1.0', 'Content-Type: text/plain; charset=utf-8', 'Content-Transfer-Encoding: base64', '', body].join('\r\n');
+    const b64 = buf => buf.toString('base64').replace(/(.{76})/g, '$1\r\n');
+    const head = ['From: ' + config.from, 'To: ' + to, 'Subject: ' + enc(String(subject).replace(/[\r\n]+/g, ' ')), 'Date: ' + new Date().toUTCString(), 'MIME-Version: 1.0'];
+    let msg;
+    if (!attachments.length) msg = [...head, 'Content-Type: text/plain; charset=utf-8', 'Content-Transfer-Encoding: base64', '', b64(Buffer.from(String(text).replace(/\r?\n/g, '\r\n')))].join('\r\n');
+    else {
+      const bd = 'moriah-' + Math.random().toString(36).slice(2);
+      msg = [...head, 'Content-Type: multipart/mixed; boundary="' + bd + '"', '', '--' + bd, 'Content-Type: text/plain; charset=utf-8', 'Content-Transfer-Encoding: base64', '', b64(Buffer.from(String(text).replace(/\r?\n/g, '\r\n'))),
+        ...attachments.flatMap(a => ['--' + bd, 'Content-Type: ' + a.mime + '; name="' + a.filename + '"', 'Content-Transfer-Encoding: base64', 'Content-Disposition: attachment; filename="' + a.filename + '"', '', b64(a.data)]), '--' + bd + '--'].join('\r\n');
+    }
     await cmd(msg + '\r\n.', [250], 'mensagem');
     socket.write('QUIT\r\n');
     return {sent: true};

@@ -2,6 +2,7 @@
 import {timestamp} from './db.mjs';
 import {permitByKey, isOwner, clientPermit, opaque} from './client-api.mjs';
 import {sendMail, mailConfig} from './mailer.mjs';
+import {estimatePdf} from './pdf.mjs';
 
 const fail = (m, s = 400) => { const e = new Error(m); e.status = s; throw e; };
 const clean = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, ' ').trim().slice(0, n);
@@ -66,12 +67,24 @@ export function followupAction(db, client, b) {
 const STATUS = ['draft', 'with_owner', 'changes_requested', 'review_requested', 'approved', 'sent'];
 const event = (db, id, kind, text, by) => db.prepare('INSERT INTO estimate_events(request_id,kind,text,by_name,created_at) VALUES(?,?,?,?,?)').run(id, kind, clean(text, 1000), by, timestamp());
 const who = c => c.name || c.email;
-const shape = (db, r) => ({id: r.id, permitKey: r.permit_key, address: r.address, city: r.city, state: r.state, prospectName: r.prospect_name, prospectEmail: r.prospect_email, scope: r.scope, measurements: r.measurements, status: r.status, ownerNote: r.owner_note, sellerFeedback: r.seller_feedback, description: r.description, total: Number(r.total), createdAt: r.created_at, updatedAt: r.updated_at, sentAt: r.sent_at, by: r.byName || '',
-  events: db.prepare('SELECT kind,text,by_name AS byName,created_at AS createdAt FROM estimate_events WHERE request_id=? ORDER BY id').all(r.id)});
+const round2 = v => Math.round(v * 100) / 100;
+function parseItems(raw) {
+  const items = (Array.isArray(raw) ? raw : []).slice(0, 40).map(i => ({description: clean(i?.description, 300), qty: Number(i?.qty), price: Number(i?.price)})).filter(i => i.description || i.price);
+  for (const i of items) { if (!i.description) fail('Cada item precisa de descrição.'); if (!(i.qty > 0 && i.qty <= 100000)) fail('Quantidade inválida em "' + i.description.slice(0, 30) + '".'); if (!(i.price >= 0 && i.price <= 10000000)) fail('Preço inválido em "' + i.description.slice(0, 30) + '".'); }
+  return items;
+}
+const sums = (items, rate) => { const subtotal = round2(items.reduce((t, i) => t + i.qty * i.price, 0)), tax = round2(subtotal * rate / 100); return {subtotal, tax, total: round2(subtotal + tax)}; };
+const shape = (db, r, viewer) => {
+  const lineItems = JSON.parse(r.line_items || '[]'), rate = Number(r.tax_rate || 0), t = lineItems.length ? sums(lineItems, rate) : {subtotal: Number(r.total), tax: 0, total: Number(r.total)};
+  const out = {id: r.id, permitKey: r.permit_key, address: r.address, city: r.city, state: r.state, prospectName: r.prospect_name, prospectEmail: r.prospect_email, scope: r.scope, measurements: r.measurements, status: r.status, ownerNote: r.owner_note, sellerFeedback: r.seller_feedback, description: r.description, lineItems, taxRate: rate, subtotal: t.subtotal, tax: t.tax, total: Number(r.total), createdAt: r.created_at, updatedAt: r.updated_at, sentAt: r.sent_at, by: r.byName || '',
+    events: db.prepare('SELECT kind,text,by_name AS byName,created_at AS createdAt FROM estimate_events WHERE request_id=? ORDER BY id').all(r.id)};
+  if (viewer && isOwner(viewer)) { out.internalCost = Number(r.internal_cost || 0); out.profit = round2(out.total - out.internalCost); out.margin = out.total > 0 ? round2(out.profit / out.total * 100) : 0; } // private: sellers never get these
+  return out;
+};
 export function listEstimates(db, client) {
   const where = ['r.company_id=?'], args = [client.companyId];
   if (!isOwner(client)) { where.push('r.client_id=?'); args.push(client.id); } else where.push("r.status<>'draft'");
-  return {estimates: db.prepare('SELECT r.*,COALESCE(NULLIF(c.name,\'\'),c.email) AS byName FROM estimate_requests r JOIN client_accounts c ON c.id=r.client_id WHERE ' + where.join(' AND ') + ' ORDER BY r.updated_at DESC LIMIT 200').all(...args).map(r => shape(db, r))};
+  return {estimates: db.prepare('SELECT r.*,COALESCE(NULLIF(c.name,\'\'),c.email) AS byName FROM estimate_requests r JOIN client_accounts c ON c.id=r.client_id WHERE ' + where.join(' AND ') + ' ORDER BY r.updated_at DESC LIMIT 200').all(...args).map(r => shape(db, r, client))};
 }
 function mine(db, client, id) {
   const r = db.prepare('SELECT * FROM estimate_requests WHERE id=? AND company_id=?').get(Number(id), client.companyId);
@@ -103,21 +116,25 @@ export async function estimateAction(db, client, sources, b, {send = sendMail, c
   }
   if (!isOwner(client)) fail('Somente o owner prepara e envia estimates.', 403);
   if (b.op === 'prepare') {
-    const total = Number(b.total); if (!(total >= 0 && total <= 10000000)) fail('Valor inválido.');
-    db.prepare('UPDATE estimate_requests SET total=?,description=?,owner_note=?,updated_at=? WHERE id=?').run(total, clean(b.description, 4000), clean(b.ownerNote, 1000), now, r.id);
+    const items = parseItems(b.lineItems), rate = b.taxRate === undefined || b.taxRate === '' ? 0 : Number(b.taxRate), cost = b.internalCost === undefined || b.internalCost === '' ? 0 : Number(b.internalCost);
+    if (!(rate >= 0 && rate <= 15)) fail('Imposto deve ficar entre 0 e 15%.'); if (!(cost >= 0 && cost <= 10000000)) fail('Custo interno inválido.');
+    const total = items.length ? sums(items, rate).total : Number(b.total); if (!(total >= 0 && total <= 10000000)) fail('Valor inválido.');
+    db.prepare('UPDATE estimate_requests SET total=?,line_items=?,tax_rate=?,internal_cost=?,description=?,owner_note=?,updated_at=? WHERE id=?').run(total, JSON.stringify(items), rate, cost, clean(b.description, 4000), clean(b.ownerNote, 1000), now, r.id);
     if (b.requestReview) { db.prepare("UPDATE estimate_requests SET status='review_requested' WHERE id=?").run(r.id); event(db, r.id, 'review', clean(b.ownerNote, 1000) || 'Review requested by the owner', who(client)); }
     else event(db, r.id, 'prepared', 'Estimate prepared', who(client));
-    return {ok: true};
+    return {ok: true, total};
   }
   if (b.op === 'send') {
     if (r.status === 'sent') fail('Este estimate já foi enviado.');
     if (!(r.total > 0) || !r.prospect_email) fail('Defina o valor e o e-mail do cliente antes de enviar.');
     const seller = db.prepare('SELECT email,name FROM client_accounts WHERE id=?').get(r.client_id);
-    const text = ['Hello ' + (r.prospect_name || '') + ',', '', 'Here is your estimate from ' + (b.companyName || 'our team') + ' for ' + r.address + ', ' + r.city + ', ' + r.state + '.', '', r.description || r.scope, '', 'Total: $' + Number(r.total).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}), '', 'Reply to this e-mail if you have any questions.'].join('\n');
-    const subject = 'Estimate for ' + r.address;
-    const res = await send({to: r.prospect_email, subject, text}, config);
+    const est = shape(db, {...r, byName: ''}, client), fmt = v => '$' + Number(v).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    const lines = est.lineItems.length ? est.lineItems.map(i => '- ' + i.description + ' (' + i.qty + ' x ' + fmt(i.price) + ') = ' + fmt(i.qty * i.price)) : [r.description || r.scope];
+    const text = ['Hello ' + (r.prospect_name || '') + ',', '', 'Here is your estimate from ' + (b.companyName || 'our team') + ' for ' + r.address + ', ' + r.city + ', ' + r.state + '. A PDF copy is attached.', '', ...lines, ...(est.tax ? ['', 'Sales tax (' + est.taxRate + '%): ' + fmt(est.tax)] : []), '', 'Total: ' + fmt(r.total), '', 'Reply to this e-mail if you have any questions.'].join('\n');
+    const subject = 'Estimate for ' + r.address, attachments = [{filename: 'Estimate-' + r.id + '.pdf', mime: 'application/pdf', data: estimatePdf(est, b.companyName)}];
+    const res = await send({to: r.prospect_email, subject, text, attachments}, config);
     if (!res.sent) fail('Não foi possível enviar: ' + res.reason);
-    if (seller?.email) await send({to: seller.email, subject: '[Copy] ' + subject, text}, config).catch(() => {});
+    if (seller?.email) await send({to: seller.email, subject: '[Copy] ' + subject, text, attachments}, config).catch(() => {});
     db.prepare("UPDATE estimate_requests SET status='sent',sent_at=?,updated_at=? WHERE id=?").run(now, now, r.id); event(db, r.id, 'sent', 'Sent to ' + r.prospect_email + ' and the salesperson', who(client)); return {ok: true};
   }
   fail('Operação inválida.');

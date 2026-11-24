@@ -459,3 +459,7 @@ textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-
 .cl-drawer footer button{display:flex;align-items:center;justify-content:center;gap:8px;flex:1}.cl-drawer footer .ico{width:18px;height:18px}.cl-card button{display:flex;align-items:center;gap:8px;width:max-content}.cl-card button .ico{width:18px;height:18px}
 .cl-callout{display:grid;padding:12px 16px;border:1px solid var(--accent2);border-radius:14px;background:#251a52}.cl-callout small{color:#cfc9ff}
 .cl-opt input{flex:none}
+.cl-items{width:100%;font-size:14px;margin-top:4px}.cl-items th{padding:8px 10px}.cl-items td{padding:8px 10px;border-bottom:1px solid var(--line)}.cl-items td:nth-child(n+2),.cl-items th:nth-child(n+2){text-align:right;white-space:nowrap}.cl-items tfoot td{border-bottom:0}
+.cl-li{display:grid;grid-template-columns:1fr 72px 110px 34px;gap:8px;margin-bottom:8px;align-items:center}.cl-li button.dots{padding:4px 8px;font-size:20px}
+.cl-sums{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cl-sum{display:grid;padding:12px 16px;border-radius:14px;border:1px solid var(--line);background:var(--card2)}
+.cl-sum span{font-size:13px;color:var(--muted)}.cl-sum b{font-size:24px}.cl-sum small{color:var(--muted)}.cl-sum.prev{border-color:var(--accent2);background:#251a52}.cl-sum.priv b{color:#86efac}

@@ -81,15 +81,35 @@ function estimatesView() {
 }
 function estDetail(x) {
   const tl = x.events.map(ev => '<li><i>' + icon('check') + '</i><span><b>' + e(({submitted: 'Request submitted', prepared: 'Estimate prepared', review: 'Review requested', approved: 'Approved', changes: 'Changes requested', sent: 'Estimate sent'})[ev.kind] || ev.kind) + '</b><small>' + when(ev.createdAt) + (ev.byName ? ' · ' + e(ev.byName) : '') + '</small>' + (ev.text && !/^(Request submitted|Estimate prepared|Review requested by|Approved for)/.test(ev.text) ? '<em>' + e(ev.text) + '</em>' : '') + '</span></li>').join('');
+  const itemsTable = x.lineItems.length ? '<h3>Estimate</h3><table class="cl-items"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead><tbody>' + x.lineItems.map(i => '<tr><td>' + e(i.description) + '</td><td>' + i.qty + '</td><td>' + usd(i.price) + '</td><td>' + usd(i.qty * i.price) + '</td></tr>').join('') + '</tbody><tfoot>' + (x.tax ? '<tr><td colspan="3">Sales tax (' + x.taxRate + '%)</td><td>' + usd(x.tax) + '</td></tr>' : '') + '<tr><td colspan="3"><b>Total</b></td><td><b>' + usd(x.total) + '</b></td></tr></tfoot></table>' : (x.description ? '<h3>Estimate</h3><p class="pre">' + e(x.description) + '</p>' : '');
   const head = '<h2>' + e(x.address) + '</h2><p class="muted">' + e(x.city) + ', ' + e(x.state) + '</p>' + pill(x.status)
-    + '<div class="cl-kv"><span>Customer<b>' + e(x.prospectName || '—') + '</b><small>' + e(x.prospectEmail) + '</small></span>' + (x.total ? '<span>Total<b class="big">' + money(x.total) + '</b></span>' : '') + '</div>'
-    + (x.scope ? '<h3>Scope</h3><p class="pre">' + e(x.scope) + '</p>' : '') + (x.measurements ? '<h3>Measurements</h3><p class="pre">' + e(x.measurements) + '</p>' : '') + (x.description ? '<h3>Estimate</h3><p class="pre">' + e(x.description) + '</p>' : '')
+    + '<div class="cl-kv"><span>Customer<b>' + e(x.prospectName || '—') + '</b><small>' + e(x.prospectEmail) + '</small></span>' + (x.total ? '<span>Total<b class="big">' + usd(x.total) + '</b></span>' : '') + '</div>'
+    + (x.scope ? '<h3>Scope</h3><p class="pre">' + e(x.scope) + '</p>' : '') + (x.measurements ? '<h3>Measurements</h3><p class="pre">' + e(x.measurements) + '</p>' : '')
+    + (owner() ? '' : itemsTable)
     + (x.ownerNote ? '<div class="cl-note"><b>Note from Owner</b><p>' + e(x.ownerNote) + '</p></div>' : '') + '<h3>Timeline</h3><ul class="cl-tl">' + tl + '</ul>';
-  if (owner() && x.status !== 'sent') return head + '<form data-form="prepare" class="cl-prep"><input type="hidden" name="id" value="' + x.id + '"><label>Estimate total (USD)<input name="total" type="number" min="0" step="0.01" value="' + (x.total || '') + '" required></label><label>Estimate for the customer<textarea name="description" rows="4" placeholder="Work included, materials, timeline…">' + e(x.description) + '</textarea></label><label>Note for the salesperson (optional)<textarea name="ownerNote" rows="2">' + e(x.ownerNote) + '</textarea></label>'
-    + '<div class="cl-btnrow"><button type="submit" name="act" value="save">Save</button><button type="submit" name="act" value="review">Request seller review</button><button class="primary" type="submit" name="act" value="send">Send to customer</button></div></form>';
+  if (owner() && x.status !== 'sent') {
+    const rows = (x.lineItems.length ? x.lineItems : [{description: '', qty: 1, price: ''}]).map(liRow).join('');
+    return head + '<form data-form="prepare" class="cl-prep" data-estform><input type="hidden" name="id" value="' + x.id + '">'
+      + '<div class="cl-callout"><b>Sales review (optional)</b><small>Ask the salesperson to check the estimate before it goes to the customer. It is not required.</small></div>'
+      + '<h3>Line items (customer estimate)</h3><div id="liRows">' + rows + '</div><button type="button" data-action="addli">' + icon('plus') + 'Add line item</button>'
+      + '<div class="form-grid"><label>Sales tax (%)<input name="taxRate" type="number" min="0" max="15" step="0.01" value="' + (x.taxRate || 0) + '"></label><label>Internal cost (private)<input name="internalCost" type="number" min="0" step="0.01" value="' + (x.internalCost || '') + '" placeholder="Not shown to customer or sellers"></label></div>'
+      + '<div class="cl-sums" id="sums"></div>'
+      + '<label>Message for the customer (optional)<textarea name="description" rows="2">' + e(x.description) + '</textarea></label><label>Note for the salesperson (optional)<textarea name="ownerNote" rows="2">' + e(x.ownerNote) + '</textarea></label>'
+      + '<div class="cl-btnrow"><button type="submit" name="act" value="save">Save draft</button><button type="submit" name="act" value="review">Request sales review</button><button class="primary" type="submit" name="act" value="send">' + icon('send') + 'Review & send</button></div></form>';
+  }
   if (!owner() && x.status === 'review_requested') return head + '<form data-form="feedback" class="cl-prep"><input type="hidden" name="id" value="' + x.id + '"><label>Feedback for Owner<textarea name="text" rows="3" placeholder="Share your feedback, confirm the scope, or request changes…"></textarea></label><div class="cl-btnrow"><button type="submit" name="act" value="changes">Request changes</button><button class="primary" type="submit" name="act" value="approve">Approve for Owner to send</button></div></form>';
   if (!owner() && ['draft', 'changes_requested'].includes(x.status)) return head + '<div class="cl-btnrow"><button type="button" data-action="editest" data-id="' + x.id + '">Edit request</button></div>';
+  if (owner() && x.status === 'sent') return head + '<p class="muted">Sent ' + when(x.sentAt) + '. Margin ' + x.margin + '% (' + usd(x.profit) + ' profit on ' + usd(x.internalCost) + ' cost).</p>';
   return head;
+}
+const usd = v => '$' + Number(v || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+const liRow = i => '<div class="cl-li"><input name="li_desc" placeholder="Description" value="' + e(i.description) + '" maxlength="300"><input name="li_qty" type="number" min="0.01" step="any" value="' + e(i.qty) + '" aria-label="Qty"><input name="li_price" type="number" min="0" step="0.01" value="' + e(i.price) + '" placeholder="Unit price" aria-label="Unit price"><button type="button" class="dots" data-action="rmli" aria-label="Remove">×</button></div>';
+function recalc() {
+  const f = $('[data-estform]'); if (!f) return;
+  const qty = [...f.querySelectorAll('[name=li_qty]')], price = [...f.querySelectorAll('[name=li_price]')];
+  const sub = qty.reduce((t, q, i) => t + (Number(q.value) || 0) * (Number(price[i].value) || 0), 0), rate = Number(f.elements.taxRate.value) || 0, tax = Math.round(sub * rate) / 100, total = sub + tax, cost = Number(f.elements.internalCost.value) || 0;
+  const profit = total - cost, margin = total > 0 ? Math.round(profit / total * 1000) / 10 : 0;
+  $('#sums').innerHTML = '<div class="cl-sum prev"><span>Customer preview</span><b>' + usd(total) + '</b><small>Subtotal ' + usd(sub) + (rate ? ' + tax ' + usd(tax) : '') + '</small></div><div class="cl-sum priv"><span>Private</span><b>' + (cost ? margin + '% margin' : '—') + '</b><small>' + (cost ? usd(profit) + ' profit · cost ' + usd(cost) : 'Add the internal cost to see the margin') + '</small></div>';
 }
 
 // ---------- Follow-ups ----------
@@ -135,6 +155,7 @@ function drawerView() {
 function modalView() {
   const m = st.modal, p = st.drawer?.permit;
   const wrap = (h, body, foot) => '<div class="overlay"><form class="modal compact" data-form="' + m.kind + '"><header><h2>' + h + '</h2><button type="button" data-action="mclose" aria-label="Close">×</button></header>' + body + '<footer class="drawer-foot"><button type="button" data-action="mclose">Cancel</button>' + foot + '</footer></form></div>';
+  if (m.kind === 'sendest') { const x = st.estimates.find(q => q.id === m.id); return '<div class="overlay"><div class="modal compact"><header><h2>Final review &amp; send</h2><button type="button" data-action="mclose" aria-label="Close">×</button></header><div class="cl-card col"><span>Customer<b>' + e(x.prospectName) + '</b><small>' + e(x.prospectEmail) + '</small></span><span>Job<b>' + e(x.address) + '</b></span><span>Estimate total<b class="big">' + usd(x.total) + '</b></span><span>Attachment<b>Estimate-' + x.id + '.pdf</b></span></div><p class="muted">The customer and the salesperson both receive the estimate by e-mail. Internal cost and margin are never included.</p><footer class="drawer-foot"><button type="button" data-action="mclose">Back to estimate</button><button class="primary" type="button" data-action="sendnow">' + icon('send') + 'Send to customer</button></footer></div></div>'; }
   if (m.kind === 'pw') return wrap('New password', '<input type="hidden" name="id" value="' + m.id + '"><label>Password<input name="password" type="password" required minlength="16" autocomplete="new-password"></label><small class="muted">At least 16 characters. The member is signed out.</small>', '<button class="primary" type="submit">Save</button>');
   if (m.kind === 'visit') return wrap(e(p.address || 'Site visit'), '<label>Measurements<textarea name="measurements" rows="4" placeholder="Rooms, linear ft, sq ft, panel size…"></textarea></label><label>Notes for the office<textarea name="notes" rows="3" placeholder="Access, owner remarks, materials…"></textarea></label><label>Photos (up to 6)<input type="file" name="photos" accept="image/*" multiple data-photos></label><div class="cl-photos" id="vthumbs"></div>', '<button class="primary" type="submit">Send visit</button>');
   if (m.kind === 'estreq') { const x = m.edit || {}; return wrap('Request an estimate', '<p class="muted">' + e(p?.address || x.address || '') + ', ' + e(p?.city || x.city || '') + '</p><div class="cl-callout"><b>The Owner creates and sends estimates.</b><small>Submit the job information; the customer receives the estimate by e-mail from the Owner.</small></div><input type="hidden" name="id" value="' + (x.id || '') + '"><div class="form-grid"><label>Customer name<input name="prospectName" value="' + e(x.prospectName) + '" maxlength="120"></label><label>Customer e-mail<input name="prospectEmail" type="email" value="' + e(x.prospectEmail) + '"></label></div><label>Scope notes<textarea name="scope" rows="3" placeholder="What work does the customer need?">' + e(x.scope) + '</textarea></label><label>Job measurements<input name="measurements" value="' + e(x.measurements) + '" maxlength="2000" placeholder="Approx. 1,200 sq ft"></label>', '<button type="submit" name="act" value="draft">Save draft</button><button class="primary" type="submit" name="act" value="submit">Submit to Owner</button>'); }
@@ -146,6 +167,7 @@ function render() {
   const r = !st.me ? loginView() : st.me.role === 'employee' ? shell(employeeView()) : shell(({radar: radarView, lists: listsView, estimates: estimatesView, followups: followupsView, visits: visitsView, team: teamView})[st.tab]());
   $('#app').innerHTML = r;
   for (const i of document.querySelectorAll('[data-w]')) i.style.width = i.dataset.w + '%';
+  recalc();
 }
 async function load() { try { st.data = await api('/api/client/permits?' + query()); } catch (err) { if (err.status === 401) { st.me = null; st.data = null; } else toast(err.message); } render(); }
 async function enter(tab) {
@@ -199,11 +221,15 @@ document.addEventListener('click', async ev => {
     if (a === 'fuedit') { st.modal = {kind: 'fu', edit: st.followups.followups.find(x => x.id === Number(id))}; return render(); }
     if (a === 'fudone' || a === 'fuundo') { await api('/api/client/followups', {op: 'complete', id: Number(id), undo: a === 'fuundo'}); st.followups = await api('/api/client/followups'); return render(); }
     if (a === 'futab') { st.fuTab = id; return render(); }
+    if (a === 'addli') { $('#liRows').insertAdjacentHTML('beforeend', liRow({description: '', qty: 1, price: ''})); return; }
+    if (a === 'rmli') { const rows = document.querySelectorAll('.cl-li'); if (rows.length > 1) t.closest('.cl-li').remove(); recalc(); return; }
+    if (a === 'sendnow') { await api('/api/client/estimates', {op: 'send', id: st.modal.id}); st.modal = null; st.estimates = (await api('/api/client/estimates')).estimates; render(); return toast('Estimate sent to the customer.'); }
     if (a === 'est') { st.estSel = Number(id); return render(); }
     if (a === 'pw') { st.modal = {kind: 'pw', id}; return render(); }
     if (a === 'setActive') { await api('/api/client/team', {op: 'setActive', id: Number(id), active: t.dataset.on === '1'}); st.team = await api('/api/client/team'); return render(); }
   } catch (err) { toast(err.message); }
 });
+document.addEventListener('input', ev => { if (ev.target.closest('[data-estform]')) recalc(); });
 document.addEventListener('change', async ev => {
   const el = ev.target;
   try {
@@ -222,7 +248,14 @@ document.addEventListener('submit', async ev => {
     if (kind === 'visit') { await api('/api/client/visits', {permitKey: st.drawer.permit.key, measurements: v.measurements, notes: v.notes, photos: st.modal.photos}); st.modal = null; st.drawer.visits = (await api('/api/client/visits?permitKey=' + st.drawer.permit.key)).visits; render(); return toast('Visit sent to the office.'); }
     if (kind === 'estreq') { const p = st.drawer?.permit; await api('/api/client/estimates', {op: 'save', id: Number(v.id) || undefined, permitKey: p?.key, prospectName: v.prospectName, prospectEmail: v.prospectEmail, scope: v.scope, measurements: v.measurements, submit: act === 'submit'}); st.modal = null; st.estimates = (await api('/api/client/estimates')).estimates; render(); return toast(act === 'submit' ? 'Sent to the Owner.' : 'Draft saved.'); }
     if (kind === 'fu') { await api('/api/client/followups', {op: 'save', id: Number(v.id) || undefined, task: v.task, kind: v.kind, notes: v.notes, dueAt: v.date + 'T' + v.time, permitKey: st.modal.permit?.key, address: st.modal.permit?.address}); st.modal = null; st.followups = await api('/api/client/followups'); render(); return toast('Follow-up saved.'); }
-    if (kind === 'prepare') { const body = {id: Number(v.id), total: Number(v.total), description: v.description, ownerNote: v.ownerNote}; await api('/api/client/estimates', {op: 'prepare', ...body, requestReview: act === 'review'}); if (act === 'send') await api('/api/client/estimates', {op: 'send', id: body.id}); st.estimates = (await api('/api/client/estimates')).estimates; render(); return toast(act === 'send' ? 'Estimate sent to the customer.' : 'Saved.'); }
+    if (kind === 'prepare') {
+      const fd = new FormData(form), d = fd.getAll('li_desc'), q = fd.getAll('li_qty'), pr = fd.getAll('li_price');
+      const lineItems = d.map((x, i) => ({description: x, qty: q[i], price: pr[i]})).filter(i => i.description.trim() || i.price);
+      await api('/api/client/estimates', {op: 'prepare', id: Number(v.id), lineItems, taxRate: v.taxRate, internalCost: v.internalCost, description: v.description, ownerNote: v.ownerNote, requestReview: act === 'review'});
+      st.estimates = (await api('/api/client/estimates')).estimates;
+      if (act === 'send') { st.modal = {kind: 'sendest', id: Number(v.id)}; return render(); }
+      render(); return toast(act === 'review' ? 'Sent to the salesperson for review.' : 'Saved.');
+    }
     if (kind === 'feedback') { await api('/api/client/estimates', {op: 'feedback', id: Number(v.id), approve: act === 'approve', text: v.text}); st.estimates = (await api('/api/client/estimates')).estimates; render(); return toast(act === 'approve' ? 'Approved for the Owner to send.' : 'Changes requested.'); }
     if (kind === 'team') { await api('/api/client/team', {name: v.name, email: v.email, role: v.role, password: v.password, cities: new FormData(form).getAll('city')}); st.team = await api('/api/client/team'); render(); return toast('Team member added.'); }
     if (kind === 'pw') { await api('/api/client/team', {op: 'setPassword', id: Number(v.id), password: v.password}); st.modal = null; render(); return toast('Password updated.'); }
