@@ -514,3 +514,13 @@ button[data-action=addli],button[data-action=o-inv-add]{height:42px;width:100%;b
 button[data-action=addli]:hover,button[data-action=o-inv-add]:hover{border-color:var(--accent2)}
 .cl-line .primary,.cl-exp button{height:40px;white-space:nowrap}
 .side nav button:has(>svg),.side button:has(>svg){justify-content:flex-start}
+
+/* CTA system: one size for every action button, one compact size for buttons inside table rows */
+.panel button,.toolbar button,.cl-seg button,.title button,.modal button,.drawer-foot button,form button,.chips button,.chip{min-height:42px;height:42px;padding:0 18px;border-radius:14px;font-size:14px;font-weight:600;line-height:1;white-space:nowrap}
+.panel button.primary,.toolbar button.primary,.modal button.primary,.drawer-foot button.primary,form button.primary,.title button.primary{padding:0 22px}
+button.dots,button.star,button.cl-listbtn,button.cl-punch,.modal>header button,.overlay header button[aria-label=Close]{height:auto;min-height:0}
+button.cl-punch{height:64px;min-height:64px;font-size:18px}
+.cl-table button,.cl-act button{height:34px;min-height:34px;padding:0 14px;border-radius:10px;font-size:13px;font-weight:600;margin-right:6px}
+.cl-table button:last-child,.cl-act button:last-child{margin-right:0}
+button.danger,.cl-table button.danger{margin-right:0}
+button.cl-right,.cl-right{padding:0 22px}
