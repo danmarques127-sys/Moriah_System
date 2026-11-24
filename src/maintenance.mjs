@@ -33,9 +33,20 @@ export function healthReport(db, now = new Date()) {
   const empty = fresh.filter(f => f.permits === 0).length;
   return {failing, stale, empty, total: sources.length, ok: !failing.length && !stale.length};
 }
-export function reportText(r, day) {
+// Critical = the system itself is in trouble, not one city having a bad day.
+export const CRITICAL_COLLECTION_HOURS = 36;
+export function criticalIssues(db, report, now = new Date(), {backupFailed = false} = {}) {
+  const out = [], auto = allSources(db).filter(s => !['report', 'portal'].includes(s.mode));
+  if (backupFailed) out.push('The daily database backup failed.');
+  const last = db.prepare('SELECT MAX(checked_at) AS t FROM coverage').get()?.t, hours = last ? (now - new Date(last)) / 3600000 : Infinity;
+  if (auto.length && hours > CRITICAL_COLLECTION_HOURS) out.push(last ? 'No collection has run for ' + Math.floor(hours) + ' hours (the daily collection seems stopped).' : 'No collection has ever run.');
+  if (auto.length >= 6 && report.failing.length >= Math.ceil(auto.length / 2)) out.push(report.failing.length + ' of ' + auto.length + ' automatic cities failed in their latest run (probably a network or system problem).');
+  return out;
+}
+export function reportText(r, day, critical = []) {
   const L = ['Moriah System — daily check ' + day, ''];
-  if (r.ok) L.push('Everything looks fine: no failing collectors and no city with old data.');
+  if (critical.length) { L.push('CRITICAL (' + critical.length + '):'); for (const c of critical) L.push(' - ' + c); L.push(''); }
+  if (r.ok && !critical.length) L.push('Everything looks fine: no failing collectors and no city with old data.');
   if (r.failing.length) { L.push('Collectors that failed in their latest run (' + r.failing.length + '):'); for (const f of r.failing) L.push(' - ' + f.city + ' ' + f.month + ': ' + f.message); L.push(''); }
   if (r.stale.length) { L.push('Cities with no new permits for too long (' + r.stale.length + '):'); for (const s of r.stale) L.push(' - ' + s.city + ': last permit ' + s.lastPermit + ' (' + s.days + ' days ago)'); L.push(''); }
   if (r.empty) L.push(r.empty + ' of ' + r.total + ' cities have no permits stored yet.');
@@ -51,10 +62,17 @@ export async function runDailyMaintenance(db, {databasePath, timezone = 'America
   try { out.backup = await runBackup(db, databasePath, day); setSetting(db, 'last_backup', out.backup ? day + '|' + out.backup : ''); } catch (e) { setSetting(db, 'last_backup', day + '|FAILED: ' + String(e.message).slice(0, 120)); console.error('Backup error', e.name); }
   out.report = healthReport(db, now);
   setSetting(db, 'last_report', JSON.stringify({day, failing: out.report.failing.length, stale: out.report.stale.length, empty: out.report.empty}));
-  const to = alertEmail(db, env), fp = JSON.stringify([out.report.failing.map(x => x.city), out.report.stale.map(x => x.city)]);
+  const to = alertEmail(db, env), level = getSetting(db, 'alert_level') === 'all' ? 'all' : 'critical';
+  const backupFailed = /^FAILED/.test((db.prepare("SELECT value FROM app_settings WHERE key='last_backup'").get()?.value || '').split('|')[1] || '');
+  const critical = criticalIssues(db, out.report, now, {backupFailed});
+  out.critical = critical;
+  setSetting(db, 'last_critical', day + '|' + critical.length);
+  const wants = level === 'all' ? !out.report.ok || critical.length : critical.length;
+  const fp = JSON.stringify(level === 'all' ? [critical, out.report.failing.map(x => x.city), out.report.stale.map(x => x.city)] : [critical]);
   const lastSent = getSetting(db, 'alert_sent_at'), weekOld = !lastSent || now - new Date(lastSent) > 7 * 86400000;
-  if (!out.report.ok && to && (getSetting(db, 'alert_fp') !== fp || weekOld)) {
-    const r = await mail({to, subject: 'Moriah System: ' + (out.report.failing.length + out.report.stale.length) + ' city problem(s)', text: reportText(out.report, day)}, mailConfig(env));
+  if (wants && to && (getSetting(db, 'alert_fp') !== fp || weekOld)) {
+    const subject = critical.length ? 'Moriah System CRITICAL: ' + critical.length + ' problem(s)' : 'Moriah System: ' + (out.report.failing.length + out.report.stale.length) + ' city problem(s)';
+    const r = await mail({to, subject, text: reportText(out.report, day, critical)}, mailConfig(env));
     out.email = r; setSetting(db, 'alert_result', day + '|' + (r.sent ? 'sent to ' + to : 'NOT sent: ' + r.reason));
     if (r.sent) { setSetting(db, 'alert_fp', fp); setSetting(db, 'alert_sent_at', now.toISOString()); }
   }
@@ -64,5 +82,5 @@ export function automationStatus(db, env = process.env) {
   const split = v => { const i = String(v || '').indexOf('|'); return i < 0 ? {day: '', detail: ''} : {day: v.slice(0, i), detail: v.slice(i + 1)}; };
   const raw = k => db.prepare('SELECT value FROM app_settings WHERE key=?').get(k)?.value || '';
   let report = null; try { report = JSON.parse(raw('last_report') || 'null'); } catch {}
-  return {alertEmail: alertEmail(db, env), mailConfigured: !!mailConfig(env), backup: split(raw('last_backup')), alert: split(raw('alert_result')), report};
+  return {alertLevel: raw('alert_level') === 'all' ? 'all' : 'critical', alertEmail: alertEmail(db, env), mailConfigured: !!mailConfig(env), backup: split(raw('last_backup')), alert: split(raw('alert_result')), report};
 }

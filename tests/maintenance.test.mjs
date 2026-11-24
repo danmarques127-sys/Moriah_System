@@ -60,6 +60,7 @@ test('daily maintenance: backup, report and one alert e-mail per change; nothing
   const dir = mkdtempSync(join(tmpdir(), 'maint-')), path = join(dir, 'db.sqlite'), db = openDatabase(path);
   setCoverage(db, 'boston', '2026-11', 'unavailable', 'fetch failed', 0);
   db.prepare("INSERT INTO app_settings VALUES('alert_email','dan@example.com')").run();
+  db.prepare("INSERT INTO app_settings VALUES('alert_level','all')").run();
   const sent = [], mail = async m => { sent.push(m); return {sent: true}; };
   const env = {SMTP_HOST: 'h', SMTP_USER: 'u', SMTP_PASS: 'p'};
   const early = new Date('2026-11-24T12:00:00Z'); // 07:00 in New York
@@ -91,4 +92,19 @@ test('backups keep only the newest 14 files', async () => {
 });
 test('PDF text repair removes stray "Â" characters', () => {
   assert.equal(clean('under other permit applications.Â construction Â of new house'), 'under other permit applications. construction of new house');
+});
+
+test('critical-only alerts: one failing city is not mailed, a stopped collection and a failed backup are', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'crit-')), path = join(dir, 'db.sqlite'), db = openDatabase(path);
+  db.prepare("INSERT INTO app_settings VALUES('alert_email','dan@example.com')").run();
+  const sent = [], mail = async m => { sent.push(m); return {sent: true}; }, env = {SMTP_HOST: 'h', SMTP_USER: 'u', SMTP_PASS: 'p'};
+  const now = new Date('2026-11-24T16:00:00Z');
+  setCoverage(db, 'boston', '2026-11', 'unavailable', 'HTTP 500', 0); // checked_at is "now" in the real clock: recent enough
+  db.prepare('UPDATE coverage SET checked_at=?').run(now.toISOString());
+  const out = await runDailyMaintenance(db, {databasePath: path, now, env, mail});
+  assert.deepEqual(out.critical, []); assert.equal(sent.length, 0, 'one city failing is a common failure');
+  const later = new Date('2026-11-27T16:00:00Z'); // 3 days without any collection
+  const out2 = await runDailyMaintenance(db, {databasePath: path, now: later, env, mail});
+  assert.ok(out2.critical.some(c => /seems stopped/.test(c))); assert.equal(sent.length, 1); assert.match(sent[0].subject, /CRITICAL/);
+  db.close();
 });

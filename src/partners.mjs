@@ -103,7 +103,7 @@ export function partnersAction(db, sources, actor, b) {
     const email = clean(b.alert_email, 200).toLowerCase(); if (email && !validEmail(email)) fail('E-mail de alerta inválido.');
     const before = settingsOverview(db);
     const portal = b.client_portal === true || b.client_portal === '1' || b.client_portal === 'on';
-    setSetting(db, 'retention_months', months); setSetting(db, 'stale_days', stale); setSetting(db, 'client_portal', portal ? '1' : '0'); setSetting(db, 'alert_email', email);
+    setSetting(db, 'retention_months', months); setSetting(db, 'stale_days', stale); setSetting(db, 'client_portal', portal ? '1' : '0'); setSetting(db, 'alert_email', email); setSetting(db, 'alert_level', b.alert_level === 'all' ? 'all' : 'critical');
     log('Configurações alteradas: retenção ' + before.retention_months + '→' + months + ' meses, alerta ' + before.stale_days + '→' + stale + ' dias, portal de clientes ' + (before.client_portal ? 'ligado' : 'desligado') + '→' + (portal ? 'ligado' : 'desligado')); return {};
   }
   if (op === 'recordUsage') {

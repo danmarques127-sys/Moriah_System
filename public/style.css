@@ -357,3 +357,10 @@ td.rowact{white-space:nowrap}
 .settings-panel .form-grid>small{margin-top:-6px}
 .settings-panel button.outline{width:100%}
 .ownerbadge{display:inline-block;margin-left:10px;padding:4px 12px;border-radius:999px;background:#4a2f9a;color:#e8dcff;font-size:13px;font-weight:600}
+
+/* top-right bell and help */
+.main-col{position:relative}
+.topicons{position:absolute;top:18px;right:26px;display:flex;gap:14px;z-index:5}
+.iconbtn2{position:relative;background:transparent;border:0;padding:6px;color:#d9d5ff}
+.iconbtn2 .ico{width:26px;height:26px}
+.dot2{position:absolute;top:4px;right:5px;width:9px;height:9px;border-radius:50%;background:#a855f7}
