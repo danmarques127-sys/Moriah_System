@@ -124,3 +124,7 @@ Partners sections: Affiliated companies, Trades (editable), Client access (accou
 - **CSV**: comma, semicolon, tab or pipe; title lines above the header are skipped; many header names (Permit ID, Property Address, Issue Date, Job Cost...).
 - **Dates**: `10/1/2026`, `2026-10-01`, `Oct 1, 2026`, `1-Oct-2026`, `10.01.2026`, `20261001`, Excel serials.
 - A page that repeats the first rows of the previous page keeps the first complete copy.
+
+## Client channel (prepared, OFF by default)
+Switch on in Partners → Settings. Clients (Partners → Client access → Set password) sign in at `POST /api/client/login` with their own cookie (`pf_client`, 8 h) and read `GET /api/client/permits` (filters: `q`, `state`, `city`, `from`, `to`, `page`, `export=1`).
+Rules enforced and tested: only the cities assigned to the account; account and company must be active; **no municipal link, source id or source name is ever returned** (links are also stripped from descriptions, permit keys are opaque); a client cookie cannot open any internal route; usage (seen/exported) is counted per company. No client screen exists yet. `TEST_PASSWORD` can override the fixed test-server password.

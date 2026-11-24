@@ -15,7 +15,7 @@ export async function createTestApplication(options={}){
  });
  // Public fixture credentials for the isolated test database only.
  const salt=randomBytes(16).toString('hex');
- const key=scryptSync('shazam123@',salt,64,{N:32768,r:8,p:1,maxmem:67108864});
+ const key=scryptSync(process.env.TEST_PASSWORD||'shazam123@',salt,64,{N:32768,r:8,p:1,maxmem:67108864});
  app.db.prepare('UPDATE users SET password_hash=? WHERE email=?').run(salt+':'+key.toString('hex'),app.config.testLoginEmail);
  app.db.prepare('DELETE FROM sessions WHERE user_id IN (SELECT id FROM users WHERE email=?)').run(app.config.testLoginEmail);
  return app;
