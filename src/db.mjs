@@ -5,7 +5,7 @@ export function openDatabase(path){
  if(path!==':memory:')mkdirSync(dirname(path),{recursive:true});
  const db=new DatabaseSync(path);
  db.exec('PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;');
- const LATEST=20,version=db.prepare('PRAGMA user_version').get().user_version;
+ const LATEST=21,version=db.prepare('PRAGMA user_version').get().user_version;
  if(version>LATEST)throw new Error('Unsupported database version: '+version);
  if(version===0)db.exec(readFileSync(new URL('../migrations/001.sql',import.meta.url),'utf8'));
  // Each migration file ends with PRAGMA user_version=N; apply the missing ones in order.

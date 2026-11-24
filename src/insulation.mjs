@@ -5,6 +5,7 @@
 //   proposal total: original price - discount % + extra to be charged (may be negative) + optional sales tax
 // Private side (never shown to customers): cost per gallon / pack + crew productivity give cost, profit and margin.
 // Starting values are EDITABLE and come from the existing proposals' unit prices and yields; confirm with the spec sheet.
+import {listExtras, priceExtras, extrasOp} from './extras.mjs';
 const fail = (m, s = 400) => { const e = new Error(m); e.status = s; throw e; };
 const clean = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, ' ').trim().slice(0, n);
 const round2 = v => Math.round(v * 100) / 100;
@@ -34,7 +35,7 @@ function settings(db, co) {
 }
 export function listInsulation(db, owner) {
   seed(db, owner.companyId);
-  return {materials: db.prepare('SELECT * FROM ins_materials WHERE company_id=? ORDER BY id').all(owner.companyId).map(shapeMat), settings: settings(db, owner.companyId), places: PLACES};
+  return {materials: db.prepare('SELECT * FROM ins_materials WHERE company_id=? ORDER BY id').all(owner.companyId).map(shapeMat), settings: settings(db, owner.companyId), places: PLACES, extras: listExtras(db, owner.companyId, 'Insulation')};
 }
 const num = (v, lo, hi, label) => { const n = Number(v); if (!(n >= lo && n <= hi)) fail(label + ' inválido.'); return n; };
 
@@ -63,18 +64,20 @@ export function calcInsulation(db, owner, b) {
     rows.push({order: Number(r.l.order) || r.i + 1, place: clean(r.l.place, 80), depth: clean(r.l.depth, 20), workplace: clean(r.l.workplace, 80), noteCustomer: clean(r.l.noteCustomer, 400), noteCrew: clean(r.l.noteCrew, 400), materialId: r.m.id, product: r.m.name, kind: r.m.kind, inches: round2(r.inches), rPerInch: r.m.r_per_inch, unitPrice: r.ft > 0 ? round2(price / (r.foam ? Math.max(r.bf, 1e-9) : r.ft) * 100) / 100 : 0, rv: round2(r.rv), ft: r.ft, boardFeet: round2(r.bf), price: round2(price), cost: round2(mat + (r.foam && gals ? sprayDays * st.crewDayCost * (qtyOf(g) * share) / gals : 0))});
   }
   rows.sort((x, y) => x.order - y.order);
+  const ex = priceExtras(db, owner.companyId, 'Insulation', b.extras); original += ex.price;
   const fire = b.fire ? num(b.firePrice ?? st.firePrice, 0, 1000000, 'Fireblocking') : 0; original += fire;
-  const cost = mcostAll + crewDays * st.crewDayCost;   // batts: the pack price already covers labor and profit
+  const cost = mcostAll + crewDays * st.crewDayCost + ex.cost;   // batts: the pack price already covers labor and profit
   const discountPct = num(b.discountPct || 0, 0, 100, 'Desconto'), extra = Number(b.extra || 0); if (!(Math.abs(extra) <= 100000000)) fail('Valor extra inválido.');
   const extraNote = clean(b.extraNote, 200); if (extra && !extraNote) fail('Descreva o valor extra ("Extra to be charged").');
   const discount = original * discountPct / 100, subtotal = original - discount + extra, taxRate = b.taxOn ? num(b.taxRate || 0, 0, 30, 'Imposto') : 0, tax = subtotal * taxRate / 100, total = subtotal + tax;
   const materials = [...groups.values()].map(g => { const qty = qtyOf(g); return {material: g.m.name, unit: g.foam ? 'GL' : (g.m.pack === 'sq ft' ? 'SF' : g.m.pack.toUpperCase()), qty, barrels: g.foam ? round2(qty / st.barrelGal) : 0, ft: round2(g.ft), cost: round2(qty * g.m.unit_cost)}; });
-  return {rows, materials, totals: {original: round2(original), fire: round2(fire), discount: round2(discount), extra: round2(extra), extraNote, subtotal: round2(subtotal), taxRate, tax: round2(tax), total: round2(total), cost: round2(cost), profit: round2(subtotal - cost), margin: subtotal > 0 ? round2((subtotal - cost) / subtotal * 100) : 0, crewDays, sprayDays, battDays, gallons: gals}, settings: st};
+  return {rows, materials, extras: ex.rows, totals: {extrasPrice: ex.price, original: round2(original), fire: round2(fire), discount: round2(discount), extra: round2(extra), extraNote, subtotal: round2(subtotal), taxRate, tax: round2(tax), total: round2(total), cost: round2(cost), profit: round2(subtotal - cost), margin: subtotal > 0 ? round2((subtotal - cost) / subtotal * 100) : 0, crewDays, sprayDays, battDays, gallons: gals}, settings: st};
 }
 
 export function insulationAction(db, owner, b) {
   seed(db, owner.companyId);
   if (b.op === 'calc') return calcInsulation(db, owner, b);
+  const xo = extrasOp(db, owner.companyId, 'Insulation', b); if (xo) return xo;
   if (b.op === 'settings') {
     const v = [Math.round(num(b.crewSize, 1, 20, 'Equipe')), num(b.galPerDay, 1, 5000, 'Galões por dia'), num(b.crewDayCost, 0, 100000, 'Custo do dia'), num(b.wastePct ?? 0, 0, 100, 'Desperdício'), num(b.markupPct ?? 0, 0, 500, 'Markup'), num(b.sqftPerDay, 1, 100000, 'Produtividade'), num(b.barrelGal || 45, 1, 500, 'Galões por barril'), num(b.dayProfit ?? 1200, 0, 100000, 'Lucro por dia'), num(b.firePrice ?? 1200, 0, 100000, 'Fireblocking')];
     db.prepare('UPDATE ins_settings SET crew_size=?,gal_per_day=?,crew_day_cost=?,waste_pct=?,markup_pct=?,sqft_per_day=?,barrel_gal=?,day_profit=?,fire_price=? WHERE company_id=?').run(...v, owner.companyId); return {ok: true};

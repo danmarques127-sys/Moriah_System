@@ -11,6 +11,7 @@ import {parseUploadedFile} from './documents.mjs';
 import {checkAllSources} from './source-audit.mjs';
 import {partnersOverview,partnersAction} from './partners.mjs';
 import {listInsulation,insulationAction} from './insulation.mjs';
+import {listPainting,paintingAction} from './painting.mjs';
 import {listLists,listAction,listKeys,permitDetail,saveNote,listFollowups,followupAction,listEstimates,estimateAction,estimatePhotoFor} from './business.mjs';
 import {listInvoices,invoiceAction,listJobs,jobAction,overview} from './finance.mjs';
 import {listCustomers,customerDetail,customerAction} from './crm.mjs';
@@ -89,6 +90,8 @@ export async function createApplication(options={}){
     if(isOwner(client)&&path==='/api/client/customers'&&req.method==='GET'){const id=url.searchParams.get('id');return send(res,200,id?customerDetail(db,client,id):listCustomers(db,client,{q:url.searchParams.get('q')||'',status:url.searchParams.get('status')||''}));}
     if(isOwner(client)&&path==='/api/client/customers'&&req.method==='POST')return send(res,200,customerAction(db,client,await body(req),client.name||client.email));
     if(isOwner(client)&&path==='/api/client/insulation'&&req.method==='GET')return send(res,200,listInsulation(db,client));
+    if(isOwner(client)&&path==='/api/client/painting'&&req.method==='GET')return send(res,200,listPainting(db,client));
+    if(isOwner(client)&&path==='/api/client/painting'&&req.method==='POST')return send(res,200,paintingAction(db,client,await body(req)));
     if(isOwner(client)&&path==='/api/client/insulation'&&req.method==='POST')return send(res,200,insulationAction(db,client,await body(req)));
     if(isOwner(client)&&path==='/api/client/prices'&&req.method==='GET')return send(res,200,listPrices(db,client));
     if(isOwner(client)&&path==='/api/client/prices'&&req.method==='POST'){const b=await body(req);return send(res,200,b.op==='calc'?calculate(db,client,b):pricesAction(db,client,b));}

@@ -541,3 +541,5 @@ button.cl-right,.cl-right{padding:0 22px}
 .cl-matedit{grid-template-columns:2fr .8fr 1fr 1fr 1fr 1fr auto auto}
 .cl-check{display:flex;align-items:center;gap:8px;align-self:end;padding-bottom:12px}
 @media(max-width:1300px){.cl-insline,.cl-matedit{grid-template-columns:1fr 1fr}}
+.paint-line{grid-template-columns:.4fr 1.6fr 2fr 1fr .8fr auto}
+@media (max-width:760px){.paint-line{grid-template-columns:1fr 1fr}}
