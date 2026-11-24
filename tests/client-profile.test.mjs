@@ -16,8 +16,8 @@ async function setup() {
 }
 test('profile: owner edits personal + company data and photo', async () => {
   const {db, owner} = await setup();
-  const r = await saveProfile(db, owner, {name: 'Homero', phone: '555', title: 'Owner', photo: PNG, company: {name: 'H&M Brothers', contactEmail: 'a@b.co', address: '1 Main St', logo: PNG}}, hashPassword);
-  assert.equal(r.me.name, 'Homero'); assert.equal(r.me.photo, PNG); assert.equal(r.company.name, 'H&M Brothers'); assert.equal(r.company.logo, PNG);
+  const r = await saveProfile(db, owner, {name: 'Homero', phone: '555', title: 'Owner', photo: PNG, company: {name: 'Acme Insulation', contactEmail: 'a@b.co', address: '1 Main St', logo: PNG}}, hashPassword);
+  assert.equal(r.me.name, 'Homero'); assert.equal(r.me.photo, PNG); assert.equal(r.company.name, 'Acme Insulation'); assert.equal(r.company.logo, PNG);
   await assert.rejects(saveProfile(db, owner, {name: 'x', photo: 'javascript:alert(1)'}, hashPassword), /imagem/);
   await assert.rejects(saveProfile(db, owner, {name: 'x', company: {name: 'Y', contactEmail: 'bad'}}, hashPassword), /E-mail/);
 });

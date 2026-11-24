@@ -1,6 +1,7 @@
-// Removes the demo BUSINESS data of the H&M Brothers Insulation test company (customers, jobs, expenses, invoices,
+// Removes the demo BUSINESS data of the demo test company (customers, jobs, expenses, invoices,
 // crew punches/reports, estimates, DEMO- permits). Keeps the company, its accounts, cities and price list.
 // Usage: npm run limpar-demo            (uses DATABASE_PATH or data/permit-finder-test.sqlite)
+import {DEMO} from './demo-clients.mjs';
 import {existsSync} from 'node:fs';
 import {openDatabase} from '../src/db.mjs';
 import {opaque} from '../src/client-api.mjs';
@@ -8,7 +9,7 @@ import {opaque} from '../src/client-api.mjs';
 const path = process.env.DATABASE_PATH || 'data/permit-finder-test.sqlite';
 if (!existsSync(path)) { console.log('Banco não encontrado em ' + path); process.exit(1); }
 const db = openDatabase(path);
-const co = db.prepare("SELECT id FROM companies WHERE name='H&M Brothers Insulation'").get()?.id;
+const co = db.prepare("SELECT id FROM companies WHERE name=?").get(DEMO.company.name)?.id;
 const del = (label, sql, ...a) => { const n = db.prepare(sql).run(...a).changes; if (n) console.log('  removidos ' + n + ' ' + label); return n; };
 let total = 0;
 if (co) {

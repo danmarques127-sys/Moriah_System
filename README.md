@@ -182,7 +182,7 @@ Source publication is independent of production deployment. Keep this repository
 
 ### Private test preview
 
-Run `npm run start:test` with Node 24. This explicitly starts a test-only server with username `mestre` and the agreed public fixture password `shazam123@`. Do not reuse this password for real accounts. Keep Codespaces port visibility **Private**.
+Run `npm run start:test` with Node 24. This explicitly starts a test-only server with username `mestre` and the password set in `TEST_PASSWORD`. Do not reuse this password for real accounts. Keep Codespaces port visibility **Private**. Put your private test values (MASTER_EMAIL, TEST_PASSWORD, DEMO_PASSWORD, DEMO_COMPANY, DEMO_OWNER_USER, DEMO_SELLER_USER...) in `data/local.env`, which is git-ignored. Without it the server uses neutral fixtures (`master@example.test`).
 
 This command uses a separate persistent `data/permit-finder-test.sqlite` database, ignores the real account bootstrap variables, and does not reset your existing accounts. The normal `npm start` command never creates this account. Test startup and test login configuration are rejected in production.
 

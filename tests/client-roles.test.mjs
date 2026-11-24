@@ -61,14 +61,14 @@ test('favorites and site visits: seller sees own, owner sees all, photos are pri
   assert.ok(v.id);
 });
 
-import {seedDemoClients} from '../scripts/demo-clients.mjs';
+import {seedDemoClients, DEMO} from '../scripts/demo-clients.mjs';
 import {clientLogin} from '../src/client-api.mjs';
 test('demo clients can sign in with a user name, are idempotent, and have the right roles', async () => {
   const db = openDatabase(':memory:');
   seedDemoClients(db); seedDemoClients(db);
   assert.equal(db.prepare('SELECT COUNT(*) n FROM client_accounts').get().n, 3);
-  assert.equal(db.prepare("SELECT role FROM client_accounts WHERE email='johnhmbrothersinsulation'").get().role, 'seller');
-  assert.ok(await clientLogin(db, 'HomeroSampaio', 'Ahesqueci1'));
-  assert.equal(await clientLogin(db, 'homerosampaio', 'wrong-password-xx'), null);
+  assert.equal(db.prepare("SELECT role FROM client_accounts WHERE email=?").get(DEMO.accounts[2].user).role, 'seller');
+  assert.ok(await clientLogin(db, DEMO.accounts[0].user.toUpperCase(), DEMO.password));
+  assert.equal(await clientLogin(db, DEMO.accounts[0].user, 'wrong-password-xx'), null);
 });
 

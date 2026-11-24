@@ -1,14 +1,17 @@
 // Demo business accounts for the isolated TEST database only (never loaded in production).
 // Passwords here are public fixtures: the test server refuses to run in production.
+import './local-env.mjs';
 import {randomBytes, scryptSync} from 'node:crypto';
 
+const env = (k, d) => process.env[k] || d;
+// Neutral defaults; your real demo names and password live in data/local.env (git-ignored).
 export const DEMO = {
-  company: {name: 'H&M Brothers Insulation', contact: 'Homero Sampaio', trade: 'Insulation'},
-  password: process.env.DEMO_PASSWORD || 'Ahesqueci1',
+  company: {name: env('DEMO_COMPANY', 'Demo Insulation Co'), contact: env('DEMO_OWNER_NAME', 'Demo Owner'), trade: 'Insulation'},
+  password: env('DEMO_PASSWORD', 'demo-fixture-password'),
   accounts: [
-    {user: 'homerosampaio', name: 'Homero Sampaio', role: 'owner'},
-    {user: 'hmbrothersinsulation', name: 'H&M Brothers Insulation', role: 'owner'},
-    {user: 'johnhmbrothersinsulation', name: 'John', role: 'seller'}
+    {user: env('DEMO_OWNER_USER', 'demoowner'), name: env('DEMO_OWNER_NAME', 'Demo Owner'), role: 'owner'},
+    {user: env('DEMO_COMPANY_USER', 'democompany'), name: env('DEMO_COMPANY', 'Demo Insulation Co'), role: 'owner'},
+    {user: env('DEMO_SELLER_USER', 'demoseller'), name: env('DEMO_SELLER_NAME', 'Demo Seller'), role: 'seller'}
   ]
 };
 
