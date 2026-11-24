@@ -342,3 +342,8 @@ td.rowact{white-space:nowrap}
 .lbrand{gap:.55em}
 .lbrand span{font-family:"Caveat","Segoe Print","Bradley Hand",cursive;font-size:2.9em;font-weight:700;line-height:1;letter-spacing:.02em;transform:rotate(-3deg);transform-origin:left center;color:#efe9ff;text-shadow:0 0 .5em #8b6bff99;display:inline-block;padding-bottom:.12em;border-bottom:.06em solid #a58bff77;border-radius:0 0 50% 50% / 0 0 100% 100%}
 .lbrand img{width:2.6em;height:2.6em}
+
+/* legible handwriting: larger, almost level, no underline, crisp white */
+.lbrand span{font-size:3.6em;font-weight:700;letter-spacing:.03em;transform:rotate(-1.5deg);transform-origin:center;color:#fff;text-shadow:0 0 .25em #7c5cff88;border-bottom:0;border-radius:0;padding:0}
+.lbrand{gap:.5em}
+.lbrand img{width:2.8em;height:2.8em}
