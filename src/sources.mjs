@@ -57,14 +57,6 @@ const BASE=[
     "allowedHosts": []
   },
   {
-    "id": "belmont",
-    "city": "Belmont",
-    "state": "MA",
-    "url": "https://www.belmont-ma.gov/348/Monthly-Permit-Reports",
-    "mode": "report",
-    "allowedHosts": []
-  },
-  {
     "id": "arlington",
     "city": "Arlington",
     "state": "MA",
@@ -231,28 +223,11 @@ const BASE=[
     "allowedHosts": []
   },
   {
-    "id": "manchester",
-    "city": "Manchester-by-the-Sea",
-    "state": "MA",
-    "url": "https://manchester.ma.us/Archive.aspx",
-    "mode": "report",
-    "allowedHosts": []
-  },
-
-  {
     "id": "springfield",
     "city": "Springfield",
     "state": "MA",
     "url": "https://springfieldma.portal.opengov.com/",
     "mode": "portal",
-    "allowedHosts": []
-  },
-  {
-    "id": "lowell",
-    "city": "Lowell",
-    "state": "MA",
-    "url": "https://www.lowellma.gov/1084/Monthly-Permit-Reports",
-    "mode": "report",
     "allowedHosts": []
   },
   {
