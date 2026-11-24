@@ -50,3 +50,38 @@ export async function createMember(db,user,raw){
  if(!validEmail(raw.email)||!['owner','estimator','viewer'].includes(raw.role))throw new Error('E-mail ou papel inválido.');
  const hash=await hashPassword(raw.password),id=randomUUID();db.prepare('INSERT INTO users VALUES(?,?,?,?,?,?,?)').run(id,user.workspace_id,raw.email.toLowerCase(),hash,raw.role,0,timestamp());return {id,email:raw.email,role:raw.role};
 }
+
+// Workspace user management (owner only). The workspace owner account (system administrator) and the acting user are protected.
+function memberRow(db, user, id) {
+  const row = db.prepare('SELECT id,email,role,system_admin AS systemAdmin FROM users WHERE id=? AND workspace_id=?').get(String(id), user.workspace_id);
+  if (!row) throw new Error('Usuário não encontrado.');
+  return row;
+}
+export async function updateMember(db, user, raw) {
+  const row = memberRow(db, user, raw.id);
+  if (raw.role !== undefined) {
+    if (!['owner', 'viewer'].includes(raw.role)) throw new Error('Papel inválido.');
+    if (raw.role !== row.role) {
+      if (row.id === user.id) throw new Error('Você não pode alterar o seu próprio papel.');
+      if (row.systemAdmin) throw new Error('O proprietário do workspace não pode ser rebaixado.');
+      db.prepare('UPDATE users SET role=? WHERE id=?').run(raw.role, row.id);
+      audit(db, user.workspace_id, 'Papel de ' + row.email + ' alterado para ' + raw.role, user.email, 'config');
+    }
+  }
+  if (raw.password !== undefined && raw.password !== '') {
+    if (row.systemAdmin && row.id !== user.id) throw new Error('A senha do proprietário só pode ser alterada por ele mesmo (Profile).');
+    db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(await hashPassword(raw.password), row.id);
+    db.prepare('DELETE FROM sessions WHERE user_id=?').run(row.id);
+    audit(db, user.workspace_id, 'Senha redefinida para ' + row.email, user.email, 'config');
+  }
+  return {ok: true};
+}
+export function removeMember(db, user, raw) {
+  const row = memberRow(db, user, raw.id);
+  if (row.id === user.id) throw new Error('Você não pode remover a si mesmo.');
+  if (row.systemAdmin) throw new Error('O proprietário do workspace não pode ser removido.');
+  db.prepare('DELETE FROM sessions WHERE user_id=?').run(row.id);
+  db.prepare('DELETE FROM users WHERE id=?').run(row.id);
+  audit(db, user.workspace_id, 'Usuário removido: ' + row.email, user.email, 'config');
+  return {ok: true};
+}
