@@ -130,15 +130,23 @@ function proposal(quote){
  window.print();
 }
 
-async function run(task){if(s.busy)return;s.busy=true;document.body.classList.add('busy');try{await task();}catch(err){notice(err.message,true);}finally{s.busy=false;document.body.classList.remove('busy');}}
+// Loading screen: blocks clicks while something long runs and says what is happening.
+function showLoading(text){let el=$('#loading');if(!el){el=document.createElement('div');el.id='loading';el.setAttribute('role','status');el.setAttribute('aria-live','polite');el.innerHTML='<div class="loading-box"><div class="spinner"></div><p id="loading-text"></p></div>';document.body.appendChild(el);}$('#loading-text').textContent=text;}
+function hideLoading(){const el=$('#loading');if(el)el.remove();}
+async function run(task,label){if(s.busy)return;s.busy=true;document.body.classList.add('busy');if(label)showLoading(label);try{await task();}catch(err){s.poll=false;hideLoading();notice(err.message,true);}finally{s.busy=false;document.body.classList.remove('busy');if(!s.poll)hideLoading();}}
+const LOADING={collect:'Starting collection…',collectSource:'Starting collection…',confirmUpload:'Saving the import…',retryFailed:'Retrying failed collections…',checkSources:'Checking source links…'};
+function jobsSince(){return s.jobs.filter(j=>j.updatedAt>=s.pollStart);}
+function pollLabel(){const batch=jobsSince(),city=id=>(s.sources.find(c=>c.id===id)||{city:id}).city,open=batch.filter(j=>['queued','running'].includes(j.status)),running=open.find(j=>j.status==='running')||open[0];return running?'Collecting '+city(running.sourceId)+' '+running.month+' ('+(batch.length-open.length)+' of '+batch.length+')…':'Finishing…';}
+function pollSummary(){const b=jobsSince(),ok=b.filter(j=>j.status==='done').length,pending=b.filter(j=>j.status==='pending').length,failed=b.filter(j=>j.status==='failed');return 'Collection finished: '+ok+' succeeded, '+pending+' pending, '+failed.length+' failed.'+(failed.length?' See the Errors tab for the reasons.':'');}
+async function waitForChecks(total,since){const end=Date.now()+120000;while(Date.now()<end){await new Promise(r=>setTimeout(r,2500));s.admin=await api('/api/admin/overview');const n=s.admin.checks.filter(c=>c.checkedAt>=since).length;showLoading('Checking source links ('+n+' of '+total+')…');if(n>=total)break;}}
 async function navigate(tab){s.chosen=null;s.modal=null;s.tab=tab;if(tab==='payments')s.finances=await api('/api/finances');if(tab==='employees')s.staff=await api('/api/employees');if(tab==='settings'&&s.me.role==='owner')s.members=(await api('/api/members')).members;if(tab==='coverage')s.jobs=(await api('/api/jobs')).jobs;if((tab==='admin'||tab==='errors')&&s.me.systemAdmin)s.admin=await api('/api/admin/overview');await refresh();}
 async function collectSelected(id){
  if(!s.me.systemAdmin)throw new Error('Somente o administrador do sistema pode iniciar coletas.');
  const ids=id?[id]:s.sources.filter(native).filter(c=>(s.filters.state==='Todos'||c.state===s.filters.state)&&(!s.filters.cities.length||s.filters.cities.includes(c.id))).map(c=>c.id);
  if(!ids.length){notice('Selected cities have no automated collector yet. See Sources & Coverage for their official reports.',true);return;}
- const r=await api('/api/jobs',{sources:ids,from:s.filters.from,to:s.filters.to});notice(r.queued+' source/month queries queued. Results will refresh when collection finishes.');s.poll=true;await pollJobs();
+ s.pollStart=new Date(Date.now()-2000).toISOString();const r=await api('/api/jobs',{sources:ids,from:s.filters.from,to:s.filters.to});notice(r.queued+' source/month queries queued. Results will refresh when collection finishes.');s.poll=true;showLoading('Collecting… (0 of '+r.queued+')');await pollJobs();
 }
-async function pollJobs(){if(!s.me)return;s.jobs=(await api('/api/jobs')).jobs;const active=s.jobs.some(j=>['queued','running'].includes(j.status));if(s.tab==='coverage')render();if(s.poll&&!active){s.poll=false;await radar();if(['admin','errors'].includes(s.tab))s.admin=await api('/api/admin/overview');render();notice('Collection finished. Check coverage for incomplete sources.');}}
+async function pollJobs(){if(!s.me)return;s.jobs=(await api('/api/jobs')).jobs;const active=s.jobs.some(j=>['queued','running'].includes(j.status));if(s.poll&&Date.now()-Date.parse(s.pollStart)>1800000){s.poll=false;hideLoading();notice('Collection is taking longer than expected. Check Admin and Errors later.',true);return;}if(s.poll&&active)showLoading(pollLabel());if(s.tab==='coverage')render();if(s.poll&&!active){s.poll=false;await radar();if(['admin','errors'].includes(s.tab))s.admin=await api('/api/admin/overview');hideLoading();render();notice(pollSummary(),/ [1-9]\d* failed/.test(pollSummary()));}}
 async function importPermits(file){
  if(!file)return;if(file.size>12000000)throw new Error('Use arquivos JSON of até 12 MB; o envio é dividido em lotes.');
  const obj=JSON.parse(await file.text()),records=Array.isArray(obj)?obj:obj.permits||obj.records;if(!Array.isArray(records))throw new Error('O JSON precisa conter records ou permits.');
@@ -175,13 +183,13 @@ document.addEventListener('click',event=>{
   if(a==='prev'||a==='next'){s.filters.page=Math.max(1,Math.min(s.radar.pages,s.filters.page+(a==='next'?1:-1)));return refresh();}
   if(a==='collect')return collectSelected();
   if(a==='collectSource')return collectSelected(id);
-  if(a==='checkSources'){const r=await api('/api/admin/check-sources',{});notice('Checking '+r.started+' source pages in the background. Reopen this page in about a minute.');return;}
-  if(a==='retryFailed'){const r=await api('/api/admin/retry-failed',{});notice(r.queued+' failed collections queued again.');s.poll=true;return;}
+  if(a==='checkSources'){const since=new Date(Date.now()-1000).toISOString(),r=await api('/api/admin/check-sources',{});await waitForChecks(r.started,since);hideLoading();render();notice('Source links checked. See the Link column in Admin and the Errors tab.');return;}
+  if(a==='retryFailed'){s.pollStart=new Date(Date.now()-2000).toISOString();const r=await api('/api/admin/retry-failed',{});if(!r.queued){notice('There are no failed collections to retry.');return;}notice(r.queued+' failed collections queued again.');s.poll=true;showLoading('Retrying… (0 of '+r.queued+')');await pollJobs();return;}
   if(a==='openUpload'){s.upload=null;s.modal='upload';return render();}
   if(a==='confirmUpload'){const r=await uploadFile(s.upload,true);s.modal=null;s.upload=null;await radar();if(['admin','errors'].includes(s.tab))s.admin=await api('/api/admin/overview');render();notice(r.added+' new and '+r.updated+' updated. Manual coverage is marked partial.');return;}
   if(a==='newSource'){s.modal='source';return render();}
   if(a==='import'){$('#import-file').click();return;}
- });
+ },LOADING[a]);
 });
 document.addEventListener('input',event=>{
  const el=event.target;
@@ -201,7 +209,7 @@ document.addEventListener('change',event=>{
  if(el.hasAttribute('data-error-area')){s.errorArea=el.value;return render();}
  if(el.hasAttribute('data-admin-filter')){s.adminFilter=el.value;return render();}
  if(el.dataset.filter){s.filters[el.dataset.filter]=el.value;s.filters.page=1;return run(refresh);}
- if(el.id==='import-file')return run(()=>importPermits(el.files[0]));
+ if(el.id==='import-file')return run(()=>importPermits(el.files[0]),'Importing permits…');
  if(el.dataset.section!==undefined&&['SELECT'].includes(el.tagName)){
   const section=s.estimate.input.sections[Number(el.dataset.section)];if(el.dataset.layerField==='materialId'&&s.settings.materials.find(m=>m.id===el.value)?.kind!=='foam')section.layers[Number(el.dataset.layer)].mode='fixed';render();
  }
@@ -224,12 +232,12 @@ document.addEventListener('submit',event=>{
   }
   if(form.dataset.form==='password'){await api('/api/password',values);clearWorkspace();render();notice('Password alterada. Entre novamente.');return;}
   if(form.dataset.form==='member'){await api('/api/members',values);s.members=(await api('/api/members')).members;render();notice('Usuário adicionado ao workspace. Nenhuma mensagem foi enviada.');}
- });
+ },{upload:'Reading the file…',login:'Signing in…'}[form.dataset.form]);
 });
 document.addEventListener('keydown',event=>{
  if(event.key==='Escape'&&(s.modal||s.chosen)){s.modal=null;s.chosen=null;render();}
  if(event.key==='Tab'&&(s.modal||s.chosen)){const nodes=[...document.querySelectorAll('.overlay a,.overlay button,.overlay input,.overlay select,.overlay textarea')].filter(x=>!x.disabled&&!x.hidden);if(!nodes.length)return;
  if(event.shiftKey&&document.activeElement===nodes[0]){event.preventDefault();nodes.at(-1).focus();}else if(!event.shiftKey&&document.activeElement===nodes.at(-1)){event.preventDefault();nodes[0].focus();}}
 });
-setInterval(()=>{if(s.poll&&!s.busy)pollJobs().catch(err=>notice(err.message,true));},5000);
+setInterval(()=>{if(s.poll&&!s.busy)pollJobs().catch(err=>{s.poll=false;hideLoading();notice(err.message,true);});},2000);
 try{const me=await api('/api/me');s.me=me.user;s.csrf=me.csrf;s.settings=me.settings;await radar();}catch{}render();
