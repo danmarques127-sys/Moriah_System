@@ -61,3 +61,12 @@ test('uploaded text-PDF rows go through the same parser as the collectors', asyn
   assert.equal(parsed.records[0].address, '328 BARN HILL RD');
   assert.deepEqual(parsed.range, {from: '2026-03-25', to: '2026-03-25'});
 });
+
+test('upload preview suggests the right month and detects a file from another city', async () => {
+  const {parseUploadedFile} = await import('../src/documents.mjs');
+  const csv = 'Record #,Date Issued,Full Address,Type of Improvement\nB-1,2026-10-01,"1 MAIN ST, Westerly, RI 02891",Addition\nB-2,2026-10-05,"2 OAK ST, Westerly, RI 02891",Pool\n';
+  const src = {id: 'chicopee', city: 'Chicopee', state: 'MA', url: 'https://www.chicopeema.gov/x', mode: 'report'};
+  const r = await parseUploadedFile({buffer: Buffer.from(csv), source: src, month: '2026-11'});
+  assert.equal(r.suggestedMonth, '2026-10'); assert.equal(r.records.length, 0);
+  assert.ok(r.addresses.every(a => /Westerly/.test(a)));
+});
