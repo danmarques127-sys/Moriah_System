@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 220" role="img" aria-label="Data pipeline: city sources, collectors, normalization, SQLite, radar">
+  <rect width="1200" height="220" rx="18" fill="#0f0f24"/>
+  <g font-family="Segoe UI,Arial,sans-serif" font-size="19" fill="#f1efff" text-anchor="middle">
+    <g><rect x="30" y="70" width="190" height="80" rx="14" fill="#1b1a36" stroke="#9b6bff"/><text x="125" y="105">City sources</text><text x="125" y="130" font-size="14" fill="#9b98c4">API · CSV · PDF · XLSX</text></g>
+    <g><rect x="270" y="70" width="190" height="80" rx="14" fill="#1b1a36" stroke="#9b6bff"/><text x="365" y="105">Collectors</text><text x="365" y="130" font-size="14" fill="#9b98c4">native + document readers</text></g>
+    <g><rect x="510" y="70" width="190" height="80" rx="14" fill="#1b1a36" stroke="#9b6bff"/><text x="605" y="105">Normalize</text><text x="605" y="130" font-size="14" fill="#9b98c4">dates · type · value</text></g>
+    <g><rect x="750" y="70" width="190" height="80" rx="14" fill="#1b1a36" stroke="#9b6bff"/><text x="845" y="105">SQLite</text><text x="845" y="130" font-size="14" fill="#9b98c4">permits · coverage · logs</text></g>
+    <g><rect x="990" y="70" width="180" height="80" rx="14" fill="#7c3aed"/><text x="1080" y="105">Radar</text><text x="1080" y="130" font-size="14" fill="#e8dcff">owner · partners</text></g>
+  </g>
+  <g stroke="#9b6bff" stroke-width="3" fill="none" stroke-dasharray="10 8" stroke-linecap="round">
+    <path d="M222 110H268"><animate attributeName="stroke-dashoffset" values="36;0" dur="1.2s" repeatCount="indefinite"/></path>
+    <path d="M462 110H508"><animate attributeName="stroke-dashoffset" values="36;0" dur="1.2s" repeatCount="indefinite"/></path>
+    <path d="M702 110H748"><animate attributeName="stroke-dashoffset" values="36;0" dur="1.2s" repeatCount="indefinite"/></path>
+    <path d="M942 110H988"><animate attributeName="stroke-dashoffset" values="36;0" dur="1.2s" repeatCount="indefinite"/></path>
+  </g>
+</svg>

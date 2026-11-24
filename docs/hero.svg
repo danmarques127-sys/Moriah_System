@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 360" role="img" aria-label="Moriah System — Permit Intelligence">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0a1a"/><stop offset="1" stop-color="#2a1560"/>
+    </linearGradient>
+    <linearGradient id="gl" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#9b6bff"/><stop offset="1" stop-color="#d6b8ff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#7c3aed" stop-opacity=".55"/><stop offset="1" stop-color="#7c3aed" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="360" rx="22" fill="url(#bg)"/>
+  <circle cx="960" cy="180" r="170" fill="url(#glow)"/>
+  <g fill="none" stroke="#9b6bff" stroke-width="2">
+    <circle cx="960" cy="180" r="30" opacity=".9"/>
+    <circle cx="960" cy="180" r="30"><animate attributeName="r" values="30;150" dur="3.6s" repeatCount="indefinite"/><animate attributeName="opacity" values=".8;0" dur="3.6s" repeatCount="indefinite"/></circle>
+    <circle cx="960" cy="180" r="30"><animate attributeName="r" values="30;150" dur="3.6s" begin="1.2s" repeatCount="indefinite"/><animate attributeName="opacity" values=".8;0" dur="3.6s" begin="1.2s" repeatCount="indefinite"/></circle>
+    <circle cx="960" cy="180" r="30"><animate attributeName="r" values="30;150" dur="3.6s" begin="2.4s" repeatCount="indefinite"/><animate attributeName="opacity" values=".8;0" dur="3.6s" begin="2.4s" repeatCount="indefinite"/></circle>
+  </g>
+  <g stroke="#ffffff14" fill="none"><path d="M0 300 L240 250 L480 300"/><path d="M60 330 L300 270 L540 330"/><path d="M700 60 L900 30 L1100 70"/></g>
+  <g>
+    <circle cx="930" cy="150" r="5" fill="#f5b942"><animate attributeName="opacity" values="0;1;0" dur="3.6s" repeatCount="indefinite"/></circle>
+    <circle cx="1010" cy="210" r="5" fill="#34d399"><animate attributeName="opacity" values="0;1;0" dur="3.6s" begin="1.2s" repeatCount="indefinite"/></circle>
+    <circle cx="905" cy="225" r="5" fill="#f87171"><animate attributeName="opacity" values="0;1;0" dur="3.6s" begin="2.4s" repeatCount="indefinite"/></circle>
+  </g>
+  <rect x="70" y="86" width="84" height="84" rx="20" fill="#7c3aed"/>
+  <path d="M92 146V108l20 22 20-22v38" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="178" y="130" font-family="Montserrat,Segoe UI,Arial,sans-serif" font-size="58" font-weight="800" fill="#fff" letter-spacing="3">MORIAH</text>
+  <text x="180" y="166" font-family="Montserrat,Segoe UI,Arial,sans-serif" font-size="26" fill="url(#gl)" letter-spacing="14">SYSTEM</text>
+  <text x="72" y="236" font-family="Segoe UI,Arial,sans-serif" font-size="30" fill="#f1efff">Issued building permits for MA · CT · RI, in one radar.</text>
+  <text x="72" y="278" font-family="Segoe UI,Arial,sans-serif" font-size="20" fill="#9b98c4">Collected from city sources · no AI · always the newest data</text>
+  <rect x="72" y="304" width="320" height="4" rx="2" fill="#ffffff1a"/>
+  <rect x="72" y="304" width="90" height="4" rx="2" fill="url(#gl)"><animate attributeName="x" values="72;302;72" dur="4s" repeatCount="indefinite"/></rect>
+</svg>
