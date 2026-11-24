@@ -533,3 +533,7 @@ button.cl-right,.cl-right{padding:0 22px}
 .cl-card.col{align-content:start;grid-auto-rows:min-content}.cl-card.col .cl-kv{min-height:0;height:auto}
 .modal.side-drawer>header>button,.overlay .modal>header>button[data-action=close]{width:36px;height:36px;min-height:36px;display:grid;place-items:center;padding:0}
 .cl-card.col{gap:0}.cl-card.col .cl-kv{margin:0}.cl-card.col>p{margin:0 0 8px}.cl-card.col h3{margin:0 0 6px}
+.cl-insline{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 2fr 1fr auto;gap:10px;align-items:end;margin-bottom:12px}.cl-insline label{display:grid;gap:6px;font-size:13px;color:var(--muted)}
+.cl-matedit{display:grid;grid-template-columns:2fr .8fr 1fr 1fr 1fr auto auto;gap:10px;align-items:end;margin-bottom:10px}.cl-matedit label{display:grid;gap:6px;font-size:12px;color:var(--muted)}
+.cl-actions{display:flex;gap:10px;margin:6px 0 14px}
+@media(max-width:1100px){.cl-insline,.cl-matedit{grid-template-columns:1fr 1fr}}
