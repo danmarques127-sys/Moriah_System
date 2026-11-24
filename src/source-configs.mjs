@@ -5,9 +5,9 @@
 // `dateKind` says which date the document exposes: 'issued' (default), 'paid', 'submitted' or 'range'.
 export const DOCUMENT_SOURCES = {
   // Needham publishes per period (quarter/half-year): take the newest year and period, all its files.
-  needham: {collector: {scope: 'quarter', match: 'quarter', maxFiles: 2}},
+  needham: {collector: {verified: true, scope: 'quarter', match: 'quarter', maxFiles: 2}},
   // Wellesley: the Archive Center category lists one item per year and type; each item is an .aspx page with the table.
-  wellesley: {collector: {scope: 'year', listUrls: ['https://www.wellesleyma.gov/Archive.aspx?AMID=36', 'https://www.wellesleyma.gov/168/Report-of-Permits-Issued'], match: 'permit', dateKind: 'submitted', maxFiles: 4}},
+  wellesley: {collector: {verified: true, scope: 'year', listUrls: ['https://www.wellesleyma.gov/Archive.aspx?AMID=36', 'https://www.wellesleyma.gov/168/Report-of-Permits-Issued'], match: 'permit', dateKind: 'submitted', maxFiles: 4}},
   // Belmont: one report per month ("Permit Report - Aug 2025"); the report only exposes its date range.
   belmont: {collector: {scope: 'month', match: 'permit', crawl: true, crawlRe: 'archive|permit report|monthly', dateKind: 'range', dateFallback: 'month-start'}},
   // Arlington: two shared workbooks (SharePoint links supplied by the town). Rows are filtered by issue month.
@@ -18,21 +18,21 @@ export const DOCUMENT_SOURCES = {
     ]},
     allowedHosts: ['arlingtonma-my.sharepoint.com']
   },
-  lexington: {collector: {scope: 'month'}},
+  lexington: {collector: {verified: true, scope: 'month'}},
   // Sudbury: a monthly PDF in the Building Department permits category.
-  sudbury: {collector: {scope: 'month', itemPages: true, listUrls: ['https://sudbury.ma.us/building/document_categories/permits/', 'https://sudbury.ma.us/building/document_categories/permits/page/2/']}},
+  sudbury: {collector: {verified: true, scope: 'month', itemPages: true, listUrls: ['https://sudbury.ma.us/building/document_categories/permits/', 'https://sudbury.ma.us/building/document_categories/permits/page/2/']}},
   // Andover: the Archive Center keeps CSV/PDF files; the newest year/period is the current one.
-  andover: {collector: {scope: 'latest', listUrls: ['https://andoverma.gov/Archive.aspx?AMID=70', 'https://andoverma.gov/Archive/70'], match: 'permit', rowMode: 'dated-line', maxFiles: 2}},
-  wakefield: {collector: {scope: 'month', match: 'Building Permits Issued', dateKind: 'paid', columns: ['type', 'skip', 'date', 'address', 'skip', 'value', 'description', 'contractor']}},
-  reading: {collector: {scope: 'month', match: 'Building-Permits-Issued|Building Permits Issued|permit'}},
-  waltham: {collector: {scope: 'month', monthHeading: true, textEquals: '{year}', match: 'DocumentCenter', maxFiles: 2}},
-  'west-hartford': {collector: {scope: 'month', inferYear: true}, allowedHosts: ['resources.finalsite.net']},
+  andover: {collector: {verified: true, scope: 'latest', listUrls: ['https://andoverma.gov/Archive.aspx?AMID=70', 'https://andoverma.gov/Archive/70'], match: 'permit', rowMode: 'dated-line', maxFiles: 2}},
+  wakefield: {collector: {verified: true, scope: 'month', match: 'Building Permits Issued', dateKind: 'paid', columns: ['type', 'skip', 'date', 'address', 'skip', 'value', 'description', 'contractor']}},
+  reading: {collector: {verified: true, scope: 'month', match: 'Building-Permits-Issued|Building Permits Issued|permit'}},
+  waltham: {collector: {verified: true, scope: 'month', monthHeading: true, textEquals: '{year}', match: 'DocumentCenter', maxFiles: 2}},
+  'west-hartford': {collector: {verified: true, scope: 'month', inferYear: true}, allowedHosts: ['resources.finalsite.net']},
   milford: {collector: {scope: 'month', match: 'permit', listUrls: ['https://www.milfordct.us/Archive.aspx?AMID=41']}},
-  amesbury: {collector: {scope: 'month', match: 'permit|bldg', dateKind: 'submitted', leadDate: true, columns: ['applicant', 'address', 'description', 'value']}},
-  'north-attleborough': {collector: {scope: 'month', match: 'permit|building'}, allowedHosts: ['northattleborough.gov', 'nattleboro.com']},
+  amesbury: {collector: {verified: true, scope: 'month', match: 'permit|bldg', dateKind: 'submitted', leadDate: true, columns: ['applicant', 'address', 'description', 'value']}},
+  'north-attleborough': {collector: {verified: true, scope: 'month', match: 'permit|building'}, allowedHosts: ['northattleborough.gov', 'nattleboro.com']},
   // Barnstable: one PDF per month with a predictable name (Record #, Date Issued, Project Cost, Work Description, Full Address).
   // Southbury: "M5 Permit Report" PDF per month (wide table, read by column position).
-  southbury: {collector: {scope: 'month', fileTemplates: ['https://www.southbury-ct.org/filestorage/20556/20567/20573/39794/Building_Permit_Report-{Month}_{year}.pdf']}, allowedHosts: ['southbury-ct.org']},
+  southbury: {collector: {verified: true, scope: 'month', fileTemplates: ['https://www.southbury-ct.org/filestorage/20556/20567/20573/39794/Building_Permit_Report-{Month}_{year}.pdf']}, allowedHosts: ['southbury-ct.org']},
   // Bethel: the town changes the file name from month to month, so both known names are tried.
   bethel: {collector: {scope: 'month', fileTemplates: ['https://bethel-ct.gov/vertical/sites/%7B90B1B948-C443-4CA6-8B88-90B1EEA9B1E2%7D/uploads/{Month}_{year}_Permit_Report.pdf', 'https://bethel-ct.gov/vertical/sites/%7B90B1B948-C443-4CA6-8B88-90B1EEA9B1E2%7D/uploads/{Month}_{year}_Permits_Issued.pdf']}},
   // Lowell: the Monthly Permit Reports page links one DocumentCenter folder per year.

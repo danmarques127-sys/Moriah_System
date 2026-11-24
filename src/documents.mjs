@@ -609,7 +609,7 @@ export async function collectDocuments(source, month, deps = {}) {
   }
   const list = [...records.values()], approxCount = list.filter(r => r.dateApprox).length, proxyNote = cfg.dateKind && cfg.dateKind !== 'issued' ? ' A data usada é a de ' + ({paid: 'pagamento', submitted: 'submissão', range: 'período do relatório'}[cfg.dateKind] || cfg.dateKind) + ', não a de emissão.' : '';
   const message = files + ' documento(s) lido(s); ' + list.length + ' registro(s) em ' + label + '.' + (cfg.verified ? '' : ' Layout ainda não validado contra o documento real: conferir contagem e descrições.') + proxyNote + (approxCount ? ' ' + approxCount + ' permit(s) sem data própria usam o mês do arquivo (data aproximada).' : '') + (notes.length ? ' ' + notes.slice(0, 2).join(' ') : '');
-  return {status: cfg.verified && list.length ? 'complete' : 'partial', records: list, message};
+  return {status: cfg.verified && list.length && !approxCount ? 'complete' : 'partial', records: list, message};
 }
 
 /* ---------- manual upload (admin): same readers as the collectors, but the file comes from the operator ---------- */
