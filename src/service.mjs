@@ -1,5 +1,4 @@
 import {randomUUID} from 'node:crypto';
-import {settingsFrom,DEFAULT_SETTINGS,calculateEstimate} from './estimator.mjs';
 import {hashPassword,validEmail} from './auth.mjs';
 import {transaction,timestamp,audit} from './db.mjs';
 import {SOURCES} from './sources.mjs';
@@ -9,38 +8,10 @@ export function findSource(db,id){const s=allSources(db).find(x=>x.id===id);if(!
 export async function bootstrap(db,config){
  if(db.prepare('SELECT COUNT(*) AS n FROM users').get().n)return;
  if(!validEmail(config.adminEmail))throw new Error('Defina ADMIN_EMAIL antes do primeiro início.');
- const hash=await hashPassword(config.adminPassword),wid=randomUUID(),uid=randomUUID(),settings=structuredClone(DEFAULT_SETTINGS);settings.company.name=config.companyName||settings.company.name;
- transaction(db,()=>{db.prepare('INSERT INTO workspaces VALUES(?,?,?,?)').run(wid,settings.company.name,JSON.stringify(settings),timestamp());db.prepare('INSERT INTO users VALUES(?,?,?,?,?,?,?)').run(uid,wid,config.adminEmail.toLowerCase(),hash,'owner',1,timestamp());});
+ const hash=await hashPassword(config.adminPassword),wid=randomUUID(),uid=randomUUID(),name=config.companyName||'Moriah System';
+ transaction(db,()=>{db.prepare('INSERT INTO workspaces VALUES(?,?,?,?)').run(wid,name,'{}',timestamp());db.prepare('INSERT INTO users VALUES(?,?,?,?,?,?,?)').run(uid,wid,config.adminEmail.toLowerCase(),hash,'owner',1,timestamp());});
 }
-export function workspaceSettings(db,wid){const row=db.prepare('SELECT settings FROM workspaces WHERE id=?').get(wid);if(!row)throw new Error('Workspace ausente.');return JSON.parse(row.settings);}
-export function saveSettings(db,user,raw){const settings=settingsFrom(raw);db.prepare('UPDATE workspaces SET name=?,settings=? WHERE id=?').run(settings.company.name,JSON.stringify(settings),user.workspace_id);audit(db,user.workspace_id,'Configurações atualizadas');return settings;}
 const text=(v,max=1000)=>{if(typeof v!=='string'||v.length>max)throw new Error('Texto inválido.');return v.trim();};
-export function saveProject(db,user,raw){
- const data={};for(const key of ['name','client','email','phone','address','billingAddress','salesperson','notes','sourceProjectKey'])data[key]=text(String(raw[key]??''),key==='notes'?10000:1000);
- if(!data.name||!data.address)throw new Error('Informe nome e endereço do projeto.');if(data.email&&!validEmail(data.email))throw new Error('E-mail inválido.');
- const id=raw.id||randomUUID(),old=db.prepare('SELECT id FROM projects WHERE id=? AND workspace_id=?').get(id,user.workspace_id);
- if(raw.id&&!old)throw new Error('Projeto não encontrado.');
- if(old)db.prepare('UPDATE projects SET name=?,data=?,updated_at=? WHERE id=? AND workspace_id=?').run(data.name,JSON.stringify(data),timestamp(),id,user.workspace_id);
- else db.prepare('INSERT INTO projects VALUES(?,?,?,?,?,?)').run(id,user.workspace_id,data.name,JSON.stringify(data),timestamp(),timestamp());
- audit(db,user.workspace_id,'Projeto salvo');return {id,...data};
-}
-export function getProject(db,user,id){const row=db.prepare('SELECT * FROM projects WHERE id=? AND workspace_id=?').get(id,user.workspace_id);return row?{id:row.id,...JSON.parse(row.data),updatedAt:row.updated_at}:null;}
-export function listProjects(db,user){return db.prepare('SELECT id,data,updated_at FROM projects WHERE workspace_id=? ORDER BY updated_at DESC LIMIT 2000').all(user.workspace_id).map(r=>({id:r.id,...JSON.parse(r.data),updatedAt:r.updated_at}));}
-export function saveEstimate(db,user,raw){
- const project=getProject(db,user,raw.projectId);if(!project)throw new Error('Projeto não encontrado.');
- const title=text(String(raw.title||'Estimate'),200),settings=workspaceSettings(db,user.workspace_id),result=calculateEstimate(raw.input,settings);
- const id=randomUUID();db.prepare('INSERT INTO estimates VALUES(?,?,?,?,?,?,?,?)').run(id,user.workspace_id,project.id,title,JSON.stringify(raw.input),JSON.stringify(result),JSON.stringify({company:settings.company,project}),timestamp());
- audit(db,user.workspace_id,'Orçamento salvo');return {id,projectId:project.id,title,input:raw.input,result,company:settings.company,project,createdAt:timestamp()};
-}
-export function getEstimate(db,user,id){const r=db.prepare('SELECT * FROM estimates WHERE id=? AND workspace_id=?').get(id,user.workspace_id);if(!r)return null;return {id:r.id,projectId:r.project_id,title:r.title,input:JSON.parse(r.input),result:JSON.parse(r.result),...JSON.parse(r.company),createdAt:r.created_at};}
-export function listEstimates(db,user,projectId){return db.prepare('SELECT id,project_id,title,result,created_at FROM estimates WHERE workspace_id=? AND (?=\'\' OR project_id=?) ORDER BY created_at DESC LIMIT 1000').all(user.workspace_id,projectId||'',projectId||'').map(r=>({id:r.id,projectId:r.project_id,title:r.title,total:JSON.parse(r.result).total,createdAt:r.created_at}));}
-export function saveReview(db,user,raw){
- if(!['Novo','Analisar','Contatado','Orçamento enviado','Ganho','Perdido','Descartado'].includes(raw.status))throw new Error('Status inválido.');
- const key=text(String(raw.projectKey||''),1000),notes=text(String(raw.notes||''),15000),contactDate=text(String(raw.contactDate||''),10);
- if(contactDate&&!/^\d{4}-\d{2}-\d{2}$/.test(contactDate))throw new Error('Data de contato inválida.');
- if(!db.prepare('SELECT id FROM permits WHERE project_key=? LIMIT 1').get(key))throw new Error('Obra não encontrada.');
- db.prepare('INSERT INTO lead_reviews VALUES(?,?,?,?,?,?) ON CONFLICT(workspace_id,project_key) DO UPDATE SET status=excluded.status,notes=excluded.notes,contact_date=excluded.contact_date,updated_at=excluded.updated_at').run(user.workspace_id,key,raw.status,notes,contactDate,timestamp());
-}
 export function upsertPermits(db,source,rawRecords){
  if(!Array.isArray(rawRecords)||rawRecords.length>20000)throw new Error('Lote inválido.');const records=rawRecords.map(p=>validatePermit(p,source));let added=0,updated=0;
  transaction(db,()=>{const select=db.prepare('SELECT data FROM permits WHERE id=?'),insert=db.prepare('INSERT INTO permits VALUES(?,?,?,?,?,?,?)'),update=db.prepare('UPDATE permits SET issued=?,project_key=?,data=?,updated_at=? WHERE id=?');

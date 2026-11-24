@@ -3,9 +3,8 @@ import {readFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {openDatabase,audit,timestamp,logError} from './db.mjs';
-import {bootstrap,workspaceSettings,saveSettings,saveProject,getProject,listProjects,saveEstimate,getEstimate,listEstimates,saveReview,radarData,allSources,findSource,upsertPermits,setCoverage,addSource,createMember} from './service.mjs';
+import {bootstrap,radarData,allSources,findSource,upsertPermits,setCoverage,addSource,createMember} from './service.mjs';
 import {checkPassword,hashPassword,newSession,getSession,csrfMatches,cookie,rateLimit,validEmail} from './auth.mjs';
-import {calculateEstimate} from './estimator.mjs';
 import {enqueue,worker,scheduler} from './jobs.mjs';
 import {previousMonth,monthsBetween,validatePermit} from './radar.mjs';
 import {parseUploadedFile} from './documents.mjs';
@@ -15,7 +14,7 @@ import {clientLogin,getClientSession,clientCookie,clientPermits,recordClientUsag
 import {NATIVE_MODES} from './collectors.mjs';
 import {runRetentionIfDue,retentionStatus,cutoffDate,getSetting} from './retention.mjs';
 import {recordManualImport,manualImportStatus} from './manual.mjs';
-const assets={'/':'../public/index.html','/app.mjs':'../public/app.mjs','/style.css':'../public/style.css','/shared/estimator.mjs':'./estimator.mjs'};
+const assets={'/':'../public/index.html','/app.mjs':'../public/app.mjs','/style.css':'../public/style.css'};
 const mimes={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
 class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
 async function body(req){
@@ -78,52 +77,13 @@ export async function createApplication(options={}){
    const owner=()=>{if(user.role!=='owner')throw new HttpError(403,'Acesso reservado ao proprietário do workspace.');};
    const editor=()=>{if(user.role==='viewer')throw new HttpError(403,'Conta com acesso somente à leitura.');};
    const admin=()=>{if(!user.system_admin)throw new HttpError(403,'Acesso reservado ao administrador do sistema.');};
-   if(path==='/api/me'&&req.method==='GET')return send(res,200,{user:{id:user.id,email:user.email,role:user.role,systemAdmin:!!user.system_admin},csrf:user.csrf,settings:workspaceSettings(db,user.workspace_id)});
+   if(path==='/api/me'&&req.method==='GET')return send(res,200,{user:{id:user.id,email:user.email,role:user.role,systemAdmin:!!user.system_admin},csrf:user.csrf});
    if(path==='/api/logout'&&req.method==='POST'){db.prepare('DELETE FROM sessions WHERE token_hash=?').run(user.token_hash);res.setHeader('Set-Cookie',cookie('',config.production,0));return send(res,200,{ok:true});}
    if(path==='/api/password'&&req.method==='POST'){const b=await body(req),row=db.prepare('SELECT password_hash FROM users WHERE id=?').get(user.id);if(!await checkPassword(b.currentPassword,row.password_hash))throw new HttpError(400,'Senha atual incorreta.');const hash=await hashPassword(b.newPassword);db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hash,user.id);db.prepare('DELETE FROM sessions WHERE user_id=?').run(user.id);res.setHeader('Set-Cookie',cookie('',config.production,0));return send(res,200,{ok:true});}
-   if(path==='/api/settings'&&req.method==='PUT'){owner();return send(res,200,{settings:saveSettings(db,user,await body(req))});}
    if(path==='/api/members'&&req.method==='GET'){owner();return send(res,200,{members:db.prepare('SELECT id,email,role FROM users WHERE workspace_id=? ORDER BY email').all(user.workspace_id)});}
    if(path==='/api/members'&&req.method==='POST'){owner();return send(res,201,await createMember(db,user,await body(req)));}
    // Workspace-scoped operational ledgers: no external payment processing or payroll.
-   if(path==='/api/finances'&&req.method==='GET'){
-    const rows=db.prepare('SELECT id,entry_date AS date,direction,category,description,amount_cents AS amountCents,project_id AS projectId FROM financial_entries WHERE workspace_id=? ORDER BY entry_date DESC,created_at DESC LIMIT 1000').all(user.workspace_id);
-    const summary=rows.reduce((a,r)=>{a[r.direction]+=r.amountCents;return a;},{income:0,expense:0});
-    return send(res,200,{entries:rows,summary:{incomeCents:summary.income,expenseCents:summary.expense,netCents:summary.income-summary.expense}});
-   }
-   if(path==='/api/finances'&&req.method==='POST'){
-    editor();const b=await body(req),direction=String(b.direction||''),date=String(b.date||''),amount=Number(b.amount);
-    if(!['income','expense'].includes(direction)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||!Number.isFinite(amount)||amount<=0||amount>10000000)throw new HttpError(400,'Invalid financial entry.');
-    const cents=Math.round(amount*100),category=String(b.category||'Other').trim().slice(0,100),description=String(b.description||'').trim().slice(0,1000);
-    if(!category||!description)throw new HttpError(400,'Category and description are required.');
-    const id=randomUUID();db.prepare('INSERT INTO financial_entries VALUES(?,?,?,?,?,?,?,?,?)').run(id,user.workspace_id,date,direction,category,description,cents,null,timestamp());
-    return send(res,201,{id});
-   }
-   if(path==='/api/employees'&&req.method==='GET'){
-    const employees=db.prepare('SELECT id,name,hourly_cents AS hourlyCents,active FROM employees WHERE workspace_id=? ORDER BY name').all(user.workspace_id);
-    const entries=db.prepare('SELECT t.id,t.employee_id AS employeeId,e.name AS employeeName,t.work_date AS date,t.hours_minutes AS minutes,t.hourly_cents AS hourlyCents,t.notes FROM time_entries t JOIN employees e ON e.id=t.employee_id AND e.workspace_id=t.workspace_id WHERE t.workspace_id=? ORDER BY t.work_date DESC,t.created_at DESC LIMIT 1000').all(user.workspace_id);
-    return send(res,200,{employees,entries});
-   }
-   if(path==='/api/employees'&&req.method==='POST'){
-    editor();const b=await body(req),name=String(b.name||'').trim(),hourly=Number(b.hourlyRate);
-    if(!name||name.length>200||!Number.isFinite(hourly)||hourly<0||hourly>10000)throw new HttpError(400,'Invalid employee details.');
-    const id=randomUUID();db.prepare('INSERT INTO employees VALUES(?,?,?,?,?,?)').run(id,user.workspace_id,name,Math.round(hourly*100),1,timestamp());return send(res,201,{id});
-   }
-   if(path==='/api/time-entries'&&req.method==='POST'){
-    editor();const b=await body(req),date=String(b.date||''),hours=Number(b.hours),notes=String(b.notes||'').trim().slice(0,1000);
-    const employee=db.prepare('SELECT id,hourly_cents FROM employees WHERE id=? AND workspace_id=? AND active=1').get(b.employeeId,user.workspace_id);
-    if(!employee||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!Number.isFinite(Date.parse(date))||!Number.isFinite(hours)||hours<=0||hours>24)throw new HttpError(400,'Invalid time entry.');
-    const minutes=Math.round(hours*60);if(minutes<1)throw new HttpError(400,'Duration is too short.');
-    const id=randomUUID();db.prepare('INSERT INTO time_entries VALUES(?,?,?,?,?,?,?,?,?)').run(id,user.workspace_id,employee.id,date,minutes,null,notes,employee.hourly_cents,timestamp());return send(res,201,{id});
-   }
-   if(path==='/api/projects'&&req.method==='GET')return send(res,200,{projects:listProjects(db,user)});
-   if(path==='/api/projects'&&req.method==='POST'){editor();return send(res,201,{project:saveProject(db,user,await body(req))});}
-   if(path.startsWith('/api/projects/')&&req.method==='GET'){const project=getProject(db,user,decodeURIComponent(path.slice('/api/projects/'.length)));if(!project)throw new HttpError(404,'Projeto não encontrado.');return send(res,200,{project});}
-   if(path==='/api/estimates'&&req.method==='GET')return send(res,200,{estimates:listEstimates(db,user,url.searchParams.get('projectId'))});
-   if(path==='/api/estimates'&&req.method==='POST'){editor();return send(res,201,{estimate:saveEstimate(db,user,await body(req))});}
-   if(path.startsWith('/api/estimates/')&&req.method==='GET'){const estimate=getEstimate(db,user,decodeURIComponent(path.slice('/api/estimates/'.length)));if(!estimate)throw new HttpError(404,'Orçamento não encontrado.');return send(res,200,{estimate});}
-   if(path==='/api/calculate'&&req.method==='POST'){editor();return send(res,200,{result:calculateEstimate((await body(req)).input,workspaceSettings(db,user.workspace_id))});}
    if(path==='/api/radar'&&req.method==='GET'){const query=Object.fromEntries(url.searchParams);query.from||=previousMonth();query.to||=query.from;return send(res,200,radarData(db,user,query));}
-   if(path==='/api/reviews'&&req.method==='PUT'){editor();saveReview(db,user,await body(req));return send(res,200,{ok:true});}
    if(path==='/api/sources'&&req.method==='GET')return send(res,200,{sources:allSources(db)});
    if(path==='/api/sources'&&req.method==='POST'){admin();return send(res,201,{source:addSource(db,await body(req))});}
    if(path==='/api/import'&&req.method==='POST'){
@@ -157,7 +117,6 @@ export async function createApplication(options={}){
    }
    if(path==='/api/jobs'&&req.method==='GET')return send(res,200,{jobs:db.prepare('SELECT id,source_id AS sourceId,month,status,message,updated_at AS updatedAt FROM jobs ORDER BY created_at DESC LIMIT 100').all()});
    if(path==='/api/jobs'&&req.method==='POST'){admin();if(!collectRate(user.id))throw new HttpError(429,'Aguarde para iniciar outra coleta.');const b=await body(req);return send(res,202,{queued:enqueue(db,b.sources,b.from,b.to)});}
-   if(path==='/api/backup'&&req.method==='GET'){owner();const projects=listProjects(db,user),rows=db.prepare('SELECT id FROM estimates WHERE workspace_id=? ORDER BY created_at').all(user.workspace_id);return send(res,200,{format:'permit-finder-workspace-v1',createdAt:timestamp(),settings:workspaceSettings(db,user.workspace_id),projects,estimates:rows.map(r=>getEstimate(db,user,r.id)),reviews:db.prepare('SELECT project_key AS projectKey,status,notes,contact_date AS contactDate FROM lead_reviews WHERE workspace_id=?').all(user.workspace_id)});}
    // System-administrator portal: accounts, collection health, source-link audit (never exposes password hashes or tokens).
    if(path==='/api/admin/overview'&&req.method==='GET'){admin();
     const users=db.prepare('SELECT u.id,u.email,u.role,u.system_admin AS systemAdmin,u.created_at AS createdAt,w.name AS workspace,(SELECT COUNT(*) FROM sessions s WHERE s.user_id=u.id AND s.expires_at>?) AS activeSessions FROM users u JOIN workspaces w ON w.id=u.workspace_id ORDER BY u.created_at').all(Date.now()).map(u=>({...u,systemAdmin:!!u.systemAdmin}));

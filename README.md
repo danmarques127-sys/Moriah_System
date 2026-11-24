@@ -128,3 +128,6 @@ Partners sections: Affiliated companies, Trades (editable), Client access (accou
 ## Client channel (prepared, OFF by default)
 Switch on in Partners → Settings. Clients (Partners → Client access → Set password) sign in at `POST /api/client/login` with their own cookie (`pf_client`, 8 h) and read `GET /api/client/permits` (filters: `q`, `state`, `city`, `from`, `to`, `page`, `export=1`).
 Rules enforced and tested: only the cities assigned to the account; account and company must be active; **no municipal link, source id or source name is ever returned** (links are also stripped from descriptions, permit keys are opaque); a client cookie cannot open any internal route; usage (seen/exported) is counted per company. No client screen exists yet. `TEST_PASSWORD` can override the fixed test-server password.
+
+## Removed (dead code)
+The insulation estimator, proposals, projects, payments, employees/time entries, lead reviews, company pricing/materials and workspace JSON backup were removed from the app and API. Their tables stay in the database (migrations are never rewritten). Database backup: `npm run backup`.
