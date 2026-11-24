@@ -8,6 +8,7 @@ import {join} from 'node:path';
 import {promisify} from 'node:util';
 import {inflateRawSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
+import {UPLOAD_CONFIGS} from './source-configs.mjs';
 
 const exec = promisify(execFile);
 const MAX_BYTES = 25000000;
@@ -121,6 +122,107 @@ export async function pdfToText(buffer) {
   } finally { await rm(dir, {recursive: true, force: true}); }
 }
 
+// Word positions per page (pdftotext -bbox), for wide tables where the text layout loses the columns.
+export async function pdfWords(buffer) {
+  const dir = await mkdtemp(join(tmpdir(), 'pf-pdf-'));
+  try {
+    const file = join(dir, 'doc.pdf');
+    await writeFile(file, buffer);
+    const {stdout} = await exec('pdftotext', ['-bbox', '-enc', 'UTF-8', file, '-'], {timeout: 90000, maxBuffer: 120000000});
+    const unesc = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+    return stdout.split('<page ').slice(1).map(pg => ({
+      height: Number((/height="([\d.]+)"/.exec(pg) || [])[1]) || 0,
+      words: [...pg.matchAll(/<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">([^<]*)<\/word>/g)].map(m => ({x0: +m[1], y0: +m[2], x1: +m[3], y1: +m[4], text: unesc(m[5])})),
+    }));
+  } catch (e) {
+    if (e.code === 'ENOENT') throw new Error('pdftotext não encontrado no servidor. Instale poppler-utils (a imagem Docker já inclui).');
+    throw new Error('Falha ao extrair texto do PDF: ' + String(e.message).slice(0, 200));
+  } finally { await rm(dir, {recursive: true, force: true}); }
+}
+// Rows of a wide PDF table. Each row is found by its permit number; the other cells are vertically centred on it,
+// and the (long) description is grouped by line gaps, then given to the nearest row.
+export function bboxRows(pages, bbox) {
+  const {anchor, columns} = bbox, re = new RegExp(anchor.pattern), inCol = (w, [a, b]) => w.x0 >= a - 2.5 && w.x0 < b;
+  const join_ = ws => ws.sort((p, q) => Math.abs(p.y0 - q.y0) > 3 ? p.y0 - q.y0 : p.x0 - q.x0).map(w => w.text).join(' ').replace(/\s+/g, ' ').trim();
+  const out = [];
+  for (const page of pages) {
+    const words = page.words.filter(w => w.y0 >= anchor.headerBottom && w.y0 < (anchor.footerTop || 1e9));
+    const anchors = words.filter(w => inCol(w, anchor.number) && re.test(w.text)).map(w => ({number: w.text, y: (w.y0 + w.y1) / 2, cells: {}, desc: []}));
+    if (!anchors.length) continue;
+    const nearest = y => anchors.reduce((best, a) => Math.abs(a.y - y) < Math.abs(best.y - y) ? a : best, anchors[0]);
+    const descWords = [];
+    for (const w of words) {
+      for (const [name, range] of Object.entries(columns)) {
+        if (!inCol(w, range)) continue;
+        if (name === 'description') { descWords.push(w); break; }
+        const a = nearest((w.y0 + w.y1) / 2); (a.cells[name] ||= []).push(w); break;
+      }
+    }
+    descWords.sort((p, q) => p.y0 - q.y0);
+    const groups = []; let prev = -1e9;
+    for (const w of descWords) { if (w.y0 - prev > 8.5 || !groups.length) groups.push([]); groups.at(-1).push(w); prev = Math.max(prev, w.y0); }
+    for (const g of groups) { const c = (Math.min(...g.map(w => w.y0)) + Math.max(...g.map(w => w.y1))) / 2; nearest(c).desc.push(...g); }
+    for (const a of anchors) {
+      const get = n => join_(a.cells[n] || []);
+      const issued = toIso(get('issued')), valueText = get('value').replace(/[$,]/g, '');
+      out.push({number: a.number, issued, address: get('address'), type: get('type'), value: Number(valueText) || 0, description: join_(a.desc), contractor: get('contractor') || get('company'), applicant: get('owner'), status: '', raw: a.number + ' ' + get('issued') + ' ' + get('address')});
+    }
+  }
+  // Rows cut by a page break are printed again on the next pages: keep the first (complete) copy.
+  const seen = new Set();
+  return out.filter(r => r.issued && !seen.has(r.number) && seen.add(r.number));
+}
+
+
+// Wide PDF tables whose text layout loses the columns: find the header band, split the page at the midpoints of the
+// header labels, and read each cell by position. Used automatically when the line-based reader finds nothing.
+const AUTO_LABELS = {
+  number: /^(permit|record|application|case|file|permit\/license)?\s*(number|no\.?|#)$|^permit\s*(number|no\.?|#)|^record\s*#|^permit$/i,
+  issued: /(date\s*issued|issue\s*date|issued|permit\s*date|date\s*of\s*issue|approval\s*date)/i,
+  applied: /(application\s*date|date\s*submitted|submit|applied|filed)/i,
+  address: /(address|location|site|premises|street)/i,
+  type: /(permit\s*type|record\s*type|^type$|work\s*type|type\s*of\s*(work|improvement))/i,
+  owner: /(owner|applicant)/i,
+  contractor: /(contractor\s*name|^contractor$|builder|license)/i,
+  description: /(description|scope|work\s*to\s*be|project\s*description|work\s*desc)/i,
+  value: /(cost|valuation|value|estimated)/i,
+};
+const AUTO_VOCAB = /^(permit|date|number|no\.?|#|application|issued|issue|type|owner|address|legal|location|description|work|cost|valuation|value|contractor|applicant|parcel|class|fee|total|phone|record|status|close|of|construction|square|footage|company|expires?|submitted)$/i;
+const NUMBER_TOKEN = /^[A-Z]{0,5}-?\d{2,4}-\d{2,7}[A-Z]?$/;
+export function autoBboxConfig(pages) {
+  for (const page of pages) {
+    const tokens = page.words.filter(w => NUMBER_TOKEN.test(w.text) && /\d/.test(w.text));
+    if (tokens.length < 3) continue;
+    const groups = new Map(); for (const w of tokens) { const k = Math.round(w.x0 / 3); (groups.get(k) || groups.set(k, []).get(k)).push(w); }
+    const col = [...groups.values()].sort((a, b) => b.length - a.length)[0];
+    if (col.length < 3 || col.length < tokens.length * 0.5) continue;
+    const firstY = Math.min(...col.map(w => w.y0)), numX = [Math.min(...col.map(w => w.x0)) - 2, Math.max(...col.map(w => w.x1)) + 2];
+    const cand = page.words.filter(w => w.y0 < firstY && AUTO_VOCAB.test(w.text)).sort((a, b) => a.y0 - b.y0);
+    if (!cand.length) continue;
+    const clusters = [[cand[0]]];
+    for (const w of cand.slice(1)) { const c = clusters.at(-1); if (w.y0 - Math.max(...c.map(x => x.y1)) <= 4) c.push(w); else clusters.push([w]); }
+    const best = clusters.sort((x, y) => y.length - x.length)[0], bottom = Math.max(...best.map(w => w.y1)), top = Math.min(...best.map(w => w.y0));
+    const headerBottom = bottom + 1, header = page.words.filter(w => w.y0 >= top - 2 && w.y1 <= headerBottom + 1).sort((a, b) => a.x0 - b.x0);
+    const cols = []; // merge header words stacked over each other into one label
+    for (const w of header) { const c = cols.find(c => w.x0 <= c.x1 + 2.5 && w.x1 >= c.x0 - 2.5); if (c) { c.words.push(w); c.x0 = Math.min(c.x0, w.x0); c.x1 = Math.max(c.x1, w.x1); } else cols.push({x0: w.x0, x1: w.x1, words: [w]}); }
+    cols.sort((a, b) => a.x0 - b.x0);
+    for (const c of cols) { c.label = c.words.sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0).map(w => w.text).join(' '); c.mid = (c.x0 + c.x1) / 2; }
+    // Column borders: the emptiest vertical strip (fewest words crossing it) between two neighbouring header labels.
+    const data = page.words.filter(w => w.y0 > headerBottom && w.y0 < (page.height ? page.height - 28 : 1e9));
+    const valley = (l, r) => { let bestX = (l + r) / 2, bestN = 1e9, bestRun = 0; for (let x = l; x <= r; x += 1) { const n = data.filter(w => w.x0 - 0.5 < x && w.x1 + 0.5 > x).length; if (n < bestN) { bestN = n; bestX = x; bestRun = 1; } else if (n === bestN && bestRun) { bestX = (bestX * bestRun + x) / (bestRun + 1); bestRun++; } } return bestX; };
+    const cuts = cols.slice(1).map((c, i) => valley(cols[i].mid, c.mid)), edges = cols.map((c, i) => [i ? cuts[i - 1] : 0, i < cuts.length ? cuts[i] : 1e9]);
+    const columns = {}, used = new Set();
+    const pick = (field, test) => { const i = cols.findIndex((c, i) => !used.has(i) && test(c.label)); if (i >= 0) { used.add(i); columns[field] = edges[i]; } };
+    pick('issued', l => AUTO_LABELS.issued.test(l) && !AUTO_LABELS.applied.test(l));
+    if (!columns.issued) pick('issued', l => AUTO_LABELS.applied.test(l));
+    pick('type', l => AUTO_LABELS.type.test(l)); pick('address', l => AUTO_LABELS.address.test(l) && !/contractor/i.test(l)); pick('description', l => AUTO_LABELS.description.test(l));
+    pick('contractor', l => AUTO_LABELS.contractor.test(l)); pick('owner', l => AUTO_LABELS.owner.test(l)); pick('value', l => AUTO_LABELS.value.test(l) && !/fee/i.test(l));
+    if (!columns.issued || !columns.address) continue;
+    return {anchor: {number: numX, pattern: NUMBER_TOKEN.source, headerBottom, footerTop: page.height ? page.height - 28 : 1e9}, columns, auto: true};
+  }
+  return null;
+}
+
 /* ---------- XLSX (minimal reader, no dependencies) ---------- */
 export function unzip(buf) {
   let e = -1;
@@ -176,12 +278,25 @@ function iso(y, m, d) {
   const date = new Date(Date.UTC(y, m - 1, d));
   return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d ? date.toISOString().slice(0, 10) : '';
 }
+const MONTH_NAMES = {jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12};
 export function toIso(v) {
   if (typeof v === 'number') return v > 20000 && v < 80000 ? new Date(Math.round((v - 25569) * 86400000)).toISOString().slice(0, 10) : '';
-  const s = String(v ?? ''), a = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const s = String(v ?? '').trim(), a = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (a) return iso(Number(a[1]), Number(a[2]), Number(a[3]));
+  const ymd = s.match(/^(\d{4})[/.](\d{1,2})[/.](\d{1,2})(?:\s|T|$)/);
+  if (ymd) return iso(Number(ymd[1]), Number(ymd[2]), Number(ymd[3]));
   const b = s.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
-  return b ? iso(b[3].length === 2 ? 2000 + Number(b[3]) : Number(b[3]), Number(b[1]), Number(b[2])) : '';
+  if (b) return iso(b[3].length === 2 ? 2000 + Number(b[3]) : Number(b[3]), Number(b[1]), Number(b[2]));
+  // Whole-value formats only (never picked out of free text).
+  const y = (n) => n.length === 2 ? 2000 + Number(n) : Number(n);
+  let m;
+  if ((m = s.match(/^(\d{4})[/.](\d{1,2})[/.](\d{1,2})(?:\s|T|$)/))) return iso(Number(m[1]), Number(m[2]), Number(m[3]));
+  if ((m = s.match(/^(\d{4})(\d{2})(\d{2})$/))) return iso(Number(m[1]), Number(m[2]), Number(m[3]));
+  if ((m = s.match(/^(\d{1,2})[-.](\d{1,2})[-.](\d{2}|\d{4})(?:\s|$)/))) return iso(y(m[3]), Number(m[1]), Number(m[2]));
+  if ((m = s.match(/^(\d{1,2})[-\s/]([A-Za-z]{3,9})\.?[-\s/,]+(\d{2}|\d{4})(?:\s|$)/)) && MONTH_NAMES[m[2].slice(0, 4).toLowerCase()] || (m && MONTH_NAMES[m[2].slice(0, 3).toLowerCase()])) return iso(y(m[3]), MONTH_NAMES[m[2].slice(0, 3).toLowerCase()], Number(m[1]));
+  if ((m = s.match(/^([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{2}|\d{4})(?:\s|$)/)) && MONTH_NAMES[m[1].slice(0, 3).toLowerCase()]) return iso(y(m[3]), MONTH_NAMES[m[1].slice(0, 3).toLowerCase()], Number(m[2]));
+  if (/^\d{5}(\.\d+)?$/.test(s)) return toIso(Number(s));
+  return '';
 }
 const datesIn = text => [...String(text).matchAll(DATE_G)].map(m => iso(Number(m[3]), Number(m[1]), Number(m[2]))).filter(Boolean);
 
@@ -282,15 +397,15 @@ export function parseTextRows(text, cfg = {}, month = '') {
 
 /* ---------- structured tables (CSV / XLSX) ---------- */
 const SYN = {
-  number: /(?:record|permit|application)\s*(?:#|no\.?|number)|^permit$|^number$/i,
-  issued: /issue[ds]?\s*date|date\s*issued|^issued$/i,
+  number: /(?:record|permit|application|case|file|job)\s*(?:#|no\.?|num(?:ber)?|id)(?![a-z])|^permit$|^number$|^permit\s*id/i,
+  issued: /issue[ds]?\s*(?:date|dt|on)|date\s*(?:issued|of\s*issue)|^issued$|permit\s*date|approv\w*\s*date|^issue$/i,
   dateAlt: /date\s*(?:paid|submitted|filed|applied)|^date$/i,
-  address: /^(?:full\s*)?address|^location|^site\s*address/i,
+  address: /^(?:full\s*|property\s*|project\s*|job\s*|site\s*|street\s*|legal\s*|premise\w*\s*)?address(?!.*(?:contractor|mail|billing|owner|applicant|email|e-mail))|^location|^site$|^premises$|^property$/i,
   streetNo: /street\s*(?:no|#|num)|house\s*#/i,
   street: /^street(?:\s*name)?$/i,
   description: /description|scope|purpose|permit\s*for|brief|work\s*being/i,
   type: /(?:record|permit|work|building)\s*type|category|^title$|^type$/i,
-  value: /cost|valuation|value|estimate/i,
+  value: /^(?!.*fee)(?:.*)(?:cost|valuation|value|estimate|amount)/i,
   contractor: /contractor|gc\s*name|company|supervisor/i,
   applicant: /applicant|owner/i,
   status: /status/i
@@ -316,13 +431,20 @@ export function mapStructured(table, cfg = {}, month = '') {
 }
 
 /* ---------- CSV (rows, so title lines above the header are tolerated) ---------- */
+// Comma, semicolon, tab or pipe: whichever splits the first lines most consistently (outside quotes).
+export function detectDelimiter(text) {
+  const lines = String(text).split(/\r?\n/).filter(l => l.trim()).slice(0, 12), score = {',': 0, ';': 0, '\t': 0, '|': 0};
+  for (const l of lines) { const bare = l.replace(/"[^"]*"/g, ''); for (const d of Object.keys(score)) score[d] += (bare.split(d).length - 1); }
+  const best = Object.entries(score).sort((a, b) => b[1] - a[1])[0];
+  return best[1] >= 3 ? best[0] : ',';
+}
 export function csvRows(input) {
-  const text = String(input).replace(/^﻿/, ''), rows = [];
+  const text = String(input).replace(/^﻿/, ''), rows = [], delim = detectDelimiter(text);
   let row = [], cell = '', quoted = false;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (c === '"') { if (quoted && text[i + 1] === '"') { cell += '"'; i++; } else quoted = !quoted; }
-    else if (c === ',' && !quoted) { row.push(cell); cell = ''; }
+    else if (c === delim && !quoted) { row.push(cell); cell = ''; }
     else if ((c === '\r' || c === '\n') && !quoted) { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); if (row.some(x => x.trim())) rows.push(row); row = []; cell = ''; }
     else cell += c;
   }
@@ -357,14 +479,20 @@ async function parseDocument(doc, config, month, deps = {}) {
   // The file belongs to a known month: rows without their own date take the first day of that month (flagged as approximate).
   const cfg = config.dateFallback === undefined && (config.scope === 'month' || !config.scope) ? {...config, dateFallback: 'month-start'} : config;
   const format = detectFormat(doc);
-  if (format === 'pdf') { const text = await (deps.pdfToText || pdfToText)(doc.buffer); return withPeek(parseTextRows(text, cfg, month), text); }
+  if (format === 'pdf' && cfg.parser === 'bbox') return bboxRows(await (deps.pdfWords || pdfWords)(doc.buffer), cfg.bbox);
+  if (format === 'pdf') {
+    const text = await (deps.pdfToText || pdfToText)(doc.buffer), rows = parseTextRows(text, cfg, month);
+    if (rows.length) return withPeek(rows, text);
+    try { const pages = await (deps.pdfWords || pdfWords)(doc.buffer), auto = autoBboxConfig(pages), found = auto ? bboxRows(pages, auto) : []; if (found.length) return found; } catch { /* fall through to the diagnostic below */ }
+    return withPeek(rows, text);
+  }
   if (format === 'docx') { const text = docxToText(doc.buffer); return withPeek(parseTextRows(text, cfg, month), text); }
   if (format === 'xlsx') {
     const sheets = readXlsx(doc.buffer), named = sheets.filter(s => periodMatches(s.name, month, 'month') || new RegExp('^0?' + Number(month.slice(5)) + '[-/ .]').test(s.name));
     return (named.length ? named : sheets).flatMap(s => mapStructured(s.rows, cfg, month));
   }
   const text = format === 'html' ? htmlToText(doc.buffer.toString('utf8')) : doc.buffer.toString('utf8').replace(/^﻿/, '');
-  if (format === 'text' && cfg.parser !== 'text' && /,/.test(text.split(/\r?\n/, 1)[0])) {
+  if (format === 'text' && cfg.parser !== 'text' && /[,;\t|]/.test(text.split(/\r?\n/, 4).join('\n'))) {
     const rows = mapStructured(csvRows(text), cfg, month);
     if (rows.length) return rows;
   }
@@ -477,7 +605,7 @@ export async function collectDocuments(source, month, deps = {}) {
 
 /* ---------- manual upload (admin): same readers as the collectors, but the file comes from the operator ---------- */
 export async function parseUploadedFile({buffer, source, month, toMonth, deps = {}}) {
-  const cfg = source.collector || {}, doc = {buffer, contentType: '', url: source.url};
+  const cfg = source.collector || UPLOAD_CONFIGS[source.id] || {}, doc = {buffer, contentType: '', url: source.url};
   const last = toMonth && toMonth > month ? toMonth : month, multi = last !== month;
   if (multi && (last.slice(0, 4) - month.slice(0, 4)) * 12 + Number(last.slice(5)) - Number(month.slice(5)) > 23) throw new Error('O período do arquivo pode ter no máximo 24 meses.');
   // One month: undated rows take that month (approximate). Several months: undated rows cannot be placed, so they are skipped.
