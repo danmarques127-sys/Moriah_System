@@ -54,3 +54,30 @@ test('failures are written to the error log with area, city, month and reason', 
   assert.equal(rows[0].message, 'HTTP 403'); assert.equal(rows[0].month, '2026-10'); assert.match(rows[1].message, /HTTP 404/);
   db.close();
 });
+
+test('manual imports are recorded per city; the latest upload wins', async () => {
+  const {recordManualImport, manualImportStatus} = await import('../src/manual.mjs');
+  const db = openDatabase(':memory:');
+  recordManualImport(db, 'newton', '2026-09', {added: 5, updated: 0}, 'mestre@x.test');
+  recordManualImport(db, 'newton', '2026-10', {added: 7, updated: 1}, 'mestre@x.test');
+  recordManualImport(db, 'danvers', '2026-10', {added: 2, updated: 0}, 'mestre@x.test');
+  const rows = Object.fromEntries(manualImportStatus(db).map(r => [r.sourceId, r]));
+  assert.equal(rows.newton.month, '2026-10'); assert.equal(rows.newton.uploads, 2); assert.equal(rows.danvers.uploads, 1);
+  db.close();
+});
+
+test('the file import route records the upload for the manual-cities list', async t => {
+  const app = await createApplication({databasePath: ':memory:', adminEmail: 'owner@example.test', adminPassword: 'long-test-password-123', appUrl: 'http://127.0.0.1', startBackground: false});
+  await new Promise(r => app.server.listen(0, '127.0.0.1', r)); const base = 'http://127.0.0.1:' + app.server.address().port;
+  app.config.appUrl = base; t.after(() => app.close());
+  const login = await fetch(base + '/api/login', {method: 'POST', headers: {Origin: base, 'Content-Type': 'application/json'}, body: JSON.stringify({email: 'owner@example.test', password: 'long-test-password-123'})});
+  const cookie = login.headers.get('set-cookie').split(';')[0];
+  const me = await (await fetch(base + '/api/me', {headers: {Cookie: cookie}})).json();
+  const csv = 'Permit Number,Date Issued,Address,Description,Estimated Cost\nBLD-1,2026-10-05,12 Main St,New single family dwelling,500000\n';
+  const q = new URLSearchParams({sourceId: 'danvers', month: '2026-10', filename: 'd.csv', confirm: '1'});
+  const up = await fetch(base + '/api/import-file?' + q, {method: 'POST', headers: {Cookie: cookie, Origin: base, 'Content-Type': 'application/octet-stream', 'X-CSRF-Token': me.csrf}, body: csv});
+  assert.equal(up.status, 200);
+  const d = await (await fetch(base + '/api/admin/overview', {headers: {Cookie: cookie}})).json();
+  assert.equal(d.manual.length, 1); assert.equal(d.manual[0].sourceId, 'danvers'); assert.equal(d.manual[0].month, '2026-10'); assert.equal(d.manual[0].byEmail, 'owner@example.test');
+  assert.ok(d.sources.find(x => x.id === 'danvers' && !x.automatic && x.reason));
+});

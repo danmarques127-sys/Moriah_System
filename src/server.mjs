@@ -12,6 +12,7 @@ import {parseUploadedFile} from './documents.mjs';
 import {checkAllSources} from './source-audit.mjs';
 import {NATIVE_MODES} from './collectors.mjs';
 import {runRetentionIfDue,retentionStatus} from './retention.mjs';
+import {recordManualImport,manualImportStatus} from './manual.mjs';
 const assets={'/':'../public/index.html','/app.mjs':'../public/app.mjs','/style.css':'../public/style.css','/shared/estimator.mjs':'./estimator.mjs'};
 const mimes={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
 class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
@@ -114,7 +115,7 @@ export async function createApplication(options={}){
     const result=upsertPermits(db,source,b.records);
     const stored=db.prepare('SELECT COUNT(*) AS n FROM permits WHERE source_id=? AND substr(issued,1,7)=?').get(source.id,b.month).n;
     setCoverage(db,source.id,b.month,'partial',String(b.message||'Importação manual; cobertura integral não certificada.'),stored);
-    audit(db,user.workspace_id,'Importação: '+source.id+', '+result.added+' novos, '+result.updated+' atualizados');return send(res,200,result);
+    audit(db,user.workspace_id,'Importação: '+source.id+', '+result.added+' novos, '+result.updated+' atualizados');recordManualImport(db,source.id,b.month,result,user.email);return send(res,200,result);
    }
    if(path==='/api/import-file'&&req.method==='POST'){
     admin();if(!uploadRate(user.id))throw new HttpError(429,'Aguarde para enviar outro arquivo.');
@@ -129,7 +130,7 @@ export async function createApplication(options={}){
     const result=upsertPermits(db,source,valid);
     const stored=db.prepare('SELECT COUNT(*) AS n FROM permits WHERE source_id=? AND substr(issued,1,7)=?').get(source.id,month).n;
     setCoverage(db,source.id,month,'partial','Importação manual do arquivo "'+filename+'" ('+parsed.format.toUpperCase()+'): '+valid.length+' permits de '+month+'. Completude não certificada.',stored);
-    audit(db,user.workspace_id,'Importação de arquivo: '+source.id+' '+month+', '+result.added+' novos, '+result.updated+' atualizados');
+    audit(db,user.workspace_id,'Importação de arquivo: '+source.id+' '+month+', '+result.added+' novos, '+result.updated+' atualizados');recordManualImport(db,source.id,month,result,user.email);
     return send(res,200,{preview:false,...summary,...result});
    }
    if(path==='/api/jobs'&&req.method==='GET')return send(res,200,{jobs:db.prepare('SELECT id,source_id AS sourceId,month,status,message,updated_at AS updatedAt FROM jobs ORDER BY created_at DESC LIMIT 100').all()});
@@ -143,7 +144,7 @@ export async function createApplication(options={}){
     const checks=db.prepare('SELECT source_id AS sourceId,checked_at AS checkedAt,ok,http_status AS httpStatus,note FROM source_checks').all().map(c=>({...c,ok:!!c.ok}));
     const failedJobs=db.prepare("SELECT source_id AS sourceId,month,message,updated_at AS updatedAt FROM jobs WHERE status='failed' ORDER BY updated_at DESC LIMIT 50").all();
     const errors=db.prepare('SELECT id,created_at AS createdAt,area,source_id AS sourceId,month,message FROM error_log ORDER BY id DESC LIMIT 300').all();
-    return send(res,200,{users,sources,coverage,checks,failedJobs,errors,retention:retentionStatus(db)});}
+    return send(res,200,{users,sources,coverage,checks,failedJobs,errors,retention:retentionStatus(db),manual:manualImportStatus(db)});}
    if(path==='/api/admin/check-sources'&&req.method==='POST'){admin();if(!collectRate(user.id))throw new HttpError(429,'Aguarde para iniciar outra verificação.');
     const list=allSources(db);checkAllSources(db,list).catch(()=>{});audit(db,user.workspace_id,'admin:check-sources');return send(res,202,{started:list.length});}
    if(path==='/api/admin/retry-failed'&&req.method==='POST'){admin();if(!collectRate(user.id))throw new HttpError(429,'Aguarde para iniciar outra coleta.');

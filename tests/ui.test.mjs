@@ -25,7 +25,7 @@ test('admin tab shows accounts, health filters and escapes values',()=>{
  assert.match(html,/Registered accounts \(1\)/);assert.match(html,/12 months/);assert.match(html,/3 deleted/);assert.match(html,/&lt;b&gt;boss/);
  assert.match(html,/Alpha/);assert.doesNotMatch(html,/<script>x/);assert.match(html,/Failed/);
  assert.match(html,/Check source links/);assert.match(html,/Retry failed collections/);
- assert.doesNotMatch(html,/<td><b>Beta/); // manual cities are hidden by the default "needs attention" filter
+ assert.match(html,/Manual cities \(1\)/);
  x.s.adminFilter='all';x.render();assert.match(x.root.innerHTML,/Import by hand\./);
 });
 
@@ -45,4 +45,16 @@ test('loading text names the city being collected and the final summary counts s
  assert.equal(x.pollLabel(),'Collecting Waltham 2026-10 (1 of 3)…');
  x.s.jobs=[{sourceId:'waltham',month:'2026-10',status:'failed',updatedAt:'2026-11-23T10:00:05Z'},{sourceId:'sudbury',month:'2026-10',status:'done',updatedAt:'2026-11-23T10:00:08Z'},{sourceId:'sudbury',month:'2026-09',status:'pending',updatedAt:'2026-11-23T10:00:09Z'}];
  assert.equal(x.pollSummary(),'Collection finished: 1 succeeded, 1 pending, 1 failed. See the Errors tab for the reasons.');
+});
+
+test('manual cities section lists the reason, the last upload, overdue status and a preselected import button',()=>{
+ const x=ui();x.s.me={role:'owner',email:'o@x.test',systemAdmin:true};x.s.settings=structuredClone(DEFAULT_SETTINGS);
+ x.s.radar={total:0,recordsLoaded:0,cityCounts:[],projects:[],pages:1,page:1,coverage:[],months:['2026-10']};x.s.tab='admin';
+ x.s.admin={retention:{months:12,totalDeleted:0,last:null,runs:[]},users:[],coverage:[],checks:[],failedJobs:[],errors:[],
+  sources:[{id:'danvers',city:'Danvers',state:'MA',mode:'portal',automatic:false,reason:'Site blocks automated access (403).',url:'https://d.gov'},{id:'newton',city:'Newton',state:'MA',mode:'portal',automatic:false,reason:'OpenGov export.',url:'https://n.gov'},{id:'boston',city:'Boston',state:'MA',mode:'boston',automatic:true,reason:'',url:'https://b.gov'}],
+  manual:[{sourceId:'newton',lastAt:new Date().toISOString(),month:'2026-10',byEmail:'o@x.test',uploads:2}]};
+ x.render();const html=x.root.innerHTML;
+ assert.match(html,/Manual cities \(2\)/);assert.match(html,/Site blocks automated access/);assert.match(html,/2 uploads/);
+ assert.match(html,/data-action="openUpload" data-id="danvers"/);assert.match(html,/<b>1<\/b> are overdue/);
+ assert.doesNotMatch(html,/Official source ↗<\/a><\/small><\/td><td>[^<]*Boston/);
 });
