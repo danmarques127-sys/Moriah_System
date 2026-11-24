@@ -10,6 +10,7 @@ import {previousMonth,monthsBetween,validatePermit} from './radar.mjs';
 import {parseUploadedFile} from './documents.mjs';
 import {checkAllSources} from './source-audit.mjs';
 import {partnersOverview,partnersAction} from './partners.mjs';
+import {listLists,listAction,listKeys,permitDetail,saveNote,listFollowups,followupAction,listEstimates,estimateAction} from './business.mjs';
 import {setFavorite,addVisit,listVisits,photoFor,listTeam,saveTeamMember,teamAction,isOwner,clientLogin,getClientSession,clientCookie,clientPermits,clientCities,recordClientUsage,portalEnabled} from './client-api.mjs';
 import {NATIVE_MODES} from './collectors.mjs';
 import {runDailyMaintenance,automationStatus,alertEmail} from './maintenance.mjs';
@@ -73,6 +74,15 @@ export async function createApplication(options={}){
     if(path==='/api/client/me'&&req.method==='GET')return send(res,200,{client:{email:client.email,name:client.name,company:client.company,role:client.role}});
     if(client.role==='employee'&&!['/api/client/logout'].includes(path))throw new HttpError(403,'Seu perfil de funcionário ainda não tem telas disponíveis.');
     if(path==='/api/client/favorite'&&req.method==='POST'){const b=await body(req);return send(res,200,setFavorite(db,client,b.permitKey,!!b.on));}
+    if(path==='/api/client/lists'&&req.method==='GET')return send(res,200,listLists(db,client));
+    if(path==='/api/client/lists'&&req.method==='POST')return send(res,200,listAction(db,client,await body(req)));
+    if(path==='/api/client/list-permits'&&req.method==='GET'){const q=Object.fromEntries(url.searchParams),keys=listKeys(db,client,q.listId);q.keys=keys.length?keys.join(','):'none';delete q.fav;const r=clientPermits(db,client,q,allSources(db));recordClientUsage(db,client,'seen',r.permits.length);return send(res,200,r);}
+    if(path==='/api/client/permit'&&req.method==='GET')return send(res,200,permitDetail(db,client,allSources(db),url.searchParams.get('key')));
+    if(path==='/api/client/note'&&req.method==='POST')return send(res,200,saveNote(db,client,await body(req)));
+    if(path==='/api/client/followups'&&req.method==='GET')return send(res,200,listFollowups(db,client,new Date().toLocaleString('sv-SE',{timeZone:'America/New_York'}).replace(' ','T')));
+    if(path==='/api/client/followups'&&req.method==='POST')return send(res,200,followupAction(db,client,await body(req)));
+    if(path==='/api/client/estimates'&&req.method==='GET')return send(res,200,listEstimates(db,client));
+    if(path==='/api/client/estimates'&&req.method==='POST'){const b=await body(req);b.companyName=client.company;return send(res,200,await estimateAction(db,client,allSources(db),b));}
     if(path==='/api/client/visits'&&req.method==='GET')return send(res,200,{visits:listVisits(db,client,url.searchParams.get('permitKey')||'')});
     if(path==='/api/client/visits'&&req.method==='POST'){if(!uploadRate('cv:'+client.id))throw new HttpError(429,'Aguarde para enviar outra visita.');return send(res,201,addVisit(db,client,allSources(db),await body(req)));}
     if(path==='/api/client/photo'&&req.method==='GET'){const ph=photoFor(db,client,url.searchParams.get('id'));if(!ph)throw new HttpError(404,'Foto não encontrada.');res.writeHead(200,{'Content-Type':ph.mime,'Cache-Control':'private, max-age=3600'});return res.end(ph.data);}
