@@ -126,7 +126,7 @@ export async function createApplication(options={}){
     for(const r of parsed.records){try{validatePermit(r,source);valid.push(r);}catch(e){problems.push(String(e.message).slice(0,200));}}
     const norm=x=>String(x).toLowerCase(),addrs=(parsed.addresses||[]).map(norm).filter(Boolean);
     let cityHint=null;if(addrs.length){const share=name=>addrs.filter(a=>a.includes(norm(name))).length/addrs.length;const mine=share(source.city);if(mine<0.2){const best=allSources(db).filter(x=>x.id!==source.id).map(x=>({id:x.id,city:x.city,state:x.state,share:share(x.city)})).sort((a,b)=>b.share-a.share)[0];if(best&&best.share>=0.5)cityHint={id:best.id,city:best.city,state:best.state};}}
-    const monthHint=!valid.length&&parsed.suggestedMonth&&parsed.suggestedMonth!==month?parsed.suggestedMonth:null;
+    const monthHint=parsed.suggestedMonth&&parsed.suggestedMonth!==month&&parsed.outside>valid.length?parsed.suggestedMonth:null;
     const summary={cityHint,monthHint,format:parsed.format,rowsRead:parsed.rowsRead,inMonth:valid.length,outsideMonth:parsed.outside,undated:parsed.undated,approx:parsed.approx||0,invalid:problems.length,problems:problems.slice(0,3),range:parsed.range,
      sample:valid.slice(0,15).map(r=>({number:r.number,issued:r.issued,address:r.address,type:r.type,value:r.value,description:r.description.slice(0,160)}))};
     if(!confirm)return send(res,200,{preview:true,...summary});
