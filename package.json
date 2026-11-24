@@ -14,6 +14,7 @@
     "probe": "node scripts/probe-sources.mjs",
     "backup": "node scripts/backup.mjs",
     "start:test": "node scripts/test-server.mjs",
-    "atualizar": "node scripts/update-and-run.mjs"
+    "atualizar": "node scripts/update-and-run.mjs",
+    "readiness": "node scripts/readiness.mjs"
   }
 }

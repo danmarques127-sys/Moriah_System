@@ -66,8 +66,16 @@ import {clientLogin} from '../src/client-api.mjs';
 test('demo clients can sign in with a user name, are idempotent, and have the right roles', async () => {
   const db = openDatabase(':memory:');
   seedDemoClients(db); seedDemoClients(db);
-  assert.equal(db.prepare('SELECT COUNT(*) n FROM client_accounts').get().n, 3);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM client_accounts').get().n, 5);
   assert.equal(db.prepare("SELECT role FROM client_accounts WHERE email='johnhmbrothersinsulation'").get().role, 'seller');
   assert.ok(await clientLogin(db, 'HomeroSampaio', 'Ahesqueci1'));
   assert.equal(await clientLogin(db, 'homerosampaio', 'wrong-password-xx'), null);
+});
+
+test('demo data: cities, crew punches, invoices, jobs and customers are seeded once', () => {
+  const db = openDatabase(':memory:'); seedDemoClients(db); seedDemoClients(db);
+  const n = t => db.prepare('SELECT COUNT(*) n FROM ' + t).get().n;
+  assert.equal(n('customers'), 5); assert.equal(n('biz_jobs'), 3); assert.equal(n('invoices'), 4); assert.equal(n('crew_punches'), 9);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM client_accounts WHERE role='employee'").get().n, 2);
+  assert.ok(db.prepare("SELECT COUNT(*) n FROM client_cities WHERE source_id='brookline'").get().n >= 2);
 });
