@@ -486,3 +486,21 @@ button.cl-punch{min-width:200px;height:64px;font-size:18px}
 .cl-report{border-top:1px solid var(--line);padding:12px 0}.cl-report header{display:flex;justify-content:space-between;gap:10px}.cl-report p{margin:6px 0}
 .cl-thumbs{display:flex;gap:8px;flex-wrap:wrap}.cl-thumbs img{width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
 .cl-file{display:inline-flex;width:auto}
+/* Owner business tools */
+.cl-two{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px;align-items:start;margin-bottom:16px}
+@media (max-width:1000px){.cl-two{grid-template-columns:1fr}}
+.cl-stats em{display:block;font-style:normal;color:var(--muted);font-size:12px;margin-top:2px}
+.cl-list>div{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}.cl-list>div:last-child{border-bottom:0}.cl-list span{color:var(--muted)}
+.cl-bar.out i{background:#f59e0b}
+.cl-job header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.cl-job h2{margin:0}.cl-job footer{margin-top:12px}
+.cl-exp{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.cl-exp input,.cl-exp select{flex:1 1 140px;min-width:0}
+.cl-line{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
+.cl-priceedit{display:grid;grid-template-columns:minmax(0,2.4fr) 90px 100px 100px auto auto;gap:8px;margin-bottom:8px;align-items:center}
+.cl-priceedit.head{color:var(--muted);font-size:12px}.cl-priceedit.add{margin-top:14px}
+@media (max-width:900px){.cl-priceedit{grid-template-columns:1fr 1fr}.cl-priceedit.head{display:none}}
+.cl-tl{display:grid;gap:2px;padding:10px 0;border-bottom:1px solid var(--line)}.cl-tl b{text-transform:capitalize;color:var(--accent2)}.cl-tl small{color:var(--muted)}
+.side nav{overflow-y:auto}
+td.rowact{white-space:nowrap}td.rowact button{margin-left:6px}
+.cl-job header select{width:auto;min-width:130px}
+.cl-priceedit{grid-template-columns:minmax(0,2.4fr) 90px 100px 100px 84px 96px}
+.cl-priceedit input{min-width:0}

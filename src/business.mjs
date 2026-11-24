@@ -3,6 +3,7 @@ import {timestamp} from './db.mjs';
 import {permitByKey, isOwner, clientPermit, opaque} from './client-api.mjs';
 import {sendMail, mailConfig} from './mailer.mjs';
 import {estimatePdf} from './pdf.mjs';
+import {touchCustomerFromEstimate} from './crm.mjs';
 
 const fail = (m, s = 400) => { const e = new Error(m); e.status = s; throw e; };
 const clean = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, ' ').trim().slice(0, n);
@@ -135,7 +136,7 @@ export async function estimateAction(db, client, sources, b, {send = sendMail, c
     const res = await send({to: r.prospect_email, subject, text, attachments}, config);
     if (!res.sent) fail('Não foi possível enviar: ' + res.reason);
     if (seller?.email) await send({to: seller.email, subject: '[Copy] ' + subject, text, attachments}, config).catch(() => {});
-    db.prepare("UPDATE estimate_requests SET status='sent',sent_at=?,updated_at=? WHERE id=?").run(now, now, r.id); event(db, r.id, 'sent', 'Sent to ' + r.prospect_email + ' and the salesperson', who(client)); return {ok: true};
+    db.prepare("UPDATE estimate_requests SET status='sent',sent_at=?,updated_at=? WHERE id=?").run(now, now, r.id); touchCustomerFromEstimate(db, r.company_id, {name: r.prospect_name, email: r.prospect_email, address: r.address}); event(db, r.id, 'sent', 'Sent to ' + r.prospect_email + ' and the salesperson', who(client)); return {ok: true};
   }
   fail('Operação inválida.');
 }

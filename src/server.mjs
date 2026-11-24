@@ -11,6 +11,9 @@ import {parseUploadedFile} from './documents.mjs';
 import {checkAllSources} from './source-audit.mjs';
 import {partnersOverview,partnersAction} from './partners.mjs';
 import {listLists,listAction,listKeys,permitDetail,saveNote,listFollowups,followupAction,listEstimates,estimateAction} from './business.mjs';
+import {listInvoices,invoiceAction,listJobs,jobAction,overview} from './finance.mjs';
+import {listCustomers,customerDetail,customerAction} from './crm.mjs';
+import {listPrices,pricesAction,calculate} from './pricing.mjs';
 import {clockStatus,clockAction,addReport,reportPhoto,timeOverview,setRate} from './timeclock.mjs';
 import {getProfile,saveProfile,setFavorite,addVisit,listVisits,photoFor,listTeam,saveTeamMember,teamAction,isOwner,clientLogin,getClientSession,clientCookie,clientPermits,clientCities,recordClientUsage,portalEnabled} from './client-api.mjs';
 import {NATIVE_MODES} from './collectors.mjs';
@@ -77,6 +80,15 @@ export async function createApplication(options={}){
     if(path==='/api/client/clock'&&req.method==='POST')return send(res,200,clockAction(db,client,await body(req)));
     if(path==='/api/client/report'&&req.method==='POST'){if(!uploadRate('cr:'+client.id))throw new HttpError(429,'Aguarde para enviar outro relatório.');return send(res,201,addReport(db,client,await body(req)));}
     if(path==='/api/client/report-photo'&&req.method==='GET'){const ph=reportPhoto(db,client,url.searchParams.get('id'));if(!ph)throw new HttpError(404,'Foto não encontrada.');res.writeHead(200,{'Content-Type':ph.mime,'Cache-Control':'private, max-age=3600'});return res.end(ph.data);}
+    if(isOwner(client)&&path==='/api/client/overview'&&req.method==='GET')return send(res,200,overview(db,client));
+    if(isOwner(client)&&path==='/api/client/invoices'&&req.method==='GET')return send(res,200,listInvoices(db,client));
+    if(isOwner(client)&&path==='/api/client/invoices'&&req.method==='POST'){const b=await body(req);if(b.op==='send'||b.op==='receipt'){if(!uploadRate('ci:'+client.id))throw new HttpError(429,'Aguarde para enviar outro e-mail.');}return send(res,200,await invoiceAction(db,client,b));}
+    if(isOwner(client)&&path==='/api/client/jobs'&&req.method==='GET')return send(res,200,listJobs(db,client));
+    if(isOwner(client)&&path==='/api/client/jobs'&&req.method==='POST')return send(res,200,jobAction(db,client,await body(req)));
+    if(isOwner(client)&&path==='/api/client/customers'&&req.method==='GET'){const id=url.searchParams.get('id');return send(res,200,id?customerDetail(db,client,id):listCustomers(db,client,{q:url.searchParams.get('q')||'',status:url.searchParams.get('status')||''}));}
+    if(isOwner(client)&&path==='/api/client/customers'&&req.method==='POST')return send(res,200,customerAction(db,client,await body(req),client.name||client.email));
+    if(isOwner(client)&&path==='/api/client/prices'&&req.method==='GET')return send(res,200,listPrices(db,client));
+    if(isOwner(client)&&path==='/api/client/prices'&&req.method==='POST'){const b=await body(req);return send(res,200,b.op==='calc'?calculate(db,client,b):pricesAction(db,client,b));}
     if(path==='/api/client/time'&&isOwner(client)&&req.method==='GET')return send(res,200,timeOverview(db,client));
     if(path==='/api/client/time'&&isOwner(client)&&req.method==='POST')return send(res,200,setRate(db,client,await body(req)));
     if(client.role==='employee'&&!['/api/client/logout','/api/client/profile'].includes(path))throw new HttpError(403,'Seu perfil de funcionário ainda não tem telas disponíveis.');

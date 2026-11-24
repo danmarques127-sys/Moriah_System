@@ -43,3 +43,20 @@ export function estimatePdf(est, company) {
   L.push({cols: [{text: 'TOTAL', x: 360}, {text: money(est.total), x: 490}], size: 12, bold: true, gap: 28}, {text: 'Thank you for the opportunity. Reply to the e-mail that came with this estimate with any questions.', size: 9});
   return makePdf(L);
 }
+
+export function invoicePdf(inv, company, {receipt = false} = {}) {
+  const L = [{text: company || 'Invoice', size: 20, bold: true, gap: 28}, {text: receipt ? 'PAYMENT RECEIPT' : 'INVOICE ' + inv.number, size: 12, bold: true, gap: 20}, {text: 'Invoice: ' + inv.number + '   Date: ' + inv.issuedOn + (inv.dueOn ? '   Due: ' + inv.dueOn : ''), gap: 14}, {text: 'Billed to: ' + (inv.toName || ''), gap: 14}, {text: inv.toEmail || '', gap: 14}, {text: inv.jobName ? 'Job: ' + inv.jobName : '', gap: 26}];
+  L.push({cols: [{text: 'Qty', x: 50}, {text: 'Item', x: 90}, {text: 'Unit price', x: 400}, {text: 'Amount', x: 490}], bold: true, size: 10, gap: 16});
+  for (const it of inv.items) {
+    const d = wrap(it.description, 62);
+    L.push({cols: [{text: String(it.qty), x: 50}, {text: d[0] || '', x: 90}, {text: money(it.price), x: 400}, {text: money(it.qty * it.price), x: 490}], size: 10, gap: 13});
+    for (const extra of d.slice(1)) L.push({text: extra, x: 90, size: 10, gap: 13});
+    L.push({text: '', size: 4, gap: 6});
+  }
+  L.push({text: '', gap: 10}, {cols: [{text: 'Subtotal', x: 360}, {text: money(inv.subtotal), x: 490}], gap: 15});
+  if (inv.taxRate > 0) L.push({cols: [{text: 'Sales tax (' + inv.taxRate + '%)', x: 360}, {text: money(inv.tax), x: 490}], gap: 15});
+  L.push({cols: [{text: 'TOTAL', x: 360}, {text: money(inv.total), x: 490}], size: 12, bold: true, gap: 18});
+  for (const p of inv.payments) L.push({cols: [{text: 'Paid ' + p.paidOn + ' (' + p.method + ')', x: 330}, {text: '-' + money(p.amount), x: 490}], size: 10, gap: 14});
+  L.push({cols: [{text: 'BALANCE DUE', x: 360}, {text: money(inv.balance), x: 490}], size: 12, bold: true, gap: 28}, {text: receipt ? 'Thank you for your payment.' : (inv.notes || 'Thank you for your business.'), size: 10, gap: 13});
+  return makePdf(L);
+}
