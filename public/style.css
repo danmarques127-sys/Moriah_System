@@ -33,3 +33,5 @@ input:focus,select:focus,textarea:focus{outline:2px solid #71b7bc}
 .source h2{color:#153b4c}
 @media(max-width:850px){.ops-grid{grid-template-columns:1fr}.top nav{overflow:auto;white-space:nowrap}}
 @media(max-width:700px){.archive-toggle{width:100%}.top{gap:10px}}
+
+#loading{position:fixed;inset:0;background:#0c2c23aa;backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;z-index:200;cursor:progress}.loading-box{background:#fff;border-radius:12px;padding:28px 34px;display:flex;align-items:center;gap:18px;box-shadow:0 15px 65px #09211740;max-width:min(520px,90vw)}.loading-box p{margin:0;color:var(--ink);font-size:14px;font-weight:600}.spinner{width:26px;height:26px;border:3px solid #cfe5d4;border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;flex:none}@keyframes spin{to{transform:rotate(360deg)}}

@@ -2,7 +2,7 @@ import {test} from 'node:test';import assert from 'node:assert/strict';import {r
 function ui(){
  const source=readFileSync(new URL('../public/app.mjs',import.meta.url),'utf8').replace(/^import .*;\n/,'').split("document.addEventListener('click'")[0];
  const root={innerHTML:'',querySelectorAll(){return[];}},context={console,Intl,Date,Map,Set,URL,URLSearchParams,structuredClone,setTimeout,clearTimeout,crypto:{randomUUID:()=>Math.random().toString(36)},SECTION_TYPES:['Roof / Rafters','Basement Walls'],document:{querySelector(){return root;},body:{classList:{add(){},remove(){}}}},window:{print(){}}};
- vm.createContext(context);vm.runInContext(source+';globalThis.ui={s,render,clearWorkspace,draft,proposal};',context);return {root,...context.ui};
+ vm.createContext(context);vm.runInContext(source+';globalThis.ui={s,render,clearWorkspace,draft,proposal,pollLabel,pollSummary};',context);return {root,...context.ui};
 }
 test('login view exposes no workspace draft data',()=>{const x=ui();x.render();assert.match(x.root.innerHTML,/data-form="login"/);assert.doesNotMatch(x.root.innerHTML,/PRIVATE-CLIENT/);});
 test('radar offers from/to, multiple city selection, type and city-balanced ordering',()=>{const x=ui();x.s.me={role:'owner',email:'owner@example.test'};x.s.settings=structuredClone(DEFAULT_SETTINGS);x.s.sources=[{id:'newton',city:'Newton',state:'MA',url:'https://www.newtonma.gov',mode:'report'}];x.s.radar={total:0,recordsLoaded:0,cityCounts:[],projects:[],pages:1,page:1,coverage:[],months:['2026-10']};x.render();assert.match(x.root.innerHTML,/name="from"/);assert.match(x.root.innerHTML,/name="to"/);assert.match(x.root.innerHTML,/data-city="newton"/);assert.match(x.root.innerHTML,/Balance across cities/);assert.match(x.root.innerHTML,/Qualified opportunities/);});
@@ -37,4 +37,12 @@ test('errors tab lists every recorded failure with its reason and filters by are
  x.render();let html=x.root.innerHTML;
  assert.match(html,/Danvers/);assert.match(html,/HTTP 403 &lt;i&gt;/);assert.match(html,/Arquivo inválido/);assert.match(html,/City collection/);
  x.s.errorArea='import';x.render();html=x.root.innerHTML;assert.doesNotMatch(html,/HTTP 403/);assert.match(html,/Arquivo inválido/);
+});
+
+test('loading text names the city being collected and the final summary counts successes and failures',()=>{
+ const x=ui();x.s.sources=[{id:'waltham',city:'Waltham'},{id:'sudbury',city:'Sudbury'}];x.s.pollStart='2026-11-23T10:00:00.000Z';
+ x.s.jobs=[{sourceId:'waltham',month:'2026-10',status:'running',updatedAt:'2026-11-23T10:00:05Z'},{sourceId:'sudbury',month:'2026-10',status:'done',updatedAt:'2026-11-23T10:00:03Z'},{sourceId:'sudbury',month:'2026-09',status:'queued',updatedAt:'2026-11-23T10:00:01Z'},{sourceId:'old',month:'2026-01',status:'failed',updatedAt:'2026-11-01T10:00:00Z'}];
+ assert.equal(x.pollLabel(),'Collecting Waltham 2026-10 (1 of 3)…');
+ x.s.jobs=[{sourceId:'waltham',month:'2026-10',status:'failed',updatedAt:'2026-11-23T10:00:05Z'},{sourceId:'sudbury',month:'2026-10',status:'done',updatedAt:'2026-11-23T10:00:08Z'},{sourceId:'sudbury',month:'2026-09',status:'pending',updatedAt:'2026-11-23T10:00:09Z'}];
+ assert.equal(x.pollSummary(),'Collection finished: 1 succeeded, 1 pending, 1 failed. See the Errors tab for the reasons.');
 });
