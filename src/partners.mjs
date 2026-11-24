@@ -5,6 +5,8 @@ import {validEmail} from './auth.mjs';
 
 const clean = (v, max = 200) => String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, max);
 const fail = msg => { const e = new Error(msg); e.status = 400; throw e; };
+export const monthKey = (d = new Date()) => new Intl.DateTimeFormat('en-CA', {timeZone: 'America/New_York', year: 'numeric', month: '2-digit'}).format(d);
+export const monthUsed = (db, companyId, month = monthKey()) => Number(db.prepare('SELECT COUNT(*) AS n FROM permit_seen WHERE company_id=? AND month=?').get(companyId, month).n);
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function settingsOverview(db) {
@@ -29,7 +31,7 @@ export function partnersOverview(db, sources) {
   const tradeLinks = db.prepare('SELECT company_id AS c,trade_id AS t FROM company_trades').all();
   const clients = db.prepare("SELECT id,company_id AS companyId,email,name,active,created_at AS createdAt,(password_hash<>'') AS hasPassword FROM client_accounts ORDER BY id").all();
   const cityLinks = db.prepare('SELECT client_id AS c,source_id AS s FROM client_cities').all();
-  const companies = db.prepare('SELECT id,name,contact_name AS contactName,contact_email AS contactEmail,contact_phone AS contactPhone,active,joined_on AS joinedOn FROM companies ORDER BY name').all().map(c => ({...c, active: !!c.active, tradeIds: tradeLinks.filter(l => l.c === c.id).map(l => l.t)}));
+  const companies = db.prepare('SELECT id,name,contact_name AS contactName,contact_email AS contactEmail,contact_phone AS contactPhone,active,joined_on AS joinedOn,max_cities AS maxCities,monthly_permits AS monthlyPermits FROM companies ORDER BY name').all().map(c => ({...c, active: !!c.active, usedThisMonth: monthUsed(db, c.id), tradeIds: tradeLinks.filter(l => l.c === c.id).map(l => l.t)}));
   const clientRows = clients.map(c => ({...c, active: !!c.active, hasPassword: !!c.hasPassword, cities: cityLinks.filter(l => l.c === c.id).map(l => l.s)}));
   const coverage = companies.map(c => {
     const cities = [...new Set(clientRows.filter(x => x.companyId === c.id && x.active).flatMap(x => x.cities))];
@@ -51,12 +53,17 @@ export function partnersAction(db, sources, actor, b) {
   if (op === 'saveCompany') {
     const name = clean(b.name, 120); if (!name) fail('Informe o nome da empresa.');
     const email = clean(b.contactEmail, 254); if (email && !validEmail(email)) fail('E-mail de contato inválido.');
+    const maxCities = b.maxCities === undefined ? undefined : Math.floor(Number(b.maxCities)), monthly = b.monthlyPermits === undefined ? undefined : Math.floor(Number(b.monthlyPermits));
+    if (maxCities !== undefined && !(maxCities >= 1 && maxCities <= 100)) fail('O limite de cidades deve ficar entre 1 e 100.');
+    if (monthly !== undefined && !(monthly >= 10 && monthly <= 1000000)) fail('O limite mensal de permits deve ficar entre 10 e 1.000.000.');
     const vals = [name, clean(b.contactName, 120), email, clean(b.contactPhone, 40), b.active === false || b.active === '0' ? 0 : 1];
     let id = Number(b.id) || 0;
     try {
       if (id) { if (!db.prepare('SELECT 1 FROM companies WHERE id=?').get(id)) fail('Empresa não encontrada.'); db.prepare('UPDATE companies SET name=?,contact_name=?,contact_email=?,contact_phone=?,active=? WHERE id=?').run(...vals, id); }
       else id = Number(db.prepare('INSERT INTO companies(name,contact_name,contact_email,contact_phone,active,joined_on,created_at) VALUES(?,?,?,?,?,?,?)').run(...vals, clean(b.joinedOn, 10) || today(), timestamp()).lastInsertRowid);
     } catch (e) { if (/UNIQUE/.test(e.message)) fail('Já existe uma empresa com esse nome.'); throw e; }
+    if (maxCities !== undefined) db.prepare('UPDATE companies SET max_cities=? WHERE id=?').run(maxCities, id);
+    if (monthly !== undefined) db.prepare('UPDATE companies SET monthly_permits=? WHERE id=?').run(monthly, id);
     if (b.tradeIds !== undefined) {
       const valid = new Set(db.prepare('SELECT id FROM trades').all().map(r => r.id));
       db.prepare('DELETE FROM company_trades WHERE company_id=?').run(id);
@@ -82,6 +89,9 @@ export function partnersAction(db, sources, actor, b) {
     const company = Number(b.companyId); if (!db.prepare('SELECT 1 FROM companies WHERE id=?').get(company)) fail('Escolha uma empresa afiliada.');
     const valid = new Set(sources.map(s => s.id)), cities = [...new Set((Array.isArray(b.cities) ? b.cities : []).map(String))].filter(c => valid.has(c));
     let id = Number(b.id) || 0;
+    const limit = Number(db.prepare('SELECT max_cities AS m FROM companies WHERE id=?').get(company).m), others = db.prepare('SELECT DISTINCT cc.source_id AS s FROM client_cities cc JOIN client_accounts ca ON ca.id=cc.client_id WHERE ca.company_id=? AND ca.id<>?').all(company, id).map(r => r.s);
+    const total = new Set([...others, ...cities]).size;
+    if (total > limit) fail('Esta empresa pode ter no máximo ' + limit + ' cidade(s) (já somando as outras contas). Aumente o limite na empresa ou remova cidades.');
     try {
       if (id) { if (!db.prepare('UPDATE client_accounts SET company_id=?,email=?,name=? WHERE id=?').run(company, email, clean(b.name, 120), id).changes) fail('Conta não encontrada.'); }
       else id = Number(db.prepare('INSERT INTO client_accounts(company_id,email,name,active,created_at) VALUES(?,?,?,1,?)').run(company, email, clean(b.name, 120), timestamp()).lastInsertRowid);

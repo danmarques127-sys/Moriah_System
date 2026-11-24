@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {openDatabase,audit,timestamp,logError} from './db.mjs';
-import {bootstrap,radarData,allSources,findSource,upsertPermits,setCoverage,addSource,createMember} from './service.mjs';
+import {bootstrap,radarData,allSources,findSource,upsertPermits,setCoverage,addSource,createMember,updateMember,removeMember} from './service.mjs';
 import {checkPassword,hashPassword,newSession,getSession,csrfMatches,cookie,rateLimit,validEmail} from './auth.mjs';
 import {enqueue,worker,scheduler} from './jobs.mjs';
 import {previousMonth,monthsBetween,validatePermit} from './radar.mjs';
@@ -16,7 +16,7 @@ import {runDailyMaintenance,automationStatus,alertEmail} from './maintenance.mjs
 import {mailConfig,deliver} from './mailer.mjs';
 import {runRetentionIfDue,retentionStatus,cutoffDate,getSetting} from './retention.mjs';
 import {recordManualImport,manualImportStatus} from './manual.mjs';
-const assets={'/':'../public/index.html','/app.mjs':'../public/app.mjs','/style.css':'../public/style.css'};
+const assets={'/':'../public/index.html','/app.mjs':'../public/app.mjs','/style.css':'../public/style.css','/client':'../public/client.html','/client.mjs':'../public/client.mjs'};
 for(const f of ['logo.png','logo-mark.png','favicon.png','favicon.ico','icon-192.png','apple-touch-icon.png','login-bg.jpg'])assets['/'+f]='../public/'+f;
 const mimes={'.png':'image/png','.jpg':'image/jpeg','.ico':'image/x-icon','.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
 class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
@@ -43,7 +43,7 @@ export async function createApplication(options={}){
   try{
    const url=new URL(req.url,config.appUrl),path=url.pathname,mutating=!['GET','HEAD'].includes(req.method);
    if(path==='/health'&&req.method==='GET')return send(res,200,{ok:true,version:'1.0.0'});
-   if(assets[path]&&req.method==='GET'){const suffix=path==='/'?'.html':path.slice(path.lastIndexOf('.'));res.writeHead(200,{'Content-Type':mimes[suffix],...(/\.(png|ico|jpg)$/.test(path)?{'Cache-Control':'public, max-age=86400'}:{})});return res.end(await readFile(new URL(assets[path],import.meta.url)));}
+   if(assets[path]&&req.method==='GET'){const suffix=(path==='/'||path==='/client')?'.html':path.slice(path.lastIndexOf('.'));res.writeHead(200,{'Content-Type':mimes[suffix],...(/\.(png|ico|jpg)$/.test(path)?{'Cache-Control':'public, max-age=86400'}:{})});return res.end(await readFile(new URL(assets[path],import.meta.url)));}
    if(!path.startsWith('/api/'))throw new HttpError(404,'Página não encontrada.');
    if(mutating){
     const expectedOrigin=new URL(config.appUrl).origin;
@@ -89,7 +89,9 @@ export async function createApplication(options={}){
     audit(db,user.workspace_id,'Perfil atualizado',user.email,'config');return send(res,200,{profile:profileOf()});}
    if(path==='/api/logout'&&req.method==='POST'){db.prepare('DELETE FROM sessions WHERE token_hash=?').run(user.token_hash);res.setHeader('Set-Cookie',cookie('',config.production,0));return send(res,200,{ok:true});}
    if(path==='/api/password'&&req.method==='POST'){const b=await body(req),row=db.prepare('SELECT password_hash FROM users WHERE id=?').get(user.id);if(!await checkPassword(b.currentPassword,row.password_hash))throw new HttpError(400,'Senha atual incorreta.');const hash=await hashPassword(b.newPassword);db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hash,user.id);db.prepare('DELETE FROM sessions WHERE user_id=?').run(user.id);res.setHeader('Set-Cookie',cookie('',config.production,0));return send(res,200,{ok:true});}
-   if(path==='/api/members'&&req.method==='GET'){owner();return send(res,200,{members:db.prepare('SELECT id,email,role FROM users WHERE workspace_id=? ORDER BY email').all(user.workspace_id)});}
+   if(path==='/api/members'&&req.method==='GET'){owner();return send(res,200,{members:db.prepare('SELECT u.id,u.email,u.role,u.system_admin AS systemAdmin,IFNULL(p.display_name,\'\') AS name FROM users u LEFT JOIN user_profiles p ON p.user_id=u.id WHERE u.workspace_id=? ORDER BY u.email').all(user.workspace_id)});}
+   if(path==='/api/members/update'&&req.method==='POST'){owner();return send(res,200,await updateMember(db,user,await body(req)));}
+   if(path==='/api/members/remove'&&req.method==='POST'){owner();return send(res,200,removeMember(db,user,await body(req)));}
    if(path==='/api/members'&&req.method==='POST'){owner();return send(res,201,await createMember(db,user,await body(req)));}
    // Workspace-scoped operational ledgers: no external payment processing or payroll.
    if(path==='/api/radar'&&req.method==='GET'){const query=Object.fromEntries(url.searchParams);query.from||=previousMonth();query.to||=query.from;return send(res,200,radarData(db,user,query));}
