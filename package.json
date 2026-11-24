@@ -15,6 +15,7 @@
     "backup": "node scripts/backup.mjs",
     "start:test": "node scripts/test-server.mjs",
     "atualizar": "node scripts/update-and-run.mjs",
-    "readiness": "node scripts/readiness.mjs"
+    "readiness": "node scripts/readiness.mjs",
+    "limpar-demo": "node scripts/clean-demo.mjs"
   }
 }

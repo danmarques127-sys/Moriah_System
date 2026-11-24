@@ -504,3 +504,13 @@ td.rowact{white-space:nowrap}td.rowact button{margin-left:6px}
 .cl-job header select{width:auto;min-width:130px}
 .cl-priceedit{grid-template-columns:minmax(0,2.4fr) 90px 100px 100px 84px 96px}
 .cl-priceedit input{min-width:0}
+/* CTA alignment: icon + label centered, same height, purple primary even inside segmented bars */
+button:has(>svg),.btn:has(>svg){display:inline-flex;align-items:center;justify-content:center;gap:8px}
+button>svg{flex:none;display:block}
+.cl-seg button.primary,.cl-seg button.primary:hover{background:linear-gradient(135deg,#8b3dff,#6d28d9);border-color:transparent;color:#fff;height:42px;padding:0 18px;border-radius:14px;font-weight:600}
+.cl-seg .cl-right{margin-left:auto}
+.toolbar>button,.toolbar>.btn{height:42px;white-space:nowrap}
+button[data-action=addli],button[data-action=o-inv-add]{height:42px;width:100%;border:1px dashed var(--line);background:transparent}
+button[data-action=addli]:hover,button[data-action=o-inv-add]:hover{border-color:var(--accent2)}
+.cl-line .primary,.cl-exp button{height:40px;white-space:nowrap}
+.side nav button:has(>svg),.side button:has(>svg){justify-content:flex-start}

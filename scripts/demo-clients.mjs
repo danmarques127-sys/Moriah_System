@@ -1,7 +1,6 @@
 // Demo business accounts for the isolated TEST database only (never loaded in production).
 // Passwords here are public fixtures: the test server refuses to run in production.
 import {randomBytes, scryptSync} from 'node:crypto';
-import {seedDemoData} from './demo-data.mjs';
 
 export const DEMO = {
   company: {name: 'H&M Brothers Insulation', contact: 'Homero Sampaio', trade: 'Insulation'},
@@ -26,6 +25,5 @@ export function seedDemoClients(db, demo = DEMO) {
     db.prepare('UPDATE client_accounts SET password_hash=?,active=1 WHERE email=?').run(hash(), a.user);
     db.prepare('DELETE FROM client_sessions WHERE client_id=(SELECT id FROM client_accounts WHERE email=?)').run(a.user);
   }
-  seedDemoData(db, co, {hash});
   return co;
 }

@@ -76,3 +76,12 @@ test('line items: totals with tax are computed on the server; internal cost and 
   const sent = []; await estimateAction(db, owner, SRC, {op: 'send', id, companyName: 'Acme'}, {send: async m => { sent.push(m); return {sent: true}; }});
   assert.equal(sent[0].attachments[0].mime, 'application/pdf'); assert.ok(sent[0].attachments[0].data.subarray(0, 5).toString() === '%PDF-'); assert.doesNotMatch(sent[0].text, /internal|margin/i);
 });
+
+test('estimate request can start from a typed address (no permit) and still reaches the owner', async () => {
+  const {db, owner, seller} = await setup(), send = async () => ({sent: true});
+  await assert.rejects(estimateAction(db, seller, SRC, {op: 'save', address: 'ab', prospectName: 'Jo'}, {send}), /endereço/);
+  const {id} = await estimateAction(db, seller, SRC, {op: 'save', address: '14 Cedar Rd', city: 'Newton', state: 'ma', prospectName: 'Jo', prospectEmail: 'jo@x.co', submit: true}, {send});
+  const row = db.prepare('SELECT address,city,state,permit_key,status FROM estimate_requests WHERE id=?').get(id);
+  assert.deepEqual({...row}, {address: '14 Cedar Rd', city: 'Newton', state: 'MA', permit_key: '', status: 'with_owner'});
+  assert.ok(listEstimates(db, owner, SRC).estimates.some(e => e.id === id));
+});

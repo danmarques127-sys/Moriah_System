@@ -96,8 +96,11 @@ export async function estimateAction(db, client, sources, b, {send = sendMail, c
   const now = timestamp();
   if (b.op === 'save') { // seller (or owner) creates/edits a request; submit=true sends it to the owner
     if (client.role === 'employee') fail('Seu perfil não pode pedir estimates.', 403);
-    const p = b.id ? null : permitByKey(db, client, String(b.permitKey), sources);
-    if (!b.id && !p) fail('Permit fora das suas cidades.', 403);
+    let p = null;
+    if (!b.id) {
+      if (b.permitKey) { p = permitByKey(db, client, String(b.permitKey), sources); if (!p) fail('Permit fora das suas cidades.', 403); }
+      else { const address = clean(b.address, 200); if (address.length < 5) fail('Informe o endereço do trabalho.'); p = {address, city: clean(b.city, 80), state: clean(b.state, 2).toUpperCase()}; b.permitKey = ''; }
+    }
     const email = clean(b.prospectEmail, 254).toLowerCase(); if (email && !mail(email)) fail('E-mail do cliente inválido.');
     const f = [clean(b.prospectName, 120), email, clean(b.scope, 4000), clean(b.measurements, 2000)];
     if (b.submit && (!f[0] || !email)) fail('Informe nome e e-mail do cliente para enviar ao owner.');
