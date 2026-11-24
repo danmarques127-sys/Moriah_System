@@ -11,6 +11,7 @@ import {parseUploadedFile} from './documents.mjs';
 import {checkAllSources} from './source-audit.mjs';
 import {partnersOverview,partnersAction} from './partners.mjs';
 import {listLists,listAction,listKeys,permitDetail,saveNote,listFollowups,followupAction,listEstimates,estimateAction} from './business.mjs';
+import {clockStatus,clockAction,addReport,reportPhoto,timeOverview,setRate} from './timeclock.mjs';
 import {getProfile,saveProfile,setFavorite,addVisit,listVisits,photoFor,listTeam,saveTeamMember,teamAction,isOwner,clientLogin,getClientSession,clientCookie,clientPermits,clientCities,recordClientUsage,portalEnabled} from './client-api.mjs';
 import {NATIVE_MODES} from './collectors.mjs';
 import {runDailyMaintenance,automationStatus,alertEmail} from './maintenance.mjs';
@@ -39,7 +40,7 @@ export async function createApplication(options={}){
  const server=http.createServer(async(req,res)=>{
   const requestId=randomUUID();res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('Cache-Control','no-store');res.setHeader('X-Request-Id',requestId);
   res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
-  res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');
+  res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=(self)');
   if(config.production)res.setHeader('Strict-Transport-Security','max-age=31536000');
   try{
    const url=new URL(req.url,config.appUrl),path=url.pathname,mutating=!['GET','HEAD'].includes(req.method);
@@ -72,7 +73,13 @@ export async function createApplication(options={}){
     }
     const client=getClientSession(db,req);if(!client)throw new HttpError(401,'Entre na sua conta.');
     if(path==='/api/client/me'&&req.method==='GET'){const pr=getProfile(db,client);return send(res,200,{client:{email:client.email,name:pr.me.name,company:pr.company.name,role:client.role,photo:pr.me.photo,logo:pr.company.logo}});}
-    if(client.role==='employee'&&!['/api/client/logout'].includes(path))throw new HttpError(403,'Seu perfil de funcionário ainda não tem telas disponíveis.');
+    if(path==='/api/client/clock'&&req.method==='GET')return send(res,200,clockStatus(db,client));
+    if(path==='/api/client/clock'&&req.method==='POST')return send(res,200,clockAction(db,client,await body(req)));
+    if(path==='/api/client/report'&&req.method==='POST'){if(!uploadRate('cr:'+client.id))throw new HttpError(429,'Aguarde para enviar outro relatório.');return send(res,201,addReport(db,client,await body(req)));}
+    if(path==='/api/client/report-photo'&&req.method==='GET'){const ph=reportPhoto(db,client,url.searchParams.get('id'));if(!ph)throw new HttpError(404,'Foto não encontrada.');res.writeHead(200,{'Content-Type':ph.mime,'Cache-Control':'private, max-age=3600'});return res.end(ph.data);}
+    if(path==='/api/client/time'&&isOwner(client)&&req.method==='GET')return send(res,200,timeOverview(db,client));
+    if(path==='/api/client/time'&&isOwner(client)&&req.method==='POST')return send(res,200,setRate(db,client,await body(req)));
+    if(client.role==='employee'&&!['/api/client/logout','/api/client/profile'].includes(path))throw new HttpError(403,'Seu perfil de funcionário ainda não tem telas disponíveis.');
     if(path==='/api/client/profile'&&req.method==='GET')return send(res,200,getProfile(db,client));
     if(path==='/api/client/profile'&&req.method==='POST')return send(res,200,await saveProfile(db,client,await body(req),hashPassword));
     if(path==='/api/client/favorite'&&req.method==='POST'){const b=await body(req);return send(res,200,setFavorite(db,client,b.permitKey,!!b.on));}

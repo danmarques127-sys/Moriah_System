@@ -477,3 +477,12 @@ textarea{width:100%;background:var(--card2);border:1px solid var(--line);border-
 .photo-box .filebtn:hover{background:linear-gradient(135deg,#9a55ff,#7c3aed);border-color:transparent}
 .photo-box button{background:transparent;border:1px solid var(--line);color:var(--text)}
 .photo-box button:hover{background:var(--card2);border-color:var(--accent2);filter:none}
+.cl-clock{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.cl-bigstat small{display:block;color:var(--muted)}.cl-bigstat b{font-size:28px;display:block}.cl-bigstat em{font-style:normal;color:var(--muted)}
+button.cl-punch{min-width:200px;height:64px;font-size:18px}
+.cl-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:16px}
+.cl-stats>div{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px}.cl-stats small{display:block;color:var(--muted)}.cl-stats b{font-size:24px}
+.cl-rate{display:flex;gap:6px}.cl-rate input{width:80px}.cl-rate button{padding:6px 12px}
+.cl-report{border-top:1px solid var(--line);padding:12px 0}.cl-report header{display:flex;justify-content:space-between;gap:10px}.cl-report p{margin:6px 0}
+.cl-thumbs{display:flex;gap:8px;flex-wrap:wrap}.cl-thumbs img{width:84px;height:84px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+.cl-file{display:inline-flex;width:auto}

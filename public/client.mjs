@@ -4,7 +4,7 @@ const money = v => new Intl.NumberFormat('en-US', {style: 'currency', currency: 
 const day = v => v ? new Date(v + 'T12:00:00Z').toLocaleDateString('en-US', {timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric'}) : '—';
 const when = v => { try { return new Date(v).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}); } catch { return ''; } };
 const dueLabel = v => { const [d, t] = String(v).split('T'), h = Number(t.slice(0, 2)); return day(d) + ' · ' + ((h % 12) || 12) + ':' + t.slice(3, 5) + ' ' + (h < 12 ? 'AM' : 'PM'); };
-const ICO = {radar: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>', list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>', calc: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/>', cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>', search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>', pin: '<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.800-7 11-7 11z"/><circle cx="12" cy="10" r="2.500"/>', bld: '<path d="M4 21V5l8-2v18M12 9h8v12M7 8h2M7 12h2M7 16h2M15 13h2M15 17h2M2 21h20"/>', cam: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.500"/>', users: '<circle cx="9" cy="8" r="3.500"/><path d="M2 20c0-3.500 3-6 7-6s7 2.500 7 6M17 5a3 3 0 0 1 0 6M22 20c0-2.500-1.500-4.500-4-5.300"/>', note: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5zM9 13h6M9 17h6"/>', plus: '<path d="M12 5v14M5 12h14"/>', check: '<path d="M5 12l5 5 9-10"/>', send: '<path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>'};
+const ICO = {clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', dollar: '<path d="M12 3v18M16 7.5c0-1.7-1.8-3-4-3s-4 1.3-4 3 1.6 2.6 4 3 4 1.3 4 3-1.8 3-4 3-4-1.3-4-3"/>', chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>', brief: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/>', tag: '<path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1"/>', radar: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2"/>', list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>', calc: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 12h.01M12 12h.01M15 12h.01M9 16h.01M12 16h.01M15 16h.01"/>', cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', star: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>', search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>', pin: '<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.800-7 11-7 11z"/><circle cx="12" cy="10" r="2.500"/>', bld: '<path d="M4 21V5l8-2v18M12 9h8v12M7 8h2M7 12h2M7 16h2M15 13h2M15 17h2M2 21h20"/>', cam: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.500"/>', users: '<circle cx="9" cy="8" r="3.500"/><path d="M2 20c0-3.500 3-6 7-6s7 2.500 7 6M17 5a3 3 0 0 1 0 6M22 20c0-2.500-1.500-4.500-4-5.300"/>', note: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5zM9 13h6M9 17h6"/>', plus: '<path d="M12 5v14M5 12h14"/>', check: '<path d="M5 12l5 5 9-10"/>', send: '<path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>'};
 const icon = k => '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">' + (ICO[k] || '') + '</svg>';
 const st = {tab: 'radar', radarTab: 'all', modal: null, drawer: null, data: null, lists: null, listId: 'fav', listData: null, followups: null, fuTab: 'today', estimates: null, estSel: null, team: null, visits: null, me: null, error: '', f: {city: [], state: '', trade: '', q: '', from: '', to: '', page: 1}};
 
@@ -24,11 +24,11 @@ const brand = '<a class="brand" href="/client"><img src="/logo-mark.png" alt="" 
 function loginView() {
   return '<main class="login"><section class="lcard"><div class="lbrand"><img src="/logo-mark.png" alt=""><b>MORIAH</b><small>SYSTEM</small></div><h1>Sign in</h1><form data-form="login"><label>Email or username<input name="email" type="text" required autocomplete="username" autocapitalize="none" spellcheck="false"></label><label>Password<input name="password" type="password" required autocomplete="current-password"></label>' + (st.error ? '<p class="form-error" role="alert"><span>' + e(st.error) + '</span></p>' : '') + '<button class="primary">Sign in</button></form></section></main>';
 }
-const NAV = () => owner()
-  ? [['radar', 'Permit Radar', 'radar'], ['lists', 'My Lists', 'list'], ['estimates', 'Estimates', 'calc'], ['followups', 'Follow-ups', 'cal'], ['visits', 'Site visits', 'cam'], ['team', 'Team', 'users'], ['profile', 'Profile', 'users']]
+const NAV = () => st.me.role === 'employee' ? [['clock', 'Time clock', 'clock'], ['profile', 'Profile', 'users']] : owner()
+  ? [['radar', 'Permit Radar', 'radar'], ['lists', 'My Lists', 'list'], ['estimates', 'Estimates', 'calc'], ['followups', 'Follow-ups', 'cal'], ['visits', 'Site visits', 'cam'], ['team', 'Team', 'users'], ['time', 'Time & Crew', 'clock'], ['profile', 'Profile', 'users']]
   : [['radar', 'Permit Radar', 'radar'], ['lists', 'My Lists', 'list'], ['estimates', 'Estimate Requests', 'calc'], ['followups', 'Follow-ups', 'cal'], ['visits', 'My visits', 'cam'], ['profile', 'Profile', 'users']];
 function shell(inner) {
-  const nav = st.me.role === 'employee' ? '' : NAV().map(([id, l, ic]) => '<button type="button" data-action="tab" data-id="' + id + '" class="' + (st.tab === id ? 'active' : '') + '">' + icon(ic) + '<span>' + l + '</span></button>').join('');
+  const nav = NAV().map(([id, l, ic]) => '<button type="button" data-action="tab" data-id="' + id + '" class="' + (st.tab === id ? 'active' : '') + '">' + icon(ic) + '<span>' + l + '</span></button>').join('');
   const name = st.me.name || String(st.me.email).split('@')[0];
   return '<div class="shell">' + '<aside class="side">' + brand + '<nav>' + nav + '</nav><div class="usercard">' + avatarHtml(st.me.photo, name) + '<span class="who"><b>' + e(name) + '</b><small>' + ({owner: 'Owner', seller: 'Sales Workspace', employee: 'Employee'}[st.me.role]) + '</small></span><button type="button" data-action="logout">Sign out</button></div></aside>'
     + '<div class="main-col"><main class="workspace"><div class="cl-co">' + (st.me.logo ? '<img class="cl-logo" src="' + e(st.me.logo) + '" alt="">' : icon('bld')) + '<b>' + e(st.me.company) + '</b></div>' + inner + '</main></div>' + (st.drawer ? drawerView() : '') + (st.modal ? modalView() : '') + '</div>';
@@ -141,6 +141,28 @@ function profileView() {
     + '<button class="primary" type="submit">Save profile</button></form>'
     + '<form class="panel settings-panel" data-form="mypw"><h2>Change password</h2><div class="form-grid"><label>Current password<input name="current" type="password" autocomplete="current-password" required></label><label>New password (16+ characters)<input name="password" type="password" autocomplete="new-password" minlength="16" required></label></div><button class="primary" type="submit">Update password</button></form>';
 }
+
+const hm = h => Math.floor(h) + 'h ' + String(Math.round((h % 1) * 60)).padStart(2, '0') + 'm';
+const mapLink = l => l ? '<a href="https://www.google.com/maps?q=' + l.lat + ',' + l.lng + '" target="_blank" rel="noreferrer">Map ↗</a>' : '<span class="muted">No location</span>';
+const where = () => new Promise(res => navigator.geolocation ? navigator.geolocation.getCurrentPosition(p => res({lat: p.coords.latitude, lng: p.coords.longitude}), () => res({}), {enableHighAccuracy: true, timeout: 8000, maximumAge: 30000}) : res({}));
+function clockView() {
+  const c = st.clock; if (!c) return '<p class="muted">Loading…</p>';
+  const rows = c.entries.map(x => '<tr><td>' + when(x.inAt) + '</td><td>' + (x.outAt ? when(x.outAt) : '<span class="pill st-ok">On the clock</span>') + '</td><td>' + hm(x.hours) + '</td></tr>').join('');
+  return title('Time clock', 'Clock in when you start, clock out when you finish. Your location is recorded at each punch.')
+    + '<section class="panel cl-clock"><div class="cl-bigstat"><small>' + (c.open ? 'Clocked in since' : 'Not clocked in') + '</small><b>' + (c.open ? when(c.open.inAt) : 'Ready') + '</b><em>This week: ' + hm(c.weekHours) + '</em></div>'
+    + '<button type="button" class="primary cl-punch" data-action="punch" data-id="' + (c.open ? 'out' : 'in') + '">' + (c.open ? 'Clock out' : 'Clock in') + '</button></section>'
+    + '<form class="panel settings-panel" data-form="report"><h2>Send a note or photos to the office</h2><label>Note<textarea name="note" rows="3" maxlength="2000" placeholder="What does the office need to know?"></textarea></label><label class="filebtn cl-file">Add photos<input type="file" accept="image/*" multiple data-rphotos hidden></label><div id="rthumbs" class="cl-thumbs"></div><button class="primary" type="submit">Send to office</button></form>'
+    + '<section class="panel flush"><div class="table-scroll"><table class="cl-table"><thead><tr><th>In</th><th>Out</th><th>Hours</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + (rows ? '' : '<p class="empty">No punches yet.</p>') + '</section>';
+}
+function timeView() {
+  const t = st.time; if (!t) return '<p class="muted">Loading…</p>';
+  const rows = t.people.map(p => '<tr><td><b>' + e(p.name) + '</b><small>' + e(p.email) + '</small></td><td>' + (p.role === 'seller' ? 'Seller' : 'Employee') + '</td><td>' + (p.clockedIn ? '<span class="pill st-ok">On the clock</span><small>since ' + when(p.since) + '</small>' : '<span class="pill st-muted">Off</span>') + '</td><td>' + mapLink(p.location) + '</td><td>' + hm(p.weekHours) + '</td><td><form class="cl-rate" data-form="rate"><input type="hidden" name="id" value="' + p.id + '"><input name="rate" type="number" min="0" max="1000" step="0.5" value="' + p.rate + '" aria-label="Hourly rate"><button type="submit">Set</button></form></td><td>' + money(p.weekCost) + '</td></tr>').join('');
+  const reps = t.reports.map(r => '<article class="cl-report"><header><b>' + e(r.by) + '</b><small>' + when(r.createdAt) + ' · ' + mapLink(r.lat != null ? r : null) + '</small></header>' + (r.note ? '<p>' + e(r.note) + '</p>' : '') + (r.photos.length ? '<div class="cl-thumbs">' + r.photos.map(id => '<a href="/api/client/report-photo?id=' + id + '" target="_blank"><img src="/api/client/report-photo?id=' + id + '" alt=""></a>').join('') + '</div>' : '') + '</article>').join('');
+  return title('Time & Crew', 'Who is on the clock, where they are, hours this week and notes/photos sent to the office.')
+    + '<section class="cl-stats"><div><small>Hours this week</small><b>' + hm(t.weekHours) + '</b></div><div><small>Labor cost this week</small><b>' + money(t.weekCost) + '</b></div><div><small>On the clock now</small><b>' + t.people.filter(p => p.clockedIn).length + '</b></div></section>'
+    + '<section class="panel flush"><div class="table-scroll"><table class="cl-table"><thead><tr><th>Person</th><th>Role</th><th>Status</th><th>Last location</th><th>Week</th><th>$/hour</th><th>Cost</th></tr></thead><tbody>' + rows + '</tbody></table></div>' + (rows ? '' : '<p class="empty">No crew yet. Add employees in Team.</p>') + '</section>'
+    + '<section class="panel"><h2>Notes &amp; photos from the field</h2>' + (reps || '<p class="empty">Nothing sent yet.</p>') + '</section>';
+}
 function teamView() {
   const t = st.team; if (!t) return '<p class="muted">Loading…</p>';
   const rows = t.members.map(m => '<tr><td><b>' + e(m.name || m.email) + '</b><small>' + e(m.email) + '</small></td><td>' + (m.role === 'seller' ? 'Seller' : 'Employee') + '</td><td>' + (m.role === 'seller' ? e(m.cities.map(k => t.cities.find(x => x.key === k)?.city).filter(Boolean).join(', ') || '—') : '—') + '</td><td>' + (m.active ? 'Active' : 'Inactive') + '</td><td class="cl-act"><button type="button" data-action="setActive" data-id="' + m.id + '" data-on="' + (m.active ? 0 : 1) + '">' + (m.active ? 'Deactivate' : 'Activate') + '</button><button type="button" data-action="pw" data-id="' + m.id + '">New password</button></td></tr>').join('');
@@ -176,7 +198,7 @@ function modalView() {
 }
 
 function render() {
-  const r = !st.me ? loginView() : st.me.role === 'employee' ? shell(employeeView()) : shell(({radar: radarView, lists: listsView, estimates: estimatesView, followups: followupsView, visits: visitsView, team: teamView, profile: profileView})[st.tab]());
+  const r = !st.me ? loginView() : shell(({clock: clockView, time: timeView, radar: radarView, lists: listsView, estimates: estimatesView, followups: followupsView, visits: visitsView, team: teamView, profile: profileView})[st.tab]() || '');
   $('#app').innerHTML = r;
   for (const i of document.querySelectorAll('[data-w]')) i.style.width = i.dataset.w + '%';
   recalc();
@@ -189,6 +211,8 @@ async function enter(tab) {
   if (tab === 'estimates') { st.estimates = (await api('/api/client/estimates')).estimates; return render(); }
   if (tab === 'followups') { st.followups = await api('/api/client/followups'); return render(); }
   if (tab === 'visits') { st.visits = (await api('/api/client/visits')).visits; return render(); }
+  if (tab === 'clock') { st.clock = await api('/api/client/clock'); return render(); }
+  if (tab === 'time') { st.time = await api('/api/client/time'); return render(); }
   if (tab === 'profile') { st.profile = await api('/api/client/profile'); return render(); }
   if (tab === 'team') { st.team = await api('/api/client/team'); return render(); }
 }
@@ -198,7 +222,7 @@ async function openPermit(key) {
   if (!st.lists) st.lists = (await api('/api/client/lists')).lists;
   st.drawer = {...d, visits: v.visits}; render();
 }
-async function start() { try { st.me = (await api('/api/client/me')).client; if (st.me.role !== 'employee') await enter('radar'); else render(); } catch { st.me = null; render(); } }
+async function start() { try { st.me = (await api('/api/client/me')).client; await enter(st.me.role === 'employee' ? 'clock' : 'radar'); } catch { st.me = null; render(); } }
 function csv(rows) { const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"'; return [['Issued', 'City', 'State', 'Address', 'Permit', 'Type', 'Value', 'Description', 'Contractor', 'Owner'].map(q).join(','), ...rows.map(p => [p.issued, p.city, p.state, p.address, p.number, p.type, p.value, p.description, p.contractor, p.owner].map(q).join(','))].join('\r\n'); }
 async function shrink(file) {
   const bmp = await createImageBitmap(file), k = Math.min(1, 1280 / Math.max(bmp.width, bmp.height)), c = document.createElement('canvas');
@@ -223,6 +247,7 @@ document.addEventListener('click', async ev => {
     if (a === 'list') { st.f.page = 1; return openList(id); }
     if (a === 'dellist') { await api('/api/client/lists', {op: 'delete', id: Number(id)}); st.lists = (await api('/api/client/lists')).lists; st.listId = 'fav'; return openList('fav'); }
     if (a === 'rmphoto') { const box = t.closest('.photo-box'); box.querySelector('input[type=hidden]').value = ''; const old = box.querySelector('.avatar'), sp = document.createElement('span'); sp.className = 'avatar big'; sp.textContent = '·'; old.replaceWith(sp); return; }
+    if (a === 'punch') { t.disabled = true; const g = await where(); st.clock = await api('/api/client/clock', {op: id, ...g}); render(); return toast(id === 'in' ? 'Clocked in.' + (g.lat == null ? ' (location unavailable)' : '') : 'Clocked out.'); }
     if (a === 'prev') { st.f.page = Math.max(1, st.f.page - 1); return st.tab === 'lists' ? openList(st.listId) : load(); }
     if (a === 'next') { st.f.page += 1; return st.tab === 'lists' ? openList(st.listId) : load(); }
     if (a === 'route') { const r = await api('/api/client/permits?fav=1&page=1'), stops = r.permits.filter(p => p.address).slice(0, 9).map(p => encodeURIComponent([p.address, p.city, p.state].join(', '))); if (!stops.length) return toast('Favorite some permits first.'); window.open('https://www.google.com/maps/dir/' + stops.join('/'), '_blank', 'noopener'); return; }
@@ -248,6 +273,7 @@ document.addEventListener('change', async ev => {
   const el = ev.target;
   try {
     if (el.matches('[data-pphoto]')) { const f = el.files[0]; if (!f) return; const bmp = await createImageBitmap(f), kind = el.dataset.pphoto, sz = kind === 'co' ? 320 : 256, c = document.createElement('canvas'); c.width = c.height = sz; const k = Math.max(sz / bmp.width, sz / bmp.height), w = bmp.width * k, h = bmp.height * k; c.getContext('2d').drawImage(bmp, (sz - w) / 2, (sz - h) / 2, w, h); const url = c.toDataURL('image/jpeg', .85), box = el.closest('.photo-box'); box.querySelector('input[type=hidden]').value = url; const old = box.querySelector('.avatar'), im = document.createElement('img'); im.className = 'avatar big'; im.src = url; im.alt = ''; old.replaceWith(im); return; }
+    if (el.matches('[data-rphotos]')) { st.rphotos = []; for (const f of [...el.files].slice(0, 6)) st.rphotos.push(await shrink(f)); $('#rthumbs').innerHTML = st.rphotos.map(u => '<img src="' + u + '" alt="">').join(''); return; }
     if (el.matches('[data-photos]')) { st.modal.photos = []; for (const f of [...el.files].slice(0, 6)) st.modal.photos.push(await shrink(f)); $('#vthumbs').innerHTML = st.modal.photos.map(u => '<img src="' + u + '" alt="">').join(''); return; }
     if (el.matches('[data-city]')) { st.f.city = [...document.querySelectorAll('[data-city]')].filter(x => x.checked).map(x => x.dataset.city); return; }
     if (el.matches('[data-addlist]') && el.value) { await api('/api/client/lists', {op: 'item', id: Number(el.value), permitKey: st.drawer.permit.key, on: true}); st.drawer.lists.push(Number(el.value)); st.lists = (await api('/api/client/lists')).lists; return render(); }
@@ -257,7 +283,7 @@ document.addEventListener('change', async ev => {
 document.addEventListener('submit', async ev => {
   ev.preventDefault(); const form = ev.target, v = Object.fromEntries(new FormData(form)), act = ev.submitter?.value, kind = form.dataset.form;
   try {
-    if (kind === 'login') { await api('/api/client/login', {email: v.email, password: v.password}); st.error = ''; st.me = (await api('/api/client/me')).client; if (st.me.role !== 'employee') await enter('radar'); else render(); return; }
+    if (kind === 'login') { await api('/api/client/login', {email: v.email, password: v.password}); st.error = ''; st.me = (await api('/api/client/me')).client; await enter(st.me.role === 'employee' ? 'clock' : 'radar'); return; }
     if (kind === 'filters') { Object.assign(st.f, {from: v.from || '', to: v.to || '', state: v.state || '', trade: v.trade || '', q: v.q || '', page: 1}); return load(); }
     if (kind === 'newlist') { const r = await api('/api/client/lists', {op: 'create', name: v.name}); st.lists = (await api('/api/client/lists')).lists; return openList(r.id); }
     if (kind === 'visit') { await api('/api/client/visits', {permitKey: st.drawer.permit.key, measurements: v.measurements, notes: v.notes, photos: st.modal.photos}); st.modal = null; st.drawer.visits = (await api('/api/client/visits?permitKey=' + st.drawer.permit.key)).visits; render(); return toast('Visit sent to the office.'); }
@@ -275,6 +301,8 @@ document.addEventListener('submit', async ev => {
     if (kind === 'team') { await api('/api/client/team', {name: v.name, email: v.email, role: v.role, password: v.password, cities: new FormData(form).getAll('city')}); st.team = await api('/api/client/team'); render(); return toast('Team member added.'); }
     if (kind === 'profile') { const body = {name: v.name, title: v.title, phone: v.phone, photo: v.photo}; if (st.profile.canEditCompany) body.company = {name: v.co_name, contactName: v.co_contactName, contactEmail: v.co_contactEmail, contactPhone: v.co_contactPhone, address: v.co_address, website: v.co_website, logo: v.logo}; st.profile = await api('/api/client/profile', body); st.me = (await api('/api/client/me')).client; render(); return toast('Profile saved.'); }
     if (kind === 'mypw') { await api('/api/client/profile', {op: 'password', current: v.current, password: v.password}); form.reset(); return toast('Password updated.'); }
+    if (kind === 'report') { const g = await where(); await api('/api/client/report', {note: v.note, photos: st.rphotos || [], ...g}); st.rphotos = []; st.clock = await api('/api/client/clock'); render(); return toast('Sent to the office.'); }
+    if (kind === 'rate') { await api('/api/client/time', {id: Number(v.id), rate: Number(v.rate)}); st.time = await api('/api/client/time'); render(); return toast('Rate saved.'); }
     if (kind === 'pw') { await api('/api/client/team', {op: 'setPassword', id: Number(v.id), password: v.password}); st.modal = null; render(); return toast('Password updated.'); }
   } catch (err) { if (kind === 'login') { st.error = err.message; render(); } else toast(err.message); }
 });
