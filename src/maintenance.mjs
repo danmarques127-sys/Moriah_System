@@ -5,7 +5,7 @@ import {dirname,join} from 'node:path';
 import {getSetting,setSetting} from './retention.mjs';
 import {allSources} from './service.mjs';
 import {freshness} from './partners.mjs';
-import {mailConfig,sendMail} from './mailer.mjs';
+import {mailConfig,deliver,formspreeUrl} from './mailer.mjs';
 import {timestamp} from './db.mjs';
 
 export const KEEP_BACKUPS = 14;
@@ -54,7 +54,7 @@ export function reportText(r, day, critical = []) {
 }
 
 // Once per local day, from 10:00 (after the 08:00 collection had time to finish).
-export async function runDailyMaintenance(db, {databasePath, timezone = 'America/New_York', now = new Date(), env = process.env, mail = sendMail} = {}) {
+export async function runDailyMaintenance(db, {databasePath, timezone = 'America/New_York', now = new Date(), env = process.env, mail = (m, c) => deliver(m, c, env)} = {}) {
   const {day, hour} = localDay(timezone, now);
   if (hour < 10 || getSetting(db, 'maint_day') === day) return null;
   setSetting(db, 'maint_day', day);
@@ -82,5 +82,5 @@ export function automationStatus(db, env = process.env) {
   const split = v => { const i = String(v || '').indexOf('|'); return i < 0 ? {day: '', detail: ''} : {day: v.slice(0, i), detail: v.slice(i + 1)}; };
   const raw = k => db.prepare('SELECT value FROM app_settings WHERE key=?').get(k)?.value || '';
   let report = null; try { report = JSON.parse(raw('last_report') || 'null'); } catch {}
-  return {alertLevel: raw('alert_level') === 'all' ? 'all' : 'critical', alertEmail: alertEmail(db, env), mailConfigured: !!mailConfig(env), backup: split(raw('last_backup')), alert: split(raw('alert_result')), report};
+  return {alertLevel: raw('alert_level') === 'all' ? 'all' : 'critical', alertEmail: alertEmail(db, env), mailConfigured: !!mailConfig(env) || !!formspreeUrl(env), backup: split(raw('last_backup')), alert: split(raw('alert_result')), report};
 }

@@ -57,3 +57,26 @@ export async function sendMail({to, subject, text}, config = mailConfig(), {time
   } catch (e) { return {sent: false, reason: String(e.message).slice(0, 300)}; }
   finally { clearTimeout(timer); socket.destroy(); }
 }
+
+// Formspree fallback: posts the alert to a Formspree form that forwards it to the owner's inbox.
+// FORMSPREE_URL overrides the default form; set FORMSPREE_URL=off to disable it.
+export const DEFAULT_FORMSPREE = 'https://formspree.io/f/mzerkwpa';
+export function formspreeUrl(env = process.env) {
+  const v = env.FORMSPREE_URL === undefined ? (env.NODE_TEST_CONTEXT ? '' : DEFAULT_FORMSPREE) : env.FORMSPREE_URL;
+  return /^https:\/\/formspree\.io\/f\/[A-Za-z0-9]+$/.test(v || '') ? v : null;
+}
+export async function sendFormspree({to, subject, text}, url, post = fetch) {
+  try {
+    const r = await post(url, {method: 'POST', headers: {'Content-Type': 'application/json', Accept: 'application/json'}, body: JSON.stringify({email: to, _subject: subject, message: text}), signal: AbortSignal.timeout(15000)});
+    return r.ok ? {sent: true, via: 'formspree'} : {sent: false, reason: 'Formspree HTTP ' + r.status};
+  } catch (e) { return {sent: false, reason: 'Formspree: ' + String(e.message).slice(0, 200)}; }
+}
+// SMTP first; if it is not configured or fails, fall back to Formspree.
+export async function deliver(msg, config = mailConfig(), env = process.env, {smtp = sendMail, post = fetch} = {}) {
+  const first = config ? await smtp(msg, config) : {sent: false, reason: 'E-mail não configurado (defina SMTP_HOST, SMTP_USER e SMTP_PASS).'};
+  if (first.sent) return first;
+  const url = formspreeUrl(env);
+  if (!url) return first;
+  const second = await sendFormspree(msg, url, post);
+  return second.sent ? second : {sent: false, reason: first.reason + ' | ' + second.reason};
+}
