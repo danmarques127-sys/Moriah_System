@@ -10,6 +10,7 @@ import {enqueue,worker,scheduler} from './jobs.mjs';
 import {previousMonth,monthsBetween,validatePermit} from './radar.mjs';
 import {parseUploadedFile} from './documents.mjs';
 import {checkAllSources} from './source-audit.mjs';
+import {partnersOverview,partnersAction} from './partners.mjs';
 import {NATIVE_MODES} from './collectors.mjs';
 import {runRetentionIfDue,retentionStatus} from './retention.mjs';
 import {recordManualImport,manualImportStatus} from './manual.mjs';
@@ -54,7 +55,7 @@ export async function createApplication(options={}){
     const loginEmail=config.testLoginEmail&&b.email==='mestre'?config.testLoginEmail:b.email;
     const row=validEmail(loginEmail)?db.prepare('SELECT * FROM users WHERE email=?').get(loginEmail.toLowerCase()):null;
     const valid=await checkPassword(b.password,row?.password_hash);if(!row||!valid)throw new HttpError(401,'E-mail ou senha incorretos.');
-    const session=newSession(db,row.id);res.setHeader('Set-Cookie',cookie(session.token,config.production));return send(res,200,{ok:true});
+    audit(db,row.workspace_id,'Login',row.email,'login');const session=newSession(db,row.id);res.setHeader('Set-Cookie',cookie(session.token,config.production));return send(res,200,{ok:true});
    }
    const user=getSession(db,req);if(!user)throw new HttpError(401,'Entre na sua conta.');
    if(mutating){if(!csrfMatches(req.headers['x-csrf-token'],user.csrf))throw new HttpError(403,'Sessão inválida. Recarregue a página.');if(!mutationRate(user.id))throw new HttpError(429,'Aguarde para continuar.');}
@@ -115,7 +116,7 @@ export async function createApplication(options={}){
     const result=upsertPermits(db,source,b.records);
     const stored=db.prepare('SELECT COUNT(*) AS n FROM permits WHERE source_id=? AND substr(issued,1,7)=?').get(source.id,b.month).n;
     setCoverage(db,source.id,b.month,'partial',String(b.message||'Importação manual; cobertura integral não certificada.'),stored);
-    audit(db,user.workspace_id,'Importação: '+source.id+', '+result.added+' novos, '+result.updated+' atualizados');recordManualImport(db,source.id,b.month,result,user.email);return send(res,200,result);
+    audit(db,user.workspace_id,'Importação: '+source.id+', '+result.added+' novos, '+result.updated+' atualizados',user.email,'import');recordManualImport(db,source.id,b.month,result,user.email);return send(res,200,result);
    }
    if(path==='/api/import-file'&&req.method==='POST'){
     admin();if(!uploadRate(user.id))throw new HttpError(429,'Aguarde para enviar outro arquivo.');
@@ -130,7 +131,7 @@ export async function createApplication(options={}){
     const result=upsertPermits(db,source,valid);
     const stored=db.prepare('SELECT COUNT(*) AS n FROM permits WHERE source_id=? AND substr(issued,1,7)=?').get(source.id,month).n;
     setCoverage(db,source.id,month,'partial','Importação manual do arquivo "'+filename+'" ('+parsed.format.toUpperCase()+'): '+valid.length+' permits de '+month+'. Completude não certificada.',stored);
-    audit(db,user.workspace_id,'Importação de arquivo: '+source.id+' '+month+', '+result.added+' novos, '+result.updated+' atualizados');recordManualImport(db,source.id,month,result,user.email);
+    audit(db,user.workspace_id,'Importação de arquivo: '+source.id+' '+month+', '+result.added+' novos, '+result.updated+' atualizados',user.email,'import');recordManualImport(db,source.id,month,result,user.email);
     return send(res,200,{preview:false,...summary,...result});
    }
    if(path==='/api/jobs'&&req.method==='GET')return send(res,200,{jobs:db.prepare('SELECT id,source_id AS sourceId,month,status,message,updated_at AS updatedAt FROM jobs ORDER BY created_at DESC LIMIT 100').all()});
@@ -146,11 +147,13 @@ export async function createApplication(options={}){
     const errors=db.prepare('SELECT id,created_at AS createdAt,area,source_id AS sourceId,month,message FROM error_log ORDER BY id DESC LIMIT 300').all();
     return send(res,200,{users,sources,coverage,checks,failedJobs,errors,retention:retentionStatus(db),manual:manualImportStatus(db)});}
    if(path==='/api/admin/check-sources'&&req.method==='POST'){admin();if(!collectRate(user.id))throw new HttpError(429,'Aguarde para iniciar outra verificação.');
-    const list=allSources(db);checkAllSources(db,list).catch(()=>{});audit(db,user.workspace_id,'admin:check-sources');return send(res,202,{started:list.length});}
+    const list=allSources(db);checkAllSources(db,list).catch(()=>{});audit(db,user.workspace_id,'admin:check-sources',user.email,'admin');return send(res,202,{started:list.length});}
    if(path==='/api/admin/retry-failed'&&req.method==='POST'){admin();if(!collectRate(user.id))throw new HttpError(429,'Aguarde para iniciar outra coleta.');
     const native=new Set(allSources(db).filter(x=>NATIVE_MODES.includes(x.mode)).map(x=>x.id));
     const rows=db.prepare("SELECT source_id AS id,month FROM coverage WHERE status='unavailable' ORDER BY month DESC LIMIT 60").all().filter(r=>native.has(r.id));
-    let queued=0;for(const r of rows)queued+=enqueue(db,[r.id],r.month,r.month);audit(db,user.workspace_id,'admin:retry-failed');return send(res,202,{queued});}
+    let queued=0;for(const r of rows)queued+=enqueue(db,[r.id],r.month,r.month);audit(db,user.workspace_id,'admin:retry-failed',user.email,'admin');return send(res,202,{queued});}
+   if(path==='/api/admin/partners'&&req.method==='GET'){admin();return send(res,200,partnersOverview(db,allSources(db)));}
+   if(path==='/api/admin/partners'&&req.method==='POST'){admin();const b=await body(req);const r=partnersAction(db,allSources(db),user.email,b);return send(res,200,r);}
    if(path==='/api/audit'&&req.method==='GET'){owner();return send(res,200,{events:db.prepare('SELECT event,created_at AS createdAt FROM audit WHERE workspace_id=? ORDER BY id DESC LIMIT 100').all(user.workspace_id)});}
    throw new HttpError(404,'Operação não encontrada.');
   }catch(e){
