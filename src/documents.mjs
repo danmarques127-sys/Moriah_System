@@ -599,7 +599,7 @@ export async function collectDocuments(source, month, deps = {}) {
   } else if (cfg.fileUrls) candidates = cfg.fileUrls.map(href => ({href, text: '', own: true, rank: 0}));
   else {
     const lists = cfg.listUrls || [source.url], pages = [...lists], seen = new Set();
-    let reached = 0;
+    let reached = 0; const direct = [];
     for (let i = 0; i < pages.length && i < 12; i++) {
       if (seen.has(pages[i])) continue; seen.add(pages[i]);
       let page;
@@ -611,6 +611,8 @@ export async function collectDocuments(source, month, deps = {}) {
         continue;
       }
       reached++;
+      // Some cities (Milford "Recent") answer the listing address with the report file itself.
+      if (['pdf', 'xlsx', 'docx'].includes(detectFormat(page))) { direct.push({href: page.url, text: '', own: true, rank: 0}); continue; }
       const found = extractAnchors(page.buffer.toString('utf8'), page.url); anchors.push(...found);
       if (cfg.crawl && i < lists.length) {
         // Only follow links inside the same site section as the listing page (never the site-wide menu).
@@ -656,6 +658,7 @@ export async function collectDocuments(source, month, deps = {}) {
       if (top) candidates = candidates.filter(c => c.rank === top);
     } else candidates.sort((a, b) => Number(b.own) - Number(a.own));
     candidates = candidates.slice(0, cfg.maxFiles || (latest ? 4 : 3));
+    if (!candidates.length && direct.length) candidates = direct.slice(0, cfg.maxFiles || 2);
     if (!candidates.length) {
       // Say what the page DID offer, so a wrong match rule can be fixed from the job log alone.
       const seenFiles = [...new Map(anchors.filter(a => fileLike(a.href)).map(a => [a.href, a])).values()];

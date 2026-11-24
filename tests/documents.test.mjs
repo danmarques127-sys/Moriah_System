@@ -357,3 +357,10 @@ test('file templates build one predictable file name per month (Southbury)', asy
   }
   assert.ok(seen.includes('https://www.southbury-ct.org/filestorage/20556/20567/20573/39794/Building_Permit_Report-March_2026.pdf'), seen.join(' '));
 });
+
+test('a listing address that answers with the report file itself is read as that file', async () => {
+  const source = {...src('wakefield'), collector: {scope: 'month', verified: true, listUrls: ['https://www.wakefieldma.gov/Archive.aspx?AMID=41&Type=Recent']}};
+  const text = 'BP-26-157  Building Permit  $300.00  5/7/2026  1 AZARIAN CT  HARTREY, ROBERT  $25,000.00  STRIP AND RE-ROOF  TED D DOW\n';
+  const result = await collectDocuments(source, '2026-05', {fetch: fakeFetch({[source.collector.listUrls[0]]: {body: pdfBytes, type: 'application/pdf'}}), pdfToText: async () => text, ...noSleep});
+  assert.equal(result.records.length, 1);
+});
