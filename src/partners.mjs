@@ -73,11 +73,11 @@ export function partnersAction(db, sources, actor, b) {
       const okIds = new Set(sources.map(x => x.id)), picked = [...new Set((Array.isArray(b.cities) ? b.cities : []).map(String))].filter(c => okIds.has(c));
       const cap = Number(db.prepare('SELECT max_cities AS m FROM companies WHERE id=?').get(id).m);
       if (picked.length > cap) fail('Esta empresa pode ter no máximo ' + cap + ' cidade(s). Aumente o limite ou desmarque cidades.');
-      const accounts = db.prepare('SELECT id,role FROM client_accounts WHERE company_id=?').all(id);
+      const accounts = db.prepare('SELECT id,role FROM client_accounts WHERE company_id=?').all(id), had = new Set(db.prepare("SELECT DISTINCT cc.source_id AS s FROM client_cities cc JOIN client_accounts a ON a.id=cc.client_id WHERE a.company_id=? AND a.role='owner'").all(id).map(r => r.s));
+      const added = picked.filter(c => !had.has(c)), keep = new Set(picked);
       for (const a of accounts) {
         if (a.role === 'owner') { db.prepare('DELETE FROM client_cities WHERE client_id=?').run(a.id); for (const c of picked) db.prepare('INSERT INTO client_cities VALUES(?,?)').run(a.id, c); }
-        else if (picked.length) db.prepare('DELETE FROM client_cities WHERE client_id=? AND source_id NOT IN (' + picked.map(() => '?').join(',') + ')').run(a.id, ...picked);
-        else db.prepare('DELETE FROM client_cities WHERE client_id=?').run(a.id);
+        else { for (const c of db.prepare('SELECT source_id AS s FROM client_cities WHERE client_id=?').all(a.id).map(r => r.s)) if (!keep.has(c)) db.prepare('DELETE FROM client_cities WHERE client_id=? AND source_id=?').run(a.id, c); if (a.role === 'seller') for (const c of added) db.prepare('INSERT OR IGNORE INTO client_cities VALUES(?,?)').run(a.id, c); }
       }
     }
     log('Empresa afiliada salva: ' + name); return {id};

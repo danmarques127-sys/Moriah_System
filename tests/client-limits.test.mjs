@@ -63,9 +63,13 @@ test('company-level cities go to owners and trim sellers', () => {
   const co = {op: 'saveCompany', id: company, name: 'Acme'};
   partnersAction(db, SOURCES, 't', {...co, cities: ['a', 'b']});
   const of = id => db.prepare('SELECT source_id AS s FROM client_cities WHERE client_id=? ORDER BY 1').all(id).map(r => r.s);
-  assert.deepEqual(of(o), ['a', 'b']); assert.deepEqual(of(s), []);
-  db.prepare('INSERT INTO client_cities VALUES(?,?)').run(s, 'b');
-  partnersAction(db, SOURCES, 't', {...co, cities: ['a']});
-  assert.deepEqual(of(o), ['a']); assert.deepEqual(of(s), []);
+  assert.deepEqual(of(o), ['a', 'b']); assert.deepEqual(of(s), ['a', 'b']);
+  db.prepare('DELETE FROM client_cities WHERE client_id=? AND source_id=?').run(s, 'a');
+  partnersAction(db, SOURCES, 't', {...co, cities: ['a', 'b']});
+  assert.deepEqual(of(s), ['b']);
+  partnersAction(db, SOURCES, 't', {...co, cities: ['b', 'c']});
+  assert.deepEqual(of(o), ['b', 'c']); assert.deepEqual(of(s), ['b', 'c']);
+  partnersAction(db, SOURCES, 't', {...co, cities: ['c']});
+  assert.deepEqual(of(o), ['c']); assert.deepEqual(of(s), ['c']);
   assert.throws(() => partnersAction(db, SOURCES, 't', {...co, cities: ['a', 'b', 'c']}), /no máximo 2/);
 });
