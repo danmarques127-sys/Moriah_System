@@ -344,3 +344,15 @@ td.rowact{white-space:nowrap}
 .lbrand small{font-size:1.25em;font-weight:600;letter-spacing:.62em;margin-right:-.62em;color:#b98cff;text-shadow:0 0 .6em #8b4dff88}
 .lcard{gap:.9em}
 .lcard h1{font-size:2em;text-align:left}
+
+/* profile: one field per row, like the mockup */
+.profile .form-grid.inline{grid-template-columns:1fr;gap:14px;align-items:center}
+.profile .form-grid.inline label{grid-template-columns:140px minmax(0,1fr);font-size:15px;color:var(--text)}
+.profile .form-grid.inline input[disabled]{opacity:.65}
+.profile-form{grid-template-columns:190px minmax(0,1fr);align-items:start}
+.photo-box{border-right:1px solid var(--line);padding-right:18px;align-self:stretch;align-content:start}
+.profile-form .save{grid-column:2;justify-self:end;margin-top:6px}
+.settings-panel .form-grid{grid-template-columns:1fr;align-items:stretch;gap:12px}
+.settings-panel .form-grid>label{font-size:15px;color:var(--text)}
+.settings-panel .form-grid>small{margin-top:-6px}
+.settings-panel button.outline{width:100%}
