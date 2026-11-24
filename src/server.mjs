@@ -121,7 +121,7 @@ export async function createApplication(options={}){
     monthsBetween(month,month);const buffer=await rawBody(req,25000000);if(!buffer.length)throw new HttpError(400,'Arquivo vazio.');
     const parsed=await parseUploadedFile({buffer,source,month}),valid=[],problems=[];
     for(const r of parsed.records){try{validatePermit(r,source);valid.push(r);}catch(e){problems.push(String(e.message).slice(0,200));}}
-    const summary={format:parsed.format,rowsRead:parsed.rowsRead,inMonth:valid.length,outsideMonth:parsed.outside,undated:parsed.undated,invalid:problems.length,problems:problems.slice(0,3),range:parsed.range,
+    const summary={format:parsed.format,rowsRead:parsed.rowsRead,inMonth:valid.length,outsideMonth:parsed.outside,undated:parsed.undated,approx:parsed.approx||0,invalid:problems.length,problems:problems.slice(0,3),range:parsed.range,
      sample:valid.slice(0,15).map(r=>({number:r.number,issued:r.issued,address:r.address,type:r.type,value:r.value,description:r.description.slice(0,160)}))};
     if(!confirm)return send(res,200,{preview:true,...summary});
     if(!valid.length)throw new HttpError(400,'Nenhum permit válido de '+month+' neste arquivo.');

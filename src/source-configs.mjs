@@ -25,7 +25,7 @@ export const DOCUMENT_SOURCES = {
   andover: {collector: {scope: 'latest', listUrls: ['https://andoverma.gov/Archive.aspx?AMID=70', 'https://andoverma.gov/Archive/70'], match: 'permit', rowMode: 'dated-line', maxFiles: 2}},
   wakefield: {collector: {scope: 'month', match: 'Building Permits Issued', dateKind: 'paid', columns: ['type', 'skip', 'date', 'address', 'skip', 'value', 'description', 'contractor']}},
   reading: {collector: {scope: 'month', match: 'Building-Permits-Issued|Building Permits Issued|permit'}},
-  waltham: {collector: {scope: 'year', textEquals: '{year}', match: 'DocumentCenter', maxFiles: 12}},
+  waltham: {collector: {scope: 'month', monthHeading: true, textEquals: '{year}', match: 'DocumentCenter', maxFiles: 2}},
   'west-hartford': {collector: {scope: 'month', inferYear: true}, allowedHosts: ['resources.finalsite.net']},
   milford: {collector: {scope: 'month', match: 'permit', listUrls: ['https://www.milfordct.us/Archive.aspx?AMID=41']}},
   amesbury: {collector: {scope: 'month', match: 'permit|bldg', dateKind: 'submitted', leadDate: true, columns: ['applicant', 'address', 'description', 'value']}},
