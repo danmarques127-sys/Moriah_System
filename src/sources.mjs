@@ -231,6 +231,23 @@ const BASE=[
     "allowedHosts": []
   },
   {
+    "id": "barnstable",
+    "city": "Barnstable",
+    "state": "MA",
+    "url": "https://www.barnstable.gov/Departments/Building/Office_Resources/",
+    "mode": "report",
+    "allowedHosts": []
+  },
+  {
+    "id": "manchester",
+    "city": "Manchester-by-the-Sea",
+    "state": "MA",
+    "url": "https://manchester.ma.us/Archive.aspx",
+    "mode": "report",
+    "allowedHosts": []
+  },
+
+  {
     "id": "springfield",
     "city": "Springfield",
     "state": "MA",

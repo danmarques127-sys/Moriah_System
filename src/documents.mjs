@@ -512,7 +512,12 @@ export async function collectDocuments(source, month, deps = {}) {
   const net = {hosts, fetchImpl: deps.fetch}, pause = deps.sleep || sleep, allowedHost = h => hosts.some(x => bare(x) === bare(h));
   const label = month.slice(5) + '/' + month.slice(0, 4), notes = [], skippedHosts = new Set();
   let candidates, anchors = [];
-  if (cfg.fileUrls) candidates = cfg.fileUrls.map(href => ({href, text: '', own: true, rank: 0}));
+  if (cfg.fileTemplates) {
+    // Cities that publish one predictable file name per month: {Month} March, {month} march, {mm} 03, {year} 2026, {yy} 26.
+    const names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'], mi = Number(month.slice(5)) - 1;
+    const fill = tpl => tpl.replace(/\{Month\}/g, names[mi]).replace(/\{month\}/g, names[mi].toLowerCase()).replace(/\{mm\}/g, month.slice(5)).replace(/\{year\}/g, month.slice(0, 4)).replace(/\{yy\}/g, month.slice(2, 4));
+    candidates = cfg.fileTemplates.map(tpl => ({href: fill(tpl), text: '', own: true, rank: 0}));
+  } else if (cfg.fileUrls) candidates = cfg.fileUrls.map(href => ({href, text: '', own: true, rank: 0}));
   else {
     const lists = cfg.listUrls || [source.url], pages = [...lists], seen = new Set();
     let reached = 0;
@@ -583,7 +588,9 @@ export async function collectDocuments(source, month, deps = {}) {
   }
   const records = new Map(), issuedDates = []; let parsedRows = 0, files = 0, lastPeek = '', undatedSample = '';
   for (const a of candidates) {
-    let doc = await fetchBinary(a.href, net), evidence = a.href; await pause(300);
+    let doc, evidence = a.href;
+    try { doc = await fetchBinary(a.href, net); } catch (e) { if (cfg.fileTemplates && cfg.fileTemplates.length > 1) { notes.push('«' + a.href.split('/').at(-1) + '»: ' + String(e.message).slice(0, 80)); continue; } throw e; }
+    await pause(300);
     if (cfg.followItems !== false && detectFormat(doc) === 'html') {
       // Item pages either link to the real file or show the table inline (then parse the page itself).
       const inner = extractAnchors(doc.buffer.toString('utf8'), doc.url).find(x => x.href !== a.href && /\.(?:pdf|xlsx?|csv)(?:[?#]|$)|DocumentCenter\/View|ViewFile|showpublisheddocument/i.test(x.href) && allowedHost(new URL(x.href).hostname));

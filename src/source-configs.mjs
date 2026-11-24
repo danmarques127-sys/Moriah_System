@@ -30,6 +30,16 @@ export const DOCUMENT_SOURCES = {
   milford: {collector: {scope: 'month', match: 'permit', listUrls: ['https://www.milfordct.us/Archive.aspx?AMID=41']}},
   amesbury: {collector: {scope: 'month', match: 'permit|bldg', dateKind: 'submitted', leadDate: true, columns: ['applicant', 'address', 'description', 'value']}},
   'north-attleborough': {collector: {scope: 'month', match: 'permit|building'}, allowedHosts: ['northattleborough.gov', 'nattleboro.com']},
+  // Barnstable: one PDF per month with a predictable name (Record #, Date Issued, Project Cost, Work Description, Full Address).
+  barnstable: {collector: {scope: 'month', fileTemplates: ['https://www.barnstable.gov/Departments/Building/Office_Resources/{Month}-{year}.pdf']}},
+  // Southbury: "M5 Permit Report" PDF per month (wide table, read by column position).
+  southbury: {collector: {scope: 'month', fileTemplates: ['https://www.southbury-ct.org/filestorage/20556/20567/20573/39794/Building_Permit_Report-{Month}_{year}.pdf']}, allowedHosts: ['southbury-ct.org']},
+  // Bethel: the town changes the file name from month to month, so both known names are tried.
+  bethel: {collector: {scope: 'month', fileTemplates: ['https://bethel-ct.gov/vertical/sites/%7B90B1B948-C443-4CA6-8B88-90B1EEA9B1E2%7D/uploads/{Month}_{year}_Permit_Report.pdf', 'https://bethel-ct.gov/vertical/sites/%7B90B1B948-C443-4CA6-8B88-90B1EEA9B1E2%7D/uploads/{Month}_{year}_Permits_Issued.pdf']}},
+  // Lowell: the Monthly Permit Reports page links one DocumentCenter folder per year.
+  lowell: {collector: {scope: 'month', listUrls: ['https://lowellma.gov/DocumentCenter/Index/3611', 'https://lowellma.gov/DocumentCenter/Index/3228']}, allowedHosts: ['lowellma.gov']},
+  // Manchester-by-the-Sea: Archive Center category "Building Permits" with one item per month.
+  manchester: {collector: {scope: 'month', match: 'Building Permits Issued', crawl: true, crawlRe: 'Archive\\.aspx|Building Permits'}},
   chatham: {collector: {scope: 'month', match: 'Building-Permits-Issued|Building Permits Issued|permit', columns: ['date', 'streetNo', 'street', 'description', 'applicant', 'value', 'skip', 'skip']}}
 };
 
@@ -41,10 +51,7 @@ export const ACCELA_SOURCES = {
 // No scriptable bulk source yet. These stay import-only, with the reason shown in the job log.
 export const PORTAL_REASONS = {
   danvers: 'O site de Danvers bloqueia acesso automático (HTTP 403) e a lista só chega até dezembro de 2025. Não há tentativa de contornar. Baixe o relatório pelo navegador e importe.',
-  southbury: 'Southbury publica relatórios mensais sem coleta automática validada. Importe o relatório do mês.',
-  bethel: 'Bethel publica relatórios mensais sem coleta automática validada. Importe o relatório do mês.',
   springfield: 'Springfield publica os permits em um portal OpenGov sem exportação automática. Importe o relatório pela tela de importação.',
-  lowell: 'Lowell guarda os relatórios mensais em pastas por ano (DocumentCenter), e ainda não há coletor para essas pastas. Importe o arquivo do mês.',
   chicopee: 'Chicopee usa o portal PermitEyes de consulta; não há exportação em massa. Importe o relatório.',
   bridgeport: 'Bridgeport só fornece permits por pedido de registros públicos (records request). Importe o arquivo recebido.',
   stamford: 'Stamford só fornece os registros por pedido ao Building Department. Importe o arquivo recebido.',

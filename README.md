@@ -131,3 +131,7 @@ Rules enforced and tested: only the cities assigned to the account; account and 
 
 ## Removed (dead code)
 The insulation estimator, proposals, projects, payments, employees/time entries, lead reviews, company pricing/materials and workspace JSON backup were removed from the app and API. Their tables stay in the database (migrations are never rewritten). Database backup: `npm run backup`.
+
+## Cities added by the public-list survey (unvalidated, always `partial`)
+Barnstable (MA, monthly PDF `{Month}-{year}.pdf`), Southbury (CT, monthly M5 Permit Report), Bethel (CT, two known file names per month), Lowell (MA, yearly DocumentCenter folders), Manchester-by-the-Sea (MA, Archive Center "Building Permits"). `fileTemplates` in `src/source-configs.mjs` builds one URL per month: `{Month}` `{month}` `{mm}` `{year}` `{yy}`.
+Leads not yet wired (need a stable listing URL): Plymouth (MA Archive Center, "Permits Issued <Month> <Year>"), Truro (MA DocumentCenter "Monthly Building Report"), Newton (MA monthly "Building Permits Issued" PDFs under showpublisheddocument), Harwich (MA page links only).
