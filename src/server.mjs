@@ -11,6 +11,7 @@ import {previousMonth,monthsBetween,validatePermit} from './radar.mjs';
 import {parseUploadedFile} from './documents.mjs';
 import {checkAllSources} from './source-audit.mjs';
 import {partnersOverview,partnersAction} from './partners.mjs';
+import {clientLogin,getClientSession,clientCookie,clientPermits,recordClientUsage,portalEnabled} from './client-api.mjs';
 import {NATIVE_MODES} from './collectors.mjs';
 import {runRetentionIfDue,retentionStatus,cutoffDate,getSetting} from './retention.mjs';
 import {recordManualImport,manualImportStatus} from './manual.mjs';
@@ -56,6 +57,21 @@ export async function createApplication(options={}){
     const row=validEmail(loginEmail)?db.prepare('SELECT * FROM users WHERE email=?').get(loginEmail.toLowerCase()):null;
     const valid=await checkPassword(b.password,row?.password_hash);if(!row||!valid)throw new HttpError(401,'E-mail ou senha incorretos.');
     audit(db,row.workspace_id,'Login',row.email,'login');const session=newSession(db,row.id);res.setHeader('Set-Cookie',cookie(session.token,config.production));return send(res,200,{ok:true});
+   }
+   // ----- Client channel (separate login/cookie; 404 while the portal is switched off). Never returns municipal links. -----
+   if(path.startsWith('/api/client/')){
+    if(!portalEnabled(db))throw new HttpError(404,'Operação não encontrada.');
+    if(path==='/api/client/login'&&req.method==='POST'){
+     const ip=config.trustProxy?String(req.headers['x-forwarded-for']||req.socket.remoteAddress).split(',').at(-1).trim():req.socket.remoteAddress,b=await body(req);
+     if(!loginRate('cip:'+ip)||!loginRate('cemail:'+String(b.email).toLowerCase()))throw new HttpError(429,'Muitas tentativas. Aguarde 15 minutos.');
+     const token=await clientLogin(db,b.email,b.password);if(!token)throw new HttpError(401,'E-mail ou senha incorretos.');
+     audit(db,null,'Login de cliente',String(b.email).toLowerCase(),'client-login');res.setHeader('Set-Cookie',clientCookie(token,config.production));return send(res,200,{ok:true});
+    }
+    const client=getClientSession(db,req);if(!client)throw new HttpError(401,'Entre na sua conta.');
+    if(path==='/api/client/me'&&req.method==='GET')return send(res,200,{client:{email:client.email,name:client.name,company:client.company}});
+    if(path==='/api/client/logout'&&req.method==='POST'){db.prepare('DELETE FROM client_sessions WHERE token_hash=?').run(client.token_hash);res.setHeader('Set-Cookie',clientCookie('',config.production,0));return send(res,200,{ok:true});}
+    if(path==='/api/client/permits'&&req.method==='GET'){const q=Object.fromEntries(url.searchParams),r=clientPermits(db,client,q,allSources(db));recordClientUsage(db,client,q.export==='1'?'exported':'seen',r.permits.length);return send(res,200,r);}
+    throw new HttpError(404,'Operação não encontrada.');
    }
    const user=getSession(db,req);if(!user)throw new HttpError(401,'Entre na sua conta.');
    if(mutating){if(!csrfMatches(req.headers['x-csrf-token'],user.csrf))throw new HttpError(403,'Sessão inválida. Recarregue a página.');if(!mutationRate(user.id))throw new HttpError(429,'Aguarde para continuar.');}
@@ -158,7 +174,11 @@ export async function createApplication(options={}){
     const rows=db.prepare("SELECT source_id AS id,month FROM coverage WHERE status='unavailable' ORDER BY month DESC LIMIT 60").all().filter(r=>native.has(r.id));
     let queued=0;for(const r of rows)queued+=enqueue(db,[r.id],r.month,r.month);audit(db,user.workspace_id,'admin:retry-failed',user.email,'admin');return send(res,202,{queued});}
    if(path==='/api/admin/partners'&&req.method==='GET'){admin();return send(res,200,partnersOverview(db,allSources(db)));}
-   if(path==='/api/admin/partners'&&req.method==='POST'){admin();const b=await body(req);const r=partnersAction(db,allSources(db),user.email,b);return send(res,200,r);}
+   if(path==='/api/admin/partners'&&req.method==='POST'){admin();const b=await body(req);
+    if(b.op==='setClientPassword'){const row=db.prepare('SELECT email FROM client_accounts WHERE id=?').get(Number(b.id));if(!row)throw new HttpError(400,'Conta não encontrada.');
+     db.prepare('UPDATE client_accounts SET password_hash=? WHERE id=?').run(await hashPassword(b.password),Number(b.id));db.prepare('DELETE FROM client_sessions WHERE client_id=?').run(Number(b.id));
+     audit(db,null,'Senha de cliente definida: '+row.email,user.email,'config');return send(res,200,{});}
+    const r=partnersAction(db,allSources(db),user.email,b);return send(res,200,r);}
    if(path==='/api/audit'&&req.method==='GET'){owner();return send(res,200,{events:db.prepare('SELECT event,created_at AS createdAt FROM audit WHERE workspace_id=? ORDER BY id DESC LIMIT 100').all(user.workspace_id)});}
    throw new HttpError(404,'Operação não encontrada.');
   }catch(e){

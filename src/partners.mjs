@@ -8,7 +8,7 @@ const fail = msg => { const e = new Error(msg); e.status = 400; throw e; };
 const today = () => new Date().toISOString().slice(0, 10);
 
 export function settingsOverview(db) {
-  return {retention_months: Number(getSetting(db, 'retention_months')), stale_days: Number(getSetting(db, 'stale_days'))};
+  return {retention_months: Number(getSetting(db, 'retention_months')), stale_days: Number(getSetting(db, 'stale_days')), client_portal: getSetting(db, 'client_portal') === '1'};
 }
 
 export function freshness(db, sources, now = new Date()) {
@@ -27,10 +27,10 @@ export function freshness(db, sources, now = new Date()) {
 export function partnersOverview(db, sources) {
   const trades = db.prepare('SELECT id,name,active FROM trades ORDER BY name').all().map(t => ({...t, active: !!t.active}));
   const tradeLinks = db.prepare('SELECT company_id AS c,trade_id AS t FROM company_trades').all();
-  const clients = db.prepare('SELECT id,company_id AS companyId,email,name,active,created_at AS createdAt FROM client_accounts ORDER BY id').all();
+  const clients = db.prepare("SELECT id,company_id AS companyId,email,name,active,created_at AS createdAt,(password_hash<>'') AS hasPassword FROM client_accounts ORDER BY id").all();
   const cityLinks = db.prepare('SELECT client_id AS c,source_id AS s FROM client_cities').all();
   const companies = db.prepare('SELECT id,name,contact_name AS contactName,contact_email AS contactEmail,contact_phone AS contactPhone,active,joined_on AS joinedOn FROM companies ORDER BY name').all().map(c => ({...c, active: !!c.active, tradeIds: tradeLinks.filter(l => l.c === c.id).map(l => l.t)}));
-  const clientRows = clients.map(c => ({...c, active: !!c.active, cities: cityLinks.filter(l => l.c === c.id).map(l => l.s)}));
+  const clientRows = clients.map(c => ({...c, active: !!c.active, hasPassword: !!c.hasPassword, cities: cityLinks.filter(l => l.c === c.id).map(l => l.s)}));
   const coverage = companies.map(c => {
     const cities = [...new Set(clientRows.filter(x => x.companyId === c.id && x.active).flatMap(x => x.cities))];
     return {companyId: c.id, name: c.name, active: c.active, trades: c.tradeIds.map(id => trades.find(t => t.id === id)?.name).filter(Boolean), cities};
@@ -101,8 +101,9 @@ export function partnersAction(db, sources, actor, b) {
     if (!(months >= 1 && months <= 120)) fail('Prazo de retenção deve ficar entre 1 e 120 meses.');
     if (!(stale >= 1 && stale <= 365)) fail('Limite de dias sem dados deve ficar entre 1 e 365.');
     const before = settingsOverview(db);
-    setSetting(db, 'retention_months', months); setSetting(db, 'stale_days', stale);
-    log('Configurações alteradas: retenção ' + before.retention_months + '→' + months + ' meses, alerta ' + before.stale_days + '→' + stale + ' dias'); return {};
+    const portal = b.client_portal === true || b.client_portal === '1' || b.client_portal === 'on';
+    setSetting(db, 'retention_months', months); setSetting(db, 'stale_days', stale); setSetting(db, 'client_portal', portal ? '1' : '0');
+    log('Configurações alteradas: retenção ' + before.retention_months + '→' + months + ' meses, alerta ' + before.stale_days + '→' + stale + ' dias, portal de clientes ' + (before.client_portal ? 'ligado' : 'desligado') + '→' + (portal ? 'ligado' : 'desligado')); return {};
   }
   if (op === 'recordUsage') {
     if (!db.prepare('SELECT 1 FROM companies WHERE id=?').get(Number(b.companyId))) fail('Empresa não encontrada.');
