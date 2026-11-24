@@ -314,3 +314,8 @@ td.rowact{white-space:nowrap}
 .login .form-error{font-size:20px}
 .login .primary{padding:22px;font-size:28px;font-weight:700;border-radius:16px;background:linear-gradient(180deg,#8a3cff,#6a22e8)}
 @media (max-width:600px){.login .panel{padding:28px 22px}.login-brand .brand-text b{font-size:36px}.login-mark{width:72px;height:72px}.login .panel h1{font-size:36px}.login input{font-size:18px;padding:16px}.login .primary{font-size:22px}}
+
+/* the toast text stayed on screen after the timer cleared its class */
+#toast:not(.show){display:none}
+#toast.show{cursor:pointer}
+#toast.error{border-color:#66262b}

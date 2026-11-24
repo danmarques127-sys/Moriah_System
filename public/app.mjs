@@ -271,6 +271,7 @@ async function importPermits(file){
  await radar();render();notice(count+' registros processados. Duplicatas foram reconciliadas; a cobertura manual fica marcada como parcial.');
 }
 document.addEventListener('click',event=>{
+ if(event.target.closest('#toast')){$('#toast').className='';return;}
  const button=event.target.closest('[data-action]');if(!button)return;const a=button.dataset.action,id=button.dataset.id;
  run(async()=>{
   if(a==='tab')return navigate(id);
