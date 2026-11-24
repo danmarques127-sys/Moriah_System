@@ -69,6 +69,17 @@ export function partnersAction(db, sources, actor, b) {
       db.prepare('DELETE FROM company_trades WHERE company_id=?').run(id);
       for (const t of ids(b.tradeIds).filter(t => valid.has(t))) db.prepare('INSERT INTO company_trades VALUES(?,?)').run(id, t);
     }
+    if (b.cities !== undefined) {
+      const okIds = new Set(sources.map(x => x.id)), picked = [...new Set((Array.isArray(b.cities) ? b.cities : []).map(String))].filter(c => okIds.has(c));
+      const cap = Number(db.prepare('SELECT max_cities AS m FROM companies WHERE id=?').get(id).m);
+      if (picked.length > cap) fail('Esta empresa pode ter no máximo ' + cap + ' cidade(s). Aumente o limite ou desmarque cidades.');
+      const accounts = db.prepare('SELECT id,role FROM client_accounts WHERE company_id=?').all(id);
+      for (const a of accounts) {
+        if (a.role === 'owner') { db.prepare('DELETE FROM client_cities WHERE client_id=?').run(a.id); for (const c of picked) db.prepare('INSERT INTO client_cities VALUES(?,?)').run(a.id, c); }
+        else if (picked.length) db.prepare('DELETE FROM client_cities WHERE client_id=? AND source_id NOT IN (' + picked.map(() => '?').join(',') + ')').run(a.id, ...picked);
+        else db.prepare('DELETE FROM client_cities WHERE client_id=?').run(a.id);
+      }
+    }
     log('Empresa afiliada salva: ' + name); return {id};
   }
   if (op === 'setCompanyActive') {

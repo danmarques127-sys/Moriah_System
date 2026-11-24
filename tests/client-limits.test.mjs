@@ -53,3 +53,19 @@ test('workspace owner cannot be removed or demoted; members can', async () => {
   removeMember(db, boss, {id: 'mate'});
   assert.equal(db.prepare("SELECT COUNT(*) n FROM users WHERE id='mate'").get().n, 0);
 });
+
+test('company-level cities go to owners and trim sellers', () => {
+  const {db, company} = setup();
+  const o = partnersAction(db, SOURCES, 't', {op: 'saveClient', email: 'o@y.co', companyId: company}).id;
+  db.prepare("UPDATE client_accounts SET role='owner' WHERE id=?").run(o);
+  const s = partnersAction(db, SOURCES, 't', {op: 'saveClient', email: 's@y.co', companyId: company}).id;
+  db.prepare("UPDATE client_accounts SET role='seller' WHERE id=?").run(s);
+  const co = {op: 'saveCompany', id: company, name: 'Acme'};
+  partnersAction(db, SOURCES, 't', {...co, cities: ['a', 'b']});
+  const of = id => db.prepare('SELECT source_id AS s FROM client_cities WHERE client_id=? ORDER BY 1').all(id).map(r => r.s);
+  assert.deepEqual(of(o), ['a', 'b']); assert.deepEqual(of(s), []);
+  db.prepare('INSERT INTO client_cities VALUES(?,?)').run(s, 'b');
+  partnersAction(db, SOURCES, 't', {...co, cities: ['a']});
+  assert.deepEqual(of(o), ['a']); assert.deepEqual(of(s), []);
+  assert.throws(() => partnersAction(db, SOURCES, 't', {...co, cities: ['a', 'b', 'c']}), /no máximo 2/);
+});
