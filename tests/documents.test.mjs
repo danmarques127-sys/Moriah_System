@@ -20,12 +20,12 @@ function fakeFetch(map, calls = []) {
 const pdfBytes = '%PDF-1.4 fake';
 
 test('every city is either automatic or has an explicit import-only reason', () => {
-  assert.equal(SOURCES.length, 35);
+  assert.equal(SOURCES.length, 32);
   for (const s of SOURCES) {
     if (NATIVE_MODES.includes(s.mode)) continue;
     assert.ok(s.reason, s.id + ' needs a documented reason');
   }
-  assert.equal(SOURCES.filter(s => s.mode === 'documents').length, 19);
+  assert.equal(SOURCES.filter(s => s.mode === 'documents').length, 16);
   for (const s of SOURCES.filter(s => s.mode === 'documents')) {
     assert.ok(s.collector, s.id);
     assert.ok(s.allowedHosts.length >= 1, s.id + ' needs a www/non-www host variant');
