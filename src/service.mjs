@@ -59,7 +59,7 @@ export function radarData(db,user,query){
  const records=rows.slice(0,30000).map(r=>JSON.parse(r.data));const reviews=db.prepare('SELECT project_key AS projectKey,status,notes,contact_date AS contactDate FROM lead_reviews WHERE workspace_id=?').all(user.workspace_id);
  let projects=groupProjects(records,reviews);if(!includeArchived)projects=projects.filter(p=>!p.records.every(r=>/^(closed|finaled|completed|complete|cancelled|canceled|void|expired)$/i.test(String(r.status||'').trim())));if(query.mode!=='all')projects=projects.filter(p=>p.qualified);if(query.kind&&query.kind!=='All')projects=projects.filter(p=>p.kind===query.kind);if(query.tier&&query.tier!=='All')projects=projects.filter(p=>p.tier===query.tier);if(query.status&&query.status!=='All')projects=projects.filter(p=>p.review.status===query.status);
  if(query.q){const q=String(query.q).toLowerCase();projects=projects.filter(p=>[p.master.address,p.master.city,...p.records.map(r=>r.description+' '+r.number+' '+r.contractor)].join(' ').toLowerCase().includes(q));}
- if(query.order!=='score')projects=diversify(projects);
+ if(query.order==='recent')projects.sort((a,b)=>b.master.issued.localeCompare(a.master.issued));else if(query.order!=='score')projects=diversify(projects);
  const total=projects.length,page=Math.max(1,Math.floor(Number(query.page)||1)),offset=(page-1)*50;
  const coverage=db.prepare('SELECT source_id AS sourceId,month,status,message,count,checked_at AS checkedAt FROM coverage WHERE month>=? AND month<=?').all(from,to);
  const cityCounts=db.prepare('SELECT source_id AS sourceId,COUNT(*) AS count FROM permits WHERE issued>=? AND issued<=? GROUP BY source_id').all(from+'-01',to+'-31');
