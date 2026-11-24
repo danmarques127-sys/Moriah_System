@@ -53,3 +53,12 @@ export const PORTAL_REASONS = {
   carlisle: 'O relatório mensal de Carlisle só traz tabelas-resumo de taxas, sem número de permit nem data de emissão. Não dá para coletar com segurança; importe o arquivo se precisar.',
   newton: 'Os permits ficam em um relatório do OpenGov que só exporta CSV pelo botão Export; ainda não há coletor para isso. Importe o relatório.'
 };
+
+// Parsers used only by the manual file import for cities that have no automatic collector.
+// bbox: the PDF is a wide table; columns are x ranges (PDF points) read from word positions.
+export const UPLOAD_CONFIGS = {
+  bethel: {parser: 'bbox', bbox: {
+    anchor: {number: [100, 135], pattern: '^[A-Z]{1,3}-\\d{2}-\\d+$', headerBottom: 140, footerTop: 548},
+    columns: {issued: [72, 100], type: [155, 205], owner: [205, 250], address: [250, 290], company: [360, 405], contractor: [405, 440], description: [522, 575], value: [600, 636]},
+  }},
+};

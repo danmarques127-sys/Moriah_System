@@ -118,3 +118,9 @@ In Codespaces the preview address is derived automatically from its environment.
 ## Admin portal (login `mestre`)
 Tabs: Permit Radar, Sources & Coverage, Admin (accounts, collection health, manual cities, retention), **Partners**, Errors, Account.
 Partners sections: Affiliated companies, Trades (editable), Client access (accounts linked to a company and cities; client sign-in is not enabled yet), Coverage by client, Data freshness (alert after N days without permits), Retention, Audit log (who imported, logged in, changed settings), Usage (permits seen/exported per company) and Settings (retention months, stale-days limit). Tables `permit_marks` and `client_cities` are the data model for the future client area; nothing else of it is built.
+
+## Smarter file readers
+- **PDF text layout** first; if no rows are found, **position reader**: finds the header band, splits columns at the emptiest strip between header labels and reads each cell by position (wide tables with wrapped cells, e.g. Bethel's "M5 Permit Report"). `UPLOAD_CONFIGS` in `src/source-configs.mjs` can pin the columns of a city.
+- **CSV**: comma, semicolon, tab or pipe; title lines above the header are skipped; many header names (Permit ID, Property Address, Issue Date, Job Cost...).
+- **Dates**: `10/1/2026`, `2026-10-01`, `Oct 1, 2026`, `1-Oct-2026`, `10.01.2026`, `20261001`, Excel serials.
+- A page that repeats the first rows of the previous page keeps the first complete copy.
