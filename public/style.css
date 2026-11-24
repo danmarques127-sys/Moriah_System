@@ -320,18 +320,19 @@ td.rowact{white-space:nowrap}
 #toast.show{cursor:pointer}
 #toast.error{border-color:#66262b}
 
-/* login: blueprint street background, 440px box, classic logo sizes */
-.login-wrap{width:min(560px,94vw);gap:44px}
-.login-brand{gap:22px}
-.login-mark{width:110px;height:110px;border-radius:26px}
-.login-brand .brand-text b{font-size:64px;letter-spacing:4px}
-.login-brand .brand-text small{font-size:30px;letter-spacing:14px}
-.login .panel{width:min(440px,100%);padding:28px 30px;border-radius:22px;background:#16152bcc;backdrop-filter:blur(6px);box-shadow:0 30px 80px #000a}
-.login .panel h1{font-size:30px;font-weight:700;letter-spacing:.06em;margin:0 0 4px}
-.login form{gap:13px}
-.login label{font-size:14px;font-weight:600;color:var(--text)}
-.login input{padding:12px 16px;font-size:16px;border-radius:14px}
-.login .pw input{padding-right:52px}
-.login .primary{padding:13px;font-size:17px;font-weight:700;letter-spacing:.18em;border-radius:14px}
-@media (max-width:600px){.login-brand .brand-text b{font-size:36px}.login-brand .brand-text small{font-size:16px;letter-spacing:8px}.login-mark{width:64px;height:64px}}
-.login-brand .brand-text small{color:#b98cff;font-weight:600;text-shadow:0 0 12px #8b4dff88}
+/* login: illustrated street. The card sits over the card drawn in the picture, scaled with the picture (--k = screen px per picture px) */
+.login{--k:max(calc(100vw / 1672),calc(100vh / 941));min-height:100vh;display:grid;place-items:center;padding:0;background:#120d33 url(/login-bg.jpg) center/cover no-repeat;font-size:calc(16 * var(--k));overflow:hidden}
+.login::before,.login::after{display:none}
+.lcard{width:calc(468 * var(--k));min-height:calc(476 * var(--k));margin-top:calc(-12 * var(--k));padding:calc(20 * var(--k)) calc(38 * var(--k));border-radius:calc(30 * var(--k));background:#1a1438;border:1px solid #6f55d6;box-shadow:0 0 calc(50 * var(--k)) #6d4dff55;display:flex;flex-direction:column;justify-content:center;gap:1.1em}
+.lbrand{display:flex;align-items:center;justify-content:center;gap:.7em}
+.lbrand img{width:2.9em;height:2.9em;border-radius:.7em}
+.lbrand span{font-size:1.75em;font-weight:600;letter-spacing:.01em}
+.lcard h1{font-size:2.3em;font-weight:700;margin:0}
+.lcard form{display:grid;gap:1.1em}
+.lcard label{font-size:1em;font-weight:600;color:var(--text);gap:.45em}
+.lcard input{padding:.85em 1em;font-size:1em;border-radius:.8em;background:#120d2e;border:1px solid #6b5bb0}
+.lcard .pw input{padding-right:3em}
+.lcard .eye .ico{width:1.5em;height:1.5em}
+.lcard .form-error{font-size:.95em}
+.lcard .primary{padding:.85em;font-size:1.15em;font-weight:600;border-radius:.8em;background:#7048e8}
+@media (max-width:620px){.login{font-size:16px;background-position:center top}.lcard{width:min(92vw,400px);min-height:0;margin:0;padding:24px 22px;border-radius:22px}}

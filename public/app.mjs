@@ -142,7 +142,7 @@ Object.assign(ICONS,{
 });
 const pwInput=(label,name,extra='')=>'<label>'+e(label)+'<span class="pw"><input name="'+e(name)+'" type="password" '+extra+'><button type="button" class="eye" data-action="peek" aria-label="Show or hide password">'+icon('eye')+'</button></span></label>';
 function loginView(){
- return '<main class="login"><div class="login-wrap"><div class="login-brand"><img class="login-mark" src="/logo-mark.png" alt=""><span class="brand-text"><b>MORIAH</b><small>SYSTEM</small></span></div><section class="panel"><h1>Sign in</h1><form data-form="login">'+input('Email or username','email','','text','required autocomplete="username"')+pwInput('Password','password','required autocomplete="current-password"')+(s.loginError?'<p class="form-error" role="alert">'+icon('alert')+'<span>'+e(s.loginError)+'</span></p>':'')+'<button class="primary">Sign in</button></form></section></div></main>';
+ return '<main class="login"><section class="lcard"><div class="lbrand"><img src="/logo-mark.png" alt=""><span>Moriah System</span></div><h1>Sign in</h1><form data-form="login">'+input('Email or username','email','','text','required autocomplete="username"')+pwInput('Password','password','required autocomplete="current-password"')+(s.loginError?'<p class="form-error" role="alert">'+icon('alert')+'<span>'+e(s.loginError)+'</span></p>':'')+'<button class="primary">Sign in</button></form></section></main>';
 }
 const E_NAMES={collection:'City collection','source-link':'Source link',import:'File import',server:'Server'},E_ICON={collection:'layers','source-link':'link',import:'upload',server:'alert'};
 const ts=x=>Date.parse(x)||0;
