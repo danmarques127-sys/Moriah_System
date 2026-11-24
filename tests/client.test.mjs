@@ -37,7 +37,7 @@ test('a client sees only its cities, never a municipal link, and cannot open int
   const res = await client('/api/client/permits', {headers: {Cookie: ck}}), text = await res.text(), d = JSON.parse(text);
   assert.equal(d.total, 1); assert.equal(d.permits[0].city, 'Boston');
   assert.doesNotMatch(text, /https?:|www\.|sourceUrl|sourceId|boston:|cambridge|secret\.example|internal-directory|portal/i);
-  assert.deepEqual(Object.keys(d.permits[0]).sort(), ['address', 'contractor', 'dateApprox', 'description', 'issued', 'key', 'number', 'owner', 'state', 'city', 'type', 'value'].sort());
+  assert.deepEqual(Object.keys(d.permits[0]).sort(), ['address', 'contractor', 'dateApprox', 'description', 'fav', 'issued', 'key', 'number', 'owner', 'state', 'city', 'type', 'value'].sort());
   assert.ok(!JSON.stringify(d.cities).includes('boston'), 'city keys are opaque');
   // a city filter outside its assignment is ignored (still only Boston)
   const other = await (await client('/api/client/permits?city=cambridge', {headers: {Cookie: ck}})).json(); assert.equal(other.total, 1);
