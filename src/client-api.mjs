@@ -7,6 +7,7 @@ import {digest, checkPassword} from './auth.mjs';
 import {getSetting, cutoffDate} from './retention.mjs';
 import {timestamp} from './db.mjs';
 import {monthKey, monthUsed} from './partners.mjs';
+import {tradeKind} from './radar.mjs';
 
 // Trade classification by keywords in the permit type/description. A permit can match several trades; no match = Other.
 const TRADE_WORDS = {Roofing: /roof|shingle/, Electrical: /electric|wiring|solar|photovoltaic|\bpv\b|generator|service upgrade/, Plumbing: /plumb|water heater|sewer|septic|backflow/, HVAC: /hvac|heat pump|furnace|boiler|mini[- ]?split|air condition|mechanical|ductwork|\bgas\b/, Insulation: /insulat/, Painting: /\bpaint/, Flooring: /\bfloor/, Framing: /\bfram|\bdeck\b|addition|structural|foundation|\bgarage\b/, Sheetrock: /sheetrock|drywall|gypsum/};
@@ -46,7 +47,7 @@ const stripLinks = text => String(text || '').replace(/https?:\/\/\S+|www\.\S+/g
 // The only shape that leaves the server for a client.
 export function clientPermit(rec) {
   return {key: opaque(rec.id), number: rec.number || '', issued: rec.issued, dateApprox: !!rec.dateApprox, city: rec.city, state: rec.state, address: rec.address || '', type: rec.type || '', value: rec.value || 0,
-    description: stripLinks(rec.description), contractor: rec.contractor || '', owner: rec.applicant || ''};
+    description: stripLinks(rec.description), contractor: rec.contractor || '', owner: rec.applicant || '', status: String(rec.status || '').trim(), phone: rec.phone || '', email: rec.email || '', kind: tradeKind((rec.type || '') + ' ' + (rec.description || ''))};
 }
 
 export function clientPermits(db, client, query, sources) {

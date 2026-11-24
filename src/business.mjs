@@ -1,6 +1,6 @@
 // Seller/owner workspace: lists, notes, follow-ups and the estimate request flow (seller -> owner -> customer).
 import {timestamp} from './db.mjs';
-import {permitByKey, isOwner, clientPermit, opaque} from './client-api.mjs';
+import {permitByKey, isOwner, clientPermit, opaque, clientCities} from './client-api.mjs';
 import {sendMail, mailConfig} from './mailer.mjs';
 import {estimatePdf} from './pdf.mjs';
 import {touchCustomerFromEstimate} from './crm.mjs';
@@ -36,7 +36,8 @@ export function permitDetail(db, client, sources, key) {
   const lists = db.prepare('SELECT list_id AS id FROM client_list_items WHERE permit_key=? AND list_id IN (SELECT id FROM client_lists WHERE client_id=?)').all(key, client.id).map(r => r.id);
   const fav = !!db.prepare('SELECT 1 FROM client_favorites WHERE client_id=? AND permit_key=?').get(client.id, key);
   const next = db.prepare("SELECT due_at AS dueAt FROM followups WHERE client_id=? AND permit_key=? AND done_at='' ORDER BY due_at LIMIT 1").get(client.id, key)?.dueAt || '';
-  return {permit: {...clientPermit(p), fav}, note, lists, nextFollowup: next};
+  const addr = String(p.address || '').trim().toLowerCase(), others = !addr ? [] : (() => { const ids = clientCities(db, client.id, sources).map(c => c.id); return ids.length ? db.prepare('SELECT data FROM permits WHERE source_id IN (' + ids.map(() => '?').join(',') + ') LIMIT 30000').all(...ids) : []; })().map(r => JSON.parse(r.data)).filter(r => r.id !== p.id && r.city === p.city && String(r.address || '').trim().toLowerCase() === addr).sort((a, b) => String(b.issued).localeCompare(String(a.issued))).slice(0, 10).map(r => ({number: r.number || '', issued: r.issued, type: r.type || '', description: clientPermit(r).description}));
+  return {permit: {...clientPermit(p), fav}, others, note, lists, nextFollowup: next};
 }
 export function saveNote(db, client, b) {
   if (!KEY.test(String(b.permitKey))) fail('Permit inválido.');
