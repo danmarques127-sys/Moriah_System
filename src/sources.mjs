@@ -231,14 +231,6 @@ const BASE=[
     "allowedHosts": []
   },
   {
-    "id": "barnstable",
-    "city": "Barnstable",
-    "state": "MA",
-    "url": "https://www.barnstable.gov/Departments/Building/Office_Resources/",
-    "mode": "report",
-    "allowedHosts": []
-  },
-  {
     "id": "manchester",
     "city": "Manchester-by-the-Sea",
     "state": "MA",

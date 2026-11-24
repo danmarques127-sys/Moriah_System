@@ -31,7 +31,6 @@ export const DOCUMENT_SOURCES = {
   amesbury: {collector: {scope: 'month', match: 'permit|bldg', dateKind: 'submitted', leadDate: true, columns: ['applicant', 'address', 'description', 'value']}},
   'north-attleborough': {collector: {scope: 'month', match: 'permit|building'}, allowedHosts: ['northattleborough.gov', 'nattleboro.com']},
   // Barnstable: one PDF per month with a predictable name (Record #, Date Issued, Project Cost, Work Description, Full Address).
-  barnstable: {collector: {scope: 'month', fileTemplates: ['https://www.barnstable.gov/Departments/Building/Office_Resources/{Month}-{year}.pdf']}},
   // Southbury: "M5 Permit Report" PDF per month (wide table, read by column position).
   southbury: {collector: {scope: 'month', fileTemplates: ['https://www.southbury-ct.org/filestorage/20556/20567/20573/39794/Building_Permit_Report-{Month}_{year}.pdf']}, allowedHosts: ['southbury-ct.org']},
   // Bethel: the town changes the file name from month to month, so both known names are tried.

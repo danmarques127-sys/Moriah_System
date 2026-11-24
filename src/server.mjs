@@ -80,7 +80,13 @@ export async function createApplication(options={}){
    const owner=()=>{if(user.role!=='owner')throw new HttpError(403,'Acesso reservado ao proprietário do workspace.');};
    const editor=()=>{if(user.role==='viewer')throw new HttpError(403,'Conta com acesso somente à leitura.');};
    const admin=()=>{if(!user.system_admin)throw new HttpError(403,'Acesso reservado ao administrador do sistema.');};
-   if(path==='/api/me'&&req.method==='GET')return send(res,200,{user:{id:user.id,email:user.email,role:user.role,systemAdmin:!!user.system_admin},csrf:user.csrf});
+   const profileOf=()=>db.prepare('SELECT display_name AS displayName,phone,title,photo FROM user_profiles WHERE user_id=?').get(user.id)||{displayName:'',phone:'',title:'',photo:''};
+   if(path==='/api/me'&&req.method==='GET')return send(res,200,{user:{id:user.id,email:user.email,role:user.role,systemAdmin:!!user.system_admin,profile:profileOf()},csrf:user.csrf});
+   if(path==='/api/profile'&&req.method==='POST'){const b=await body(req),clean=(v,m)=>String(v??'').replace(/[\u0000-\u001f]/g,' ').trim().slice(0,m),cur=profileOf();
+    const photo=b.photo===undefined?cur.photo:String(b.photo||'');if(photo&&(!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(photo)||photo.length>200000))throw new HttpError(400,'A foto deve ser PNG, JPEG ou WebP de até 150 KB.');
+    const phone=clean(b.phone,40);if(phone&&!/^[\d\s().+\-x]+$/i.test(phone))throw new HttpError(400,'Telefone inválido.');
+    db.prepare('INSERT INTO user_profiles(user_id,display_name,phone,title,photo,updated_at) VALUES(?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name,phone=excluded.phone,title=excluded.title,photo=excluded.photo,updated_at=excluded.updated_at').run(user.id,clean(b.displayName,80),phone,clean(b.title,80),photo,timestamp());
+    audit(db,user.workspace_id,'Perfil atualizado',user.email,'config');return send(res,200,{profile:profileOf()});}
    if(path==='/api/logout'&&req.method==='POST'){db.prepare('DELETE FROM sessions WHERE token_hash=?').run(user.token_hash);res.setHeader('Set-Cookie',cookie('',config.production,0));return send(res,200,{ok:true});}
    if(path==='/api/password'&&req.method==='POST'){const b=await body(req),row=db.prepare('SELECT password_hash FROM users WHERE id=?').get(user.id);if(!await checkPassword(b.currentPassword,row.password_hash))throw new HttpError(400,'Senha atual incorreta.');const hash=await hashPassword(b.newPassword);db.prepare('UPDATE users SET password_hash=? WHERE id=?').run(hash,user.id);db.prepare('DELETE FROM sessions WHERE user_id=?').run(user.id);res.setHeader('Set-Cookie',cookie('',config.production,0));return send(res,200,{ok:true});}
    if(path==='/api/members'&&req.method==='GET'){owner();return send(res,200,{members:db.prepare('SELECT id,email,role FROM users WHERE workspace_id=? ORDER BY email').all(user.workspace_id)});}
