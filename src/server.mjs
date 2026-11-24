@@ -12,6 +12,8 @@ import {checkAllSources} from './source-audit.mjs';
 import {partnersOverview,partnersAction} from './partners.mjs';
 import {clientLogin,getClientSession,clientCookie,clientPermits,recordClientUsage,portalEnabled} from './client-api.mjs';
 import {NATIVE_MODES} from './collectors.mjs';
+import {runDailyMaintenance,automationStatus,alertEmail} from './maintenance.mjs';
+import {sendMail,mailConfig} from './mailer.mjs';
 import {runRetentionIfDue,retentionStatus,cutoffDate,getSetting} from './retention.mjs';
 import {recordManualImport,manualImportStatus} from './manual.mjs';
 const assets={'/':'../public/index.html','/app.mjs':'../public/app.mjs','/style.css':'../public/style.css'};
@@ -133,8 +135,9 @@ export async function createApplication(options={}){
     const native=new Set(allSources(db).filter(x=>NATIVE_MODES.includes(x.mode)).map(x=>x.id));
     const rows=db.prepare("SELECT source_id AS id,month FROM coverage WHERE status='unavailable' ORDER BY month DESC LIMIT 60").all().filter(r=>native.has(r.id));
     let queued=0;for(const r of rows)queued+=enqueue(db,[r.id],r.month,r.month);audit(db,user.workspace_id,'admin:retry-failed',user.email,'admin');return send(res,202,{queued});}
-   if(path==='/api/admin/partners'&&req.method==='GET'){admin();return send(res,200,partnersOverview(db,allSources(db)));}
+   if(path==='/api/admin/partners'&&req.method==='GET'){admin();return send(res,200,{...partnersOverview(db,allSources(db)),automation:automationStatus(db)});}
    if(path==='/api/admin/partners'&&req.method==='POST'){admin();const b=await body(req);
+    if(b.op==='testEmail'){const to=alertEmail(db);if(!to)throw new HttpError(400,'Salve um e-mail de alerta primeiro.');const r=await sendMail({to,subject:'Moriah System: test e-mail',text:'This is a test message from Moriah System. If you can read it, alerts will reach you.'},mailConfig());audit(db,null,'E-mail de teste '+(r.sent?'enviado':'falhou')+' para '+to,user.email,'config');return send(res,200,r);}
     if(b.op==='setClientPassword'){const row=db.prepare('SELECT email FROM client_accounts WHERE id=?').get(Number(b.id));if(!row)throw new HttpError(400,'Conta não encontrada.');
      db.prepare('UPDATE client_accounts SET password_hash=? WHERE id=?').run(await hashPassword(b.password),Number(b.id));db.prepare('DELETE FROM client_sessions WHERE client_id=?').run(Number(b.id));
      audit(db,null,'Senha de cliente definida: '+row.email,user.email,'config');return send(res,200,{});}
@@ -150,7 +153,7 @@ export async function createApplication(options={}){
  server.requestTimeout=30000;server.headersTimeout=15000;
  let jobTimer,scheduleTimer;
  if(options.startBackground!==false){db.prepare("UPDATE jobs SET status='queued',message='Retomada após reinício' WHERE status='running'").run();const run=worker(db);jobTimer=setInterval(()=>run().catch(e=>console.error('Collector worker error',e.name)),2000);
- if(process.env.ENABLE_SCHEDULER==='1'){const tick=()=>{try{runRetentionIfDue(db,process.env.SCAN_TIMEZONE||'America/New_York');const n=scheduler(db,process.env.SCAN_TIMEZONE||'America/New_York');if(n)checkAllSources(db,allSources(db)).catch(()=>{});}catch(e){console.error('Scheduler error',e.name);}};tick();scheduleTimer=setInterval(tick,60000);}}
+ if(process.env.ENABLE_SCHEDULER==='1'){const tick=()=>{try{runRetentionIfDue(db,process.env.SCAN_TIMEZONE||'America/New_York');const n=scheduler(db,process.env.SCAN_TIMEZONE||'America/New_York');runDailyMaintenance(db,{databasePath:config.databasePath,timezone:process.env.SCAN_TIMEZONE||'America/New_York'}).catch(e=>console.error('Maintenance error',e.name));if(n)checkAllSources(db,allSources(db)).catch(()=>{});}catch(e){console.error('Scheduler error',e.name);}};tick();scheduleTimer=setInterval(tick,60000);}}
  return {server,db,config,async close(){clearInterval(jobTimer);clearInterval(scheduleTimer);await new Promise(r=>server.close(r));db.close();}};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){

@@ -138,3 +138,9 @@ Leads not yet wired (need a stable listing URL): Plymouth (MA Archive Center, "P
 
 ## New design
 Dark purple Moriah System look: sidebar menu, metric cards, "Permits by Week" and "Permits by Type" charts (real data from the selected filters), type pills that filter the table. Logo and favicons are in `public/`. Inline styles are blocked by the CSP, so charts are styled from JavaScript after render.
+
+## Daily automation (production)
+With `ENABLE_SCHEDULER=1` the server collects every day after 8:00 (New York) and, after 10:00, runs the daily check once per day:
+- **Backup:** `data/backups/permit-finder-YYYY-MM-DD.sqlite` (override with `BACKUP_DIR`), newest 14 kept. Copy them off the server too.
+- **Alerts:** automatic collectors whose latest run failed, and cities whose newest permit is older than the limit in Partners > System settings. The e-mail goes to the address saved there (or `ALERT_EMAIL`) when the problem list changes, or weekly while it persists. Without a mail server the result is shown only in Partners > System settings > Automation.
+- **Mail server:** set `SMTP_HOST`, `SMTP_PORT` (465 = TLS, otherwise STARTTLS), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` in the environment (use an app password from your mail provider). Login is refused over unencrypted connections to remote hosts. The "Send test e-mail" button checks it.

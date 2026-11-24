@@ -14,6 +14,12 @@ services:
       TRUST_PROXY: '1'
       ENABLE_SCHEDULER: ${ENABLE_SCHEDULER:-1}
       SCAN_TIMEZONE: America/New_York
+      ALERT_EMAIL: ${ALERT_EMAIL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     volumes:
       - app_data:/data
     expose:

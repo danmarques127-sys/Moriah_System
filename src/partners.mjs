@@ -100,9 +100,10 @@ export function partnersAction(db, sources, actor, b) {
     const months = Math.floor(Number(b.retention_months)), stale = Math.floor(Number(b.stale_days));
     if (!(months >= 1 && months <= 120)) fail('Prazo de retenção deve ficar entre 1 e 120 meses.');
     if (!(stale >= 1 && stale <= 365)) fail('Limite de dias sem dados deve ficar entre 1 e 365.');
+    const email = clean(b.alert_email, 200).toLowerCase(); if (email && !validEmail(email)) fail('E-mail de alerta inválido.');
     const before = settingsOverview(db);
     const portal = b.client_portal === true || b.client_portal === '1' || b.client_portal === 'on';
-    setSetting(db, 'retention_months', months); setSetting(db, 'stale_days', stale); setSetting(db, 'client_portal', portal ? '1' : '0');
+    setSetting(db, 'retention_months', months); setSetting(db, 'stale_days', stale); setSetting(db, 'client_portal', portal ? '1' : '0'); setSetting(db, 'alert_email', email);
     log('Configurações alteradas: retenção ' + before.retention_months + '→' + months + ' meses, alerta ' + before.stale_days + '→' + stale + ' dias, portal de clientes ' + (before.client_portal ? 'ligado' : 'desligado') + '→' + (portal ? 'ligado' : 'desligado')); return {};
   }
   if (op === 'recordUsage') {
