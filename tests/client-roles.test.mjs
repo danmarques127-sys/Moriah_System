@@ -72,3 +72,13 @@ test('demo clients can sign in with a user name, are idempotent, and have the ri
   assert.equal(await clientLogin(db, DEMO.accounts[0].user, 'wrong-password-xx'), null);
 });
 
+
+test('a site visit can be created from a typed address, without a permit', async () => {
+  const {addVisit, listVisits} = await import('../src/client-api.mjs');
+  const db = openDatabase(':memory:'); seedDemoClients(db);
+  const c = db.prepare("SELECT id,company_id AS companyId,role FROM client_accounts WHERE role='seller'").get();
+  assert.throws(() => addVisit(db, c, [], {address: 'ab', notes: 'x'}), /endereço/);
+  const {id} = addVisit(db, c, [], {address: '14 Cedar Rd', city: 'Newton', state: 'ma', customer: 'Jo', notes: 'Attic access'});
+  const v = listVisits(db, c).find(x => x.id === id);
+  assert.equal(v.address, '14 Cedar Rd, Newton, MA'); assert.equal(v.customer, 'Jo'); assert.equal(v.permitKey, '');
+});

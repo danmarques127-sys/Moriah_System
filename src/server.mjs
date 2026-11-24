@@ -10,7 +10,7 @@ import {previousMonth,monthsBetween,validatePermit} from './radar.mjs';
 import {parseUploadedFile} from './documents.mjs';
 import {checkAllSources} from './source-audit.mjs';
 import {partnersOverview,partnersAction} from './partners.mjs';
-import {listLists,listAction,listKeys,permitDetail,saveNote,listFollowups,followupAction,listEstimates,estimateAction} from './business.mjs';
+import {listLists,listAction,listKeys,permitDetail,saveNote,listFollowups,followupAction,listEstimates,estimateAction,estimatePhotoFor} from './business.mjs';
 import {listInvoices,invoiceAction,listJobs,jobAction,overview} from './finance.mjs';
 import {listCustomers,customerDetail,customerAction} from './crm.mjs';
 import {listPrices,pricesAction,calculate} from './pricing.mjs';
@@ -109,6 +109,7 @@ export async function createApplication(options={}){
     if(path==='/api/client/estimates'&&req.method==='POST'){const b=await body(req);b.companyName=client.company;return send(res,200,await estimateAction(db,client,allSources(db),b));}
     if(path==='/api/client/visits'&&req.method==='GET')return send(res,200,{visits:listVisits(db,client,url.searchParams.get('permitKey')||'')});
     if(path==='/api/client/visits'&&req.method==='POST'){if(!uploadRate('cv:'+client.id))throw new HttpError(429,'Aguarde para enviar outra visita.');return send(res,201,addVisit(db,client,allSources(db),await body(req)));}
+    if(path==='/api/client/estimate-photo'&&req.method==='GET'){const ph=estimatePhotoFor(db,client,url.searchParams.get('id'));if(!ph)throw new HttpError(404,'Foto não encontrada.');res.writeHead(200,{'Content-Type':ph.mime,'Cache-Control':'private, max-age=3600'});return res.end(ph.data);}
     if(path==='/api/client/photo'&&req.method==='GET'){const ph=photoFor(db,client,url.searchParams.get('id'));if(!ph)throw new HttpError(404,'Foto não encontrada.');res.writeHead(200,{'Content-Type':ph.mime,'Cache-Control':'private, max-age=3600'});return res.end(ph.data);}
     if(path.startsWith('/api/client/team')){
      if(!isOwner(client))throw new HttpError(403,'Somente o responsável pela empresa gerencia a equipe.');

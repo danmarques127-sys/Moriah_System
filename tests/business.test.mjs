@@ -85,3 +85,15 @@ test('estimate request can start from a typed address (no permit) and still reac
   assert.deepEqual({...row}, {address: '14 Cedar Rd', city: 'Newton', state: 'MA', permit_key: '', status: 'with_owner'});
   assert.ok(listEstimates(db, owner, SRC).estimates.some(e => e.id === id));
 });
+
+test('estimate request carries phone, job details and photos; owner and its seller can read them', async () => {
+  const {db, owner, seller} = await setup(), send = async () => ({sent: true});
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  const {id} = await estimateAction(db, seller, SRC, {op: 'save', address: '9 Oak St', city: 'Newton', state: 'MA', prospectName: 'Jo', prospectEmail: 'jo@x.co', prospectPhone: '555-0100', jobType: 'Attic', timeline: 'ASAP', details: 'Dog at home', photos: [PNG, PNG], submit: true}, {send});
+  const r = listEstimates(db, owner, SRC).estimates.find(e => e.id === id);
+  assert.equal(r.prospectPhone, '555-0100'); assert.equal(r.jobType, 'Attic'); assert.equal(r.details, 'Dog at home'); assert.equal(r.photos.length, 2);
+  await estimateAction(db, seller, SRC, {op: 'save', id, prospectName: 'Jo', prospectEmail: 'jo@x.co', removePhotos: [r.photos[0]]}, {send});
+  assert.equal(listEstimates(db, owner, SRC).estimates.find(e => e.id === id).photos.length, 1);
+  await assert.rejects(estimateAction(db, seller, SRC, {op: 'save', id, photos: Array(9).fill(PNG)}, {send}), /8 fotos|Máximo/);
+  await assert.rejects(estimateAction(db, seller, SRC, {op: 'save', address: '9 Oak St', prospectName: 'x', photos: ['data:text/html;base64,AAAA']}, {send}), /Foto/);
+});

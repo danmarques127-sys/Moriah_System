@@ -78,7 +78,7 @@ function parseItems(raw) {
 const sums = (items, rate) => { const subtotal = round2(items.reduce((t, i) => t + i.qty * i.price, 0)), tax = round2(subtotal * rate / 100); return {subtotal, tax, total: round2(subtotal + tax)}; };
 const shape = (db, r, viewer) => {
   const lineItems = JSON.parse(r.line_items || '[]'), rate = Number(r.tax_rate || 0), t = lineItems.length ? sums(lineItems, rate) : {subtotal: Number(r.total), tax: 0, total: Number(r.total)};
-  const out = {id: r.id, permitKey: r.permit_key, address: r.address, city: r.city, state: r.state, prospectName: r.prospect_name, prospectEmail: r.prospect_email, scope: r.scope, measurements: r.measurements, status: r.status, ownerNote: r.owner_note, sellerFeedback: r.seller_feedback, description: r.description, lineItems, taxRate: rate, subtotal: t.subtotal, tax: t.tax, total: Number(r.total), createdAt: r.created_at, updatedAt: r.updated_at, sentAt: r.sent_at, by: r.byName || '',
+  const out = {id: r.id, permitKey: r.permit_key, address: r.address, city: r.city, state: r.state, prospectName: r.prospect_name, prospectEmail: r.prospect_email, prospectPhone: r.prospect_phone || '', jobType: r.job_type || '', timeline: r.timeline || '', details: r.details || '', photos: db.prepare('SELECT id FROM estimate_photos WHERE request_id=? ORDER BY id').all(r.id).map(x => x.id), scope: r.scope, measurements: r.measurements, status: r.status, ownerNote: r.owner_note, sellerFeedback: r.seller_feedback, description: r.description, lineItems, taxRate: rate, subtotal: t.subtotal, tax: t.tax, total: Number(r.total), createdAt: r.created_at, updatedAt: r.updated_at, sentAt: r.sent_at, by: r.byName || '',
     events: db.prepare('SELECT kind,text,by_name AS byName,created_at AS createdAt FROM estimate_events WHERE request_id=? ORDER BY id').all(r.id)};
   if (viewer && isOwner(viewer)) { out.internalCost = Number(r.internal_cost || 0); out.profit = round2(out.total - out.internalCost); out.margin = out.total > 0 ? round2(out.profit / out.total * 100) : 0; } // private: sellers never get these
   return out;
@@ -103,11 +103,15 @@ export async function estimateAction(db, client, sources, b, {send = sendMail, c
       else { const address = clean(b.address, 200); if (address.length < 5) fail('Informe o endereço do trabalho.'); p = {address, city: clean(b.city, 80), state: clean(b.state, 2).toUpperCase()}; b.permitKey = ''; }
     }
     const email = clean(b.prospectEmail, 254).toLowerCase(); if (email && !mail(email)) fail('E-mail do cliente inválido.');
-    const f = [clean(b.prospectName, 120), email, clean(b.scope, 4000), clean(b.measurements, 2000)];
+    const f = [clean(b.prospectName, 120), email, clean(b.scope, 4000), clean(b.measurements, 2000), clean(b.prospectPhone, 40), clean(b.jobType, 80), clean(b.timeline, 120), clean(b.details, 4000)];
+    const newPhotos = (Array.isArray(b.photos) ? b.photos : []).slice(0, 8).map(x => { const m = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+\/=]+)$/.exec(String(x)); if (!m || m[2].length > 400000) fail('Foto inválida ou grande demais.'); return {mime: m[1], buf: Buffer.from(m[2], 'base64')}; });
     if (b.submit && (!f[0] || !email)) fail('Informe nome e e-mail do cliente para enviar ao owner.');
     let id = Number(b.id) || 0;
-    if (id) { const r = mine(db, client, id); if (!['draft', 'changes_requested', 'with_owner'].includes(r.status)) fail('Este pedido não pode mais ser editado.'); db.prepare('UPDATE estimate_requests SET prospect_name=?,prospect_email=?,scope=?,measurements=?,updated_at=? WHERE id=?').run(...f, now, id); }
-    else id = Number(db.prepare('INSERT INTO estimate_requests(company_id,client_id,permit_key,address,city,state,prospect_name,prospect_email,scope,measurements,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)').run(client.companyId, client.id, b.permitKey, clean(p.address, 200), clean(p.city, 80), clean(p.state, 2), ...f, 'draft', now, now).lastInsertRowid);
+    if (id) { const r = mine(db, client, id); if (!['draft', 'changes_requested', 'with_owner'].includes(r.status)) fail('Este pedido não pode mais ser editado.'); db.prepare('UPDATE estimate_requests SET prospect_name=?,prospect_email=?,scope=?,measurements=?,prospect_phone=?,job_type=?,timeline=?,details=?,updated_at=? WHERE id=?').run(...f, now, id); }
+    else id = Number(db.prepare('INSERT INTO estimate_requests(company_id,client_id,permit_key,address,city,state,prospect_name,prospect_email,scope,measurements,prospect_phone,job_type,timeline,details,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(client.companyId, client.id, b.permitKey, clean(p.address, 200), clean(p.city, 80), clean(p.state, 2), ...f, 'draft', now, now).lastInsertRowid);
+    if (Array.isArray(b.removePhotos)) for (const pid of b.removePhotos.slice(0, 20)) db.prepare('DELETE FROM estimate_photos WHERE id=? AND request_id=?').run(Number(pid), id);
+    const have = db.prepare('SELECT COUNT(*) n FROM estimate_photos WHERE request_id=?').get(id).n; if (have + newPhotos.length > 8) fail('Máximo de 8 fotos por pedido.');
+    for (const ph of newPhotos) db.prepare('INSERT INTO estimate_photos(request_id,mime,data) VALUES(?,?,?)').run(id, ph.mime, ph.buf);
     if (b.submit) { db.prepare("UPDATE estimate_requests SET status='with_owner',updated_at=? WHERE id=?").run(now, id); event(db, id, 'submitted', 'Request submitted to the owner', who(client)); }
     return {id};
   }
@@ -143,4 +147,11 @@ export async function estimateAction(db, client, sources, b, {send = sendMail, c
     db.prepare("UPDATE estimate_requests SET status='sent',sent_at=?,updated_at=? WHERE id=?").run(now, now, r.id); touchCustomerFromEstimate(db, r.company_id, {name: r.prospect_name, email: r.prospect_email, address: r.address}); event(db, r.id, 'sent', 'Sent to ' + r.prospect_email + ' and the salesperson', who(client)); return {ok: true};
   }
   fail('Operação inválida.');
+}
+
+// Photo of an estimate request: the owner of the company, or the seller who created the request.
+export function estimatePhotoFor(db, client, id) {
+  const row = db.prepare('SELECT p.mime,p.data,r.company_id AS co,r.client_id AS cl FROM estimate_photos p JOIN estimate_requests r ON r.id=p.request_id WHERE p.id=?').get(Number(id));
+  if (!row || row.co !== client.companyId || (!isOwner(client) && row.cl !== client.id)) return null;
+  return row;
 }

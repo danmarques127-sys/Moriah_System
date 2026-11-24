@@ -117,12 +117,15 @@ export function favoriteKeys(db, client) { return new Set(db.prepare('SELECT per
 const IMG = /^data:(image\/(?:png|jpeg|webp));base64,([A-Za-z0-9+/=]+)$/;
 export function addVisit(db, client, sources, b) {
   if (client.role === 'employee') fail('Seu perfil não pode registrar visitas.', 403);
-  const p = permitByKey(db, client, String(b.permitKey), sources); if (!p) fail('Permit fora das suas cidades.', 403);
   const clean = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, ' ').trim().slice(0, n);
+  // A visit may come from a permit or from a typed address (visits are not always tied to a permit).
+  let p, key = String(b.permitKey || '');
+  if (key) { p = permitByKey(db, client, key, sources); if (!p) fail('Permit fora das suas cidades.', 403); }
+  else { const a = clean(b.address, 160); if (a.length < 5) fail('Informe o endereço da visita.'); p = {address: [a, clean(b.city, 60), clean(b.state, 2).toUpperCase()].filter(Boolean).join(', ')}; }
   const notes = clean(b.notes, 4000), meas = clean(b.measurements, 4000), photos = (Array.isArray(b.photos) ? b.photos : []).slice(0, 6);
   if (!notes && !meas && !photos.length) fail('Informe medidas, observações ou fotos.');
   const parsed = photos.map(x => { const m = IMG.exec(String(x)); if (!m || m[2].length > 400000) fail('Foto inválida ou grande demais.'); return {mime: m[1], buf: Buffer.from(m[2], 'base64')}; });
-  const id = Number(db.prepare('INSERT INTO site_visits(company_id,client_id,permit_key,address,notes,measurements,created_at) VALUES(?,?,?,?,?,?,?)').run(client.companyId, client.id, String(b.permitKey), clean(p.address, 200), notes, meas, timestamp()).lastInsertRowid);
+  const id = Number(db.prepare('INSERT INTO site_visits(company_id,client_id,permit_key,address,notes,measurements,customer,created_at) VALUES(?,?,?,?,?,?,?,?)').run(client.companyId, client.id, key, clean(p.address, 200), notes, meas, clean(b.customer, 120), timestamp()).lastInsertRowid);
   for (const ph of parsed) db.prepare('INSERT INTO site_photos(visit_id,mime,data) VALUES(?,?,?)').run(id, ph.mime, ph.buf);
   return {id};
 }
@@ -131,7 +134,7 @@ export function listVisits(db, client, key = '') {
   const where = ['v.company_id=?'], args = [client.companyId];
   if (!isOwner(client)) { where.push('v.client_id=?'); args.push(client.id); }
   if (key) { where.push('v.permit_key=?'); args.push(String(key)); }
-  return db.prepare('SELECT v.id,v.permit_key AS permitKey,v.address,v.notes,v.measurements,v.created_at AS createdAt,c.name AS byName,c.email AS byEmail FROM site_visits v JOIN client_accounts c ON c.id=v.client_id WHERE ' + where.join(' AND ') + ' ORDER BY v.id DESC LIMIT 200').all(...args)
+  return db.prepare('SELECT v.id,v.permit_key AS permitKey,v.address,v.customer,v.notes,v.measurements,v.created_at AS createdAt,c.name AS byName,c.email AS byEmail FROM site_visits v JOIN client_accounts c ON c.id=v.client_id WHERE ' + where.join(' AND ') + ' ORDER BY v.id DESC LIMIT 200').all(...args)
     .map(v => ({...v, photos: db.prepare('SELECT id FROM site_photos WHERE visit_id=? ORDER BY id').all(v.id).map(r => r.id)}));
 }
 export function photoFor(db, client, id) {
