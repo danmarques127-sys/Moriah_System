@@ -12,7 +12,7 @@ import {parseUploadedFile} from './documents.mjs';
 import {checkAllSources} from './source-audit.mjs';
 import {partnersOverview,partnersAction} from './partners.mjs';
 import {NATIVE_MODES} from './collectors.mjs';
-import {runRetentionIfDue,retentionStatus} from './retention.mjs';
+import {runRetentionIfDue,retentionStatus,cutoffDate,getSetting} from './retention.mjs';
 import {recordManualImport,manualImportStatus} from './manual.mjs';
 const assets={'/':'../public/index.html','/app.mjs':'../public/app.mjs','/style.css':'../public/style.css','/shared/estimator.mjs':'./estimator.mjs'};
 const mimes={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
@@ -121,20 +121,22 @@ export async function createApplication(options={}){
    if(path==='/api/import-file'&&req.method==='POST'){
     admin();if(!uploadRate(user.id))throw new HttpError(429,'Aguarde para enviar outro arquivo.');
     const source=findSource(db,url.searchParams.get('sourceId')),month=String(url.searchParams.get('month')||''),filename=String(url.searchParams.get('filename')||'arquivo').slice(0,200),confirm=url.searchParams.get('confirm')==='1';
-    monthsBetween(month,month);const buffer=await rawBody(req,25000000);if(!buffer.length)throw new HttpError(400,'Arquivo vazio.');
-    const parsed=await parseUploadedFile({buffer,source,month}),valid=[],problems=[];
+    const toMonth=String(url.searchParams.get('to')||month);monthsBetween(month,toMonth);const buffer=await rawBody(req,25000000);if(!buffer.length)throw new HttpError(400,'Arquivo vazio.');
+    const parsed=await parseUploadedFile({buffer,source,month,toMonth}),valid=[],problems=[];
     for(const r of parsed.records){try{validatePermit(r,source);valid.push(r);}catch(e){problems.push(String(e.message).slice(0,200));}}
+    const cutoff=cutoffDate(new Date(),Number(getSetting(db,'retention_months'))||12),tooOld=valid.filter(r=>r.issued<cutoff).length;for(let i=valid.length-1;i>=0;i--)if(valid[i].issued<cutoff)valid.splice(i,1);
     const norm=x=>String(x).toLowerCase(),addrs=(parsed.addresses||[]).map(norm).filter(Boolean);
     let cityHint=null;if(addrs.length){const share=name=>addrs.filter(a=>a.includes(norm(name))).length/addrs.length;const mine=share(source.city);if(mine<0.2){const best=allSources(db).filter(x=>x.id!==source.id).map(x=>({id:x.id,city:x.city,state:x.state,share:share(x.city)})).sort((a,b)=>b.share-a.share)[0];if(best&&best.share>=0.5)cityHint={id:best.id,city:best.city,state:best.state};}}
-    const monthHint=parsed.suggestedMonth&&parsed.suggestedMonth!==month&&parsed.outside>valid.length?parsed.suggestedMonth:null;
-    const summary={cityHint,monthHint,format:parsed.format,rowsRead:parsed.rowsRead,inMonth:valid.length,outsideMonth:parsed.outside,undated:parsed.undated,approx:parsed.approx||0,invalid:problems.length,problems:problems.slice(0,3),range:parsed.range,
+    const multi=toMonth>month,monthHint=!multi&&parsed.suggestedMonth&&parsed.suggestedMonth!==month&&parsed.outside>valid.length?parsed.suggestedMonth:null,byMonth={};for(const r of valid)byMonth[r.issued.slice(0,7)]=(byMonth[r.issued.slice(0,7)]||0)+1;
+    const summary={cityHint,monthHint,toMonth,months:byMonth,fileFrom:parsed.fileFrom,fileTo:parsed.fileTo,tooOld,retentionCutoff:cutoff,format:parsed.format,rowsRead:parsed.rowsRead,inMonth:valid.length,outsideMonth:parsed.outside,undated:parsed.undated,approx:parsed.approx||0,invalid:problems.length,problems:problems.slice(0,3),range:parsed.range,
      sample:valid.slice(0,15).map(r=>({number:r.number,issued:r.issued,address:r.address,type:r.type,value:r.value,description:r.description.slice(0,160)}))};
     if(!confirm)return send(res,200,{preview:true,...summary});
-    if(!valid.length)throw new HttpError(400,'Nenhum permit válido de '+month+' neste arquivo.');
-    const result=upsertPermits(db,source,valid);
-    const stored=db.prepare('SELECT COUNT(*) AS n FROM permits WHERE source_id=? AND substr(issued,1,7)=?').get(source.id,month).n;
-    setCoverage(db,source.id,month,'partial','Importação manual do arquivo "'+filename+'" ('+parsed.format.toUpperCase()+'): '+valid.length+' permits de '+month+'. Completude não certificada.',stored);
-    audit(db,user.workspace_id,'Importação de arquivo: '+source.id+' '+month+', '+result.added+' novos, '+result.updated+' atualizados',user.email,'import');recordManualImport(db,source.id,month,result,user.email);
+    if(!valid.length)throw new HttpError(400,'Nenhum permit válido de '+month+(toMonth>month?' a '+toMonth:'')+' neste arquivo.');
+    const result={added:0,updated:0};
+    for(const m of Object.keys(byMonth).sort()){const part=valid.filter(r=>r.issued.slice(0,7)===m),r=upsertPermits(db,source,part);result.added+=r.added;result.updated+=r.updated;
+     const stored=db.prepare('SELECT COUNT(*) AS n FROM permits WHERE source_id=? AND substr(issued,1,7)=?').get(source.id,m).n;
+     setCoverage(db,source.id,m,'partial','Importação manual do arquivo "'+filename+'" ('+parsed.format.toUpperCase()+'): '+part.length+' permits de '+m+'. Completude não certificada.',stored);recordManualImport(db,source.id,m,r,user.email);}
+    audit(db,user.workspace_id,'Importação de arquivo: '+source.id+' '+month+(toMonth>month?' a '+toMonth:'')+', '+result.added+' novos, '+result.updated+' atualizados',user.email,'import');
     return send(res,200,{preview:false,...summary,...result});
    }
    if(path==='/api/jobs'&&req.method==='GET')return send(res,200,{jobs:db.prepare('SELECT id,source_id AS sourceId,month,status,message,updated_at AS updatedAt FROM jobs ORDER BY created_at DESC LIMIT 100').all()});
