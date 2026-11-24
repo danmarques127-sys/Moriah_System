@@ -9,7 +9,14 @@ export function openDatabase(path){
  if(version>LATEST)throw new Error('Unsupported database version: '+version);
  if(version===0)db.exec(readFileSync(new URL('../migrations/001.sql',import.meta.url),'utf8'));
  // Each migration file ends with PRAGMA user_version=N; apply the missing ones in order.
- for(let v=db.prepare('PRAGMA user_version').get().user_version+1;v<=LATEST;v++)db.exec(readFileSync(new URL('../migrations/'+String(v).padStart(3,'0')+'.sql',import.meta.url),'utf8'));
+ for(let v=db.prepare('PRAGMA user_version').get().user_version+1;v<=LATEST;v++){
+  const sql=readFileSync(new URL('../migrations/'+String(v).padStart(3,'0')+'.sql',import.meta.url),'utf8');
+  try{db.exec(sql);}
+  catch(e){ // a migration that was applied before its version number was saved: skip the columns that already exist
+   if(!/duplicate column name/.test(String(e.message)))throw e;
+   for(const stmt of sql.replace(/^\s*--.*$/gm,'').split(';').map(x=>x.trim()).filter(Boolean)){try{db.exec(stmt);}catch(err){if(!/duplicate column name|already exists/.test(String(err.message)))throw err;}}
+  }
+ }
  return db;
 }
 export function transaction(db,fn){db.exec('BEGIN IMMEDIATE');try{const result=fn();db.exec('COMMIT');return result;}catch(e){db.exec('ROLLBACK');throw e;}}

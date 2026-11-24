@@ -7,3 +7,4 @@ CREATE TABLE IF NOT EXISTS estimate_photos(id INTEGER PRIMARY KEY AUTOINCREMENT,
 CREATE INDEX IF NOT EXISTS estimate_photos_request ON estimate_photos(request_id);
 -- Site visits can be created without a permit (typed address) and name the customer.
 ALTER TABLE site_visits ADD COLUMN customer TEXT NOT NULL DEFAULT '';
+PRAGMA user_version=17;
