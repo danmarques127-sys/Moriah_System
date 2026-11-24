@@ -15,7 +15,8 @@ import {NATIVE_MODES} from './collectors.mjs';
 import {runRetentionIfDue,retentionStatus,cutoffDate,getSetting} from './retention.mjs';
 import {recordManualImport,manualImportStatus} from './manual.mjs';
 const assets={'/':'../public/index.html','/app.mjs':'../public/app.mjs','/style.css':'../public/style.css'};
-const mimes={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
+for(const f of ['logo.png','logo-mark.png','favicon.png','favicon.ico','icon-192.png','apple-touch-icon.png'])assets['/'+f]='../public/'+f;
+const mimes={'.png':'image/png','.ico':'image/x-icon','.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
 class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
 async function body(req){
  if(!String(req.headers['content-type']||'').startsWith('application/json'))throw new HttpError(415,'Use application/json.');
@@ -40,7 +41,7 @@ export async function createApplication(options={}){
   try{
    const url=new URL(req.url,config.appUrl),path=url.pathname,mutating=!['GET','HEAD'].includes(req.method);
    if(path==='/health'&&req.method==='GET')return send(res,200,{ok:true,version:'1.0.0'});
-   if(assets[path]&&req.method==='GET'){const suffix=path==='/'?'.html':path.endsWith('.css')?'.css':'.mjs';res.writeHead(200,{'Content-Type':mimes[suffix]});return res.end(await readFile(new URL(assets[path],import.meta.url)));}
+   if(assets[path]&&req.method==='GET'){const suffix=path==='/'?'.html':path.slice(path.lastIndexOf('.'));res.writeHead(200,{'Content-Type':mimes[suffix],...(/\.(png|ico)$/.test(path)?{'Cache-Control':'public, max-age=86400'}:{})});return res.end(await readFile(new URL(assets[path],import.meta.url)));}
    if(!path.startsWith('/api/'))throw new HttpError(404,'Página não encontrada.');
    if(mutating){
     const expectedOrigin=new URL(config.appUrl).origin;
