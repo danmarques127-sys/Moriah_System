@@ -11,3 +11,30 @@ test('estimate editor renders hybrid assembly and all calculation output',()=>{c
 test('logout/login state clearing removes previous tenant records and quotes',()=>{const x=ui();x.s.me={role:'owner'};x.s.projects=[{name:'PRIVATE-CLIENT'}];x.s.estimate={secret:'PRIVATE-QUOTE'};x.s.settings=structuredClone(DEFAULT_SETTINGS);x.s.chosen={};x.clearWorkspace();assert.equal(x.s.me,null);assert.equal(x.s.projects.length,0);assert.equal(x.s.estimate,null);assert.equal(x.s.settings,null);assert.equal(x.s.chosen,null);assert.equal(x.s.tab,'radar');});
 test('printable client proposal excludes internal costs and escapes notes',()=>{const x=ui(),result=calculateEstimate({sections:[{geometry:'direct',directArea:100,targetR:15,layers:[{materialId:'cc',mode:'fixed',inches:2}]}]});x.proposal({id:'quote1234',result,company:DEFAULT_SETTINGS.company,project:{name:'Project',address:'12 Main'},input:{clientNotes:'<script>bad</script>'},createdAt:'2026-11-16T12:00:00Z'});assert.match(x.root.innerHTML,/PROPOSAL/);assert.match(x.root.innerHTML,/&lt;script&gt;/);assert.doesNotMatch(x.root.innerHTML,/laborCost|materialCost|password_hash/);});
 test('admin sees the file-import modal with preview, escaped values and a confirm button',()=>{const x=ui();x.s.me={role:'owner',email:'o@x.test',systemAdmin:true};x.s.settings=structuredClone(DEFAULT_SETTINGS);x.s.sources=[{id:'brookline',city:'Brookline',state:'MA',url:'https://aca-prod.accela.com/x',mode:'portal'}];x.s.radar={total:0,recordsLoaded:0,cityCounts:[],projects:[],pages:1,page:1,coverage:[],months:['2026-10']};x.s.tab='coverage';x.render();assert.match(x.root.innerHTML,/Import file \(PDF\/CSV\/XLSX\)/);x.s.modal='upload';x.s.upload={sourceId:'brookline',month:'2026-10',file:{name:'a.csv',size:2048},preview:{format:'text',rowsRead:2,inMonth:1,outsideMonth:1,undated:0,invalid:0,problems:[],range:{from:'2026-09-30',to:'2026-10-15'},sample:[{number:'BLD-1',issued:'2026-10-15',address:'<img src=x onerror=alert(1)>',type:'Building Permit',value:600000,description:'New dwelling'}]}};x.render();assert.match(x.root.innerHTML,/Confirm import of 1 permits/);assert.match(x.root.innerHTML,/&lt;img/);assert.doesNotMatch(x.root.innerHTML,/<img src=x/);});
+
+test('admin tab shows accounts, health filters and escapes values',()=>{
+ const x=ui();x.s.me={role:'owner',email:'o@x.test',systemAdmin:true};x.s.settings=structuredClone(DEFAULT_SETTINGS);
+ x.s.radar={total:0,recordsLoaded:0,cityCounts:[],projects:[],pages:1,page:1,coverage:[],months:['2026-10']};
+ x.s.tab='admin';
+ x.s.admin={users:[{id:'1',email:'<b>boss</b>@x.test',role:'owner',systemAdmin:true,activeSessions:2,workspace:'Main',createdAt:'2026-11-01T10:00:00Z'}],
+  sources:[{id:'a',city:'Alpha',state:'MA',mode:'documents',automatic:true,reason:'',url:'https://a.gov'},{id:'b',city:'Beta',state:'CT',mode:'portal',automatic:false,reason:'Import by hand.',url:'https://b.gov'}],
+  coverage:[{sourceId:'a',month:'2026-10',status:'unavailable',message:'HTTP 403 <script>x</script>',count:0,checkedAt:'2026-11-23T10:00:00Z'}],
+  checks:[{sourceId:'a',ok:false,httpStatus:403,note:'Blocked.',checkedAt:'2026-11-23T10:00:00Z'}],failedJobs:[]};
+ x.render();
+ const html=x.root.innerHTML;
+ assert.match(html,/Registered accounts \(1\)/);assert.match(html,/&lt;b&gt;boss/);
+ assert.match(html,/Alpha/);assert.doesNotMatch(html,/<script>x/);assert.match(html,/Failed/);
+ assert.match(html,/Check source links/);assert.match(html,/Retry failed collections/);
+ assert.doesNotMatch(html,/<td><b>Beta/); // manual cities are hidden by the default "needs attention" filter
+ x.s.adminFilter='all';x.render();assert.match(x.root.innerHTML,/Import by hand\./);
+});
+
+test('errors tab lists every recorded failure with its reason and filters by area',()=>{
+ const x=ui();x.s.me={role:'owner',email:'o@x.test',systemAdmin:true};x.s.settings=structuredClone(DEFAULT_SETTINGS);
+ x.s.radar={total:0,recordsLoaded:0,cityCounts:[],projects:[],pages:1,page:1,coverage:[],months:['2026-10']};x.s.tab='errors';
+ x.s.admin={users:[],sources:[{id:'danvers',city:'Danvers',state:'MA',mode:'documents',automatic:true,reason:'',url:'https://d.gov'}],coverage:[],checks:[],failedJobs:[],
+  errors:[{id:2,createdAt:'2026-11-23T10:00:00Z',area:'collection',sourceId:'danvers',month:'2026-10',message:'Fonte respondeu HTTP 403 <i>x</i>'},{id:1,createdAt:'2026-11-22T10:00:00Z',area:'import',sourceId:'',month:'',message:'Arquivo inválido'}]};
+ x.render();let html=x.root.innerHTML;
+ assert.match(html,/Danvers/);assert.match(html,/HTTP 403 &lt;i&gt;/);assert.match(html,/Arquivo inválido/);assert.match(html,/City collection/);
+ x.s.errorArea='import';x.render();html=x.root.innerHTML;assert.doesNotMatch(html,/HTTP 403/);assert.match(html,/Arquivo inválido/);
+});

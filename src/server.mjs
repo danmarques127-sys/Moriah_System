@@ -2,13 +2,15 @@ import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
-import {openDatabase,audit,timestamp} from './db.mjs';
+import {openDatabase,audit,timestamp,logError} from './db.mjs';
 import {bootstrap,workspaceSettings,saveSettings,saveProject,getProject,listProjects,saveEstimate,getEstimate,listEstimates,saveReview,radarData,allSources,findSource,upsertPermits,setCoverage,addSource,createMember} from './service.mjs';
 import {checkPassword,hashPassword,newSession,getSession,csrfMatches,cookie,rateLimit,validEmail} from './auth.mjs';
 import {calculateEstimate} from './estimator.mjs';
 import {enqueue,worker,scheduler} from './jobs.mjs';
 import {previousMonth,monthsBetween,validatePermit} from './radar.mjs';
 import {parseUploadedFile} from './documents.mjs';
+import {checkAllSources} from './source-audit.mjs';
+import {NATIVE_MODES} from './collectors.mjs';
 const assets={'/':'../public/index.html','/app.mjs':'../public/app.mjs','/style.css':'../public/style.css','/shared/estimator.mjs':'./estimator.mjs'};
 const mimes={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
 class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
@@ -132,17 +134,33 @@ export async function createApplication(options={}){
    if(path==='/api/jobs'&&req.method==='GET')return send(res,200,{jobs:db.prepare('SELECT id,source_id AS sourceId,month,status,message,updated_at AS updatedAt FROM jobs ORDER BY created_at DESC LIMIT 100').all()});
    if(path==='/api/jobs'&&req.method==='POST'){admin();if(!collectRate(user.id))throw new HttpError(429,'Aguarde para iniciar outra coleta.');const b=await body(req);return send(res,202,{queued:enqueue(db,b.sources,b.from,b.to)});}
    if(path==='/api/backup'&&req.method==='GET'){owner();const projects=listProjects(db,user),rows=db.prepare('SELECT id FROM estimates WHERE workspace_id=? ORDER BY created_at').all(user.workspace_id);return send(res,200,{format:'permit-finder-workspace-v1',createdAt:timestamp(),settings:workspaceSettings(db,user.workspace_id),projects,estimates:rows.map(r=>getEstimate(db,user,r.id)),reviews:db.prepare('SELECT project_key AS projectKey,status,notes,contact_date AS contactDate FROM lead_reviews WHERE workspace_id=?').all(user.workspace_id)});}
+   // System-administrator portal: accounts, collection health, source-link audit (never exposes password hashes or tokens).
+   if(path==='/api/admin/overview'&&req.method==='GET'){admin();
+    const users=db.prepare('SELECT u.id,u.email,u.role,u.system_admin AS systemAdmin,u.created_at AS createdAt,w.name AS workspace,(SELECT COUNT(*) FROM sessions s WHERE s.user_id=u.id AND s.expires_at>?) AS activeSessions FROM users u JOIN workspaces w ON w.id=u.workspace_id ORDER BY u.created_at').all(Date.now()).map(u=>({...u,systemAdmin:!!u.systemAdmin}));
+    const sources=allSources(db).map(x=>({id:x.id,city:x.city,state:x.state,mode:x.mode,automatic:NATIVE_MODES.includes(x.mode),reason:x.reason||'',url:x.url}));
+    const coverage=db.prepare('SELECT source_id AS sourceId,month,status,message,count,checked_at AS checkedAt FROM coverage ORDER BY month DESC LIMIT 3000').all();
+    const checks=db.prepare('SELECT source_id AS sourceId,checked_at AS checkedAt,ok,http_status AS httpStatus,note FROM source_checks').all().map(c=>({...c,ok:!!c.ok}));
+    const failedJobs=db.prepare("SELECT source_id AS sourceId,month,message,updated_at AS updatedAt FROM jobs WHERE status='failed' ORDER BY updated_at DESC LIMIT 50").all();
+    const errors=db.prepare('SELECT id,created_at AS createdAt,area,source_id AS sourceId,month,message FROM error_log ORDER BY id DESC LIMIT 300').all();
+    return send(res,200,{users,sources,coverage,checks,failedJobs,errors});}
+   if(path==='/api/admin/check-sources'&&req.method==='POST'){admin();if(!collectRate(user.id))throw new HttpError(429,'Aguarde para iniciar outra verificação.');
+    const list=allSources(db);checkAllSources(db,list).catch(()=>{});audit(db,user.workspace_id,'admin:check-sources');return send(res,202,{started:list.length});}
+   if(path==='/api/admin/retry-failed'&&req.method==='POST'){admin();if(!collectRate(user.id))throw new HttpError(429,'Aguarde para iniciar outra coleta.');
+    const native=new Set(allSources(db).filter(x=>NATIVE_MODES.includes(x.mode)).map(x=>x.id));
+    const rows=db.prepare("SELECT source_id AS id,month FROM coverage WHERE status='unavailable' ORDER BY month DESC LIMIT 60").all().filter(r=>native.has(r.id));
+    let queued=0;for(const r of rows)queued+=enqueue(db,[r.id],r.month,r.month);audit(db,user.workspace_id,'admin:retry-failed');return send(res,202,{queued});}
    if(path==='/api/audit'&&req.method==='GET'){owner();return send(res,200,{events:db.prepare('SELECT event,created_at AS createdAt FROM audit WHERE workspace_id=? ORDER BY id DESC LIMIT 100').all(user.workspace_id)});}
    throw new HttpError(404,'Operação não encontrada.');
   }catch(e){
    const status=e.status||400;if(status>=500)console.error('Request failed',requestId,e.name);
+   try{const pathname=new URL(req.url,'http://x').pathname;if(status>=500)logError(db,'server',pathname+': '+e.message);else if(/^\/api\/import/.test(pathname)&&status!==401&&status!==403)logError(db,'import',e.message,{sourceId:String(new URL(req.url,'http://x').searchParams.get('sourceId')||''),month:String(new URL(req.url,'http://x').searchParams.get('month')||'')});}catch{/* ignore */}
    send(res,status,{error:e.message?.includes('UNIQUE')?'Registro já existente.':String(e.message||'Não foi possível concluir a operação.').slice(0,1000)});
   }
  });
  server.requestTimeout=30000;server.headersTimeout=15000;
  let jobTimer,scheduleTimer;
  if(options.startBackground!==false){db.prepare("UPDATE jobs SET status='queued',message='Retomada após reinício' WHERE status='running'").run();const run=worker(db);jobTimer=setInterval(()=>run().catch(e=>console.error('Collector worker error',e.name)),2000);
- if(process.env.ENABLE_SCHEDULER==='1'){const tick=()=>{try{scheduler(db,process.env.SCAN_TIMEZONE||'America/New_York');}catch(e){console.error('Scheduler error',e.name);}};tick();scheduleTimer=setInterval(tick,60000);}}
+ if(process.env.ENABLE_SCHEDULER==='1'){const tick=()=>{try{const n=scheduler(db,process.env.SCAN_TIMEZONE||'America/New_York');if(n)checkAllSources(db,allSources(db)).catch(()=>{});}catch(e){console.error('Scheduler error',e.name);}};tick();scheduleTimer=setInterval(tick,60000);}}
  return {server,db,config,async close(){clearInterval(jobTimer);clearInterval(scheduleTimer);await new Promise(r=>server.close(r));db.close();}};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
