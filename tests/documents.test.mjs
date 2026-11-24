@@ -25,7 +25,7 @@ test('every city is either automatic or has an explicit import-only reason', () 
     if (NATIVE_MODES.includes(s.mode)) continue;
     assert.ok(s.reason, s.id + ' needs a documented reason');
   }
-  assert.equal(SOURCES.filter(s => s.mode === 'documents').length, 16);
+  assert.equal(SOURCES.filter(s => s.mode === 'documents').length, 15);
   for (const s of SOURCES.filter(s => s.mode === 'documents')) {
     assert.ok(s.collector, s.id);
     assert.ok(s.allowedHosts.length >= 1, s.id + ' needs a www/non-www host variant');
@@ -304,4 +304,29 @@ test('rows that start with the date and then the permit number are read (Amesbur
   assert.equal(rows[0].issued, '2026-10-01');
   assert.equal(rows[0].value, 17000);
   assert.match(rows[0].address, /^10 MERRILL AVE/);
+});
+
+test('month-only links with no year get their year from the newest-first order (West Hartford)', async () => {
+  const source = src('west-hartford'), base = 'https://www.westhartfordct.gov/fs/resource-manager/view/';
+  const months = ['October', 'September', 'August', 'January', 'December', 'November'];
+  const listing = months.map((m, i) => '<a href="/fs/resource-manager/view/g' + i + '">' + m + '</a>').join('') + '<a href="/fs/resource-manager/view/demo">Demographics</a>';
+  const calls = [];
+  const result = await collectDocuments(source, '2026-08', {fetch: fakeFetch({[source.url]: listing, [base + 'g2']: {body: pdfBytes, type: 'application/pdf'}}, calls), pdfToText: async () => 'BP-26-77  8/5/2026  1 A ST  New single family dwelling  $500,000.00\n', now: () => new Date('2026-11-23T12:00:00Z'), ...noSleep});
+  assert.deepEqual(calls.slice(1), [base + 'g2']);
+  assert.equal(result.records.length, 1);
+  const wrongYear = await collectDocuments(source, '2025-12', {fetch: fakeFetch({[source.url]: listing, [base + 'g4']: {body: pdfBytes, type: 'application/pdf'}}), pdfToText: async () => 'BP-25-9  12/5/2025  1 A ST  New single family dwelling  $500,000.00\n', now: () => new Date('2026-11-23T12:00:00Z'), ...noSleep});
+  assert.equal(wrongYear.records.length, 1);
+});
+
+test('an unrecognized layout error carries the first lines that were read', async () => {
+  const source = src('lexington'), base = 'https://www.lexingtonma.gov/DocumentCenter/View/';
+  const listing = '<a href="/DocumentCenter/View/5">October 2026</a>';
+  await assert.rejects(collectDocuments(source, '2026-10', {fetch: fakeFetch({[source.url]: listing, [base + '5']: {body: pdfBytes, type: 'application/pdf'}}), pdfToText: async () => 'Weird header line\nnothing that looks like a permit\n', ...noSleep}), /Início do que foi lido: Weird header line/);
+});
+
+test('rows without a recognizable date say so instead of claiming the month is empty', async () => {
+  const source = {...src('lexington'), collector: {scope: 'month', rowMode: 'dated-line'}}, base = 'https://www.lexingtonma.gov/DocumentCenter/View/';
+  const listing = '<a href="/DocumentCenter/View/5">October 2026</a>';
+  const result = await collectDocuments(source, '2026-10', {fetch: fakeFetch({[source.url]: listing, [base + '5']: {body: pdfBytes, type: 'application/pdf'}}), pdfToText: async () => 'BP-26-77  Sept 5 2026  1 A ST  New dwelling  $5,000.00\n', ...noSleep});
+  assert.equal(result.status, 'pending'); assert.match(result.message, /não trazem data reconhecida/);
 });

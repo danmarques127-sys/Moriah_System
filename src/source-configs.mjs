@@ -25,10 +25,8 @@ export const DOCUMENT_SOURCES = {
   andover: {collector: {scope: 'latest', listUrls: ['https://andoverma.gov/Archive.aspx?AMID=70', 'https://andoverma.gov/Archive/70'], match: 'permit', rowMode: 'dated-line', maxFiles: 2}},
   wakefield: {collector: {scope: 'month', match: 'Building Permits Issued', dateKind: 'paid', columns: ['type', 'skip', 'date', 'address', 'skip', 'value', 'description', 'contractor']}},
   reading: {collector: {scope: 'month', match: 'Building-Permits-Issued|Building Permits Issued|permit'}},
-  // Danvers: the planning page links to a monthly "Permitting Update"; open it and clean the permit list.
-  danvers: {collector: {scope: 'month', match: 'Permitting.Update', fileLag: true, dateKind: 'submitted', crawl: true, crawlRe: 'permitting|update'}},
   waltham: {collector: {scope: 'year', textEquals: '{year}', match: 'DocumentCenter', maxFiles: 12}},
-  'west-hartford': {collector: {scope: 'month'}, allowedHosts: ['resources.finalsite.net']},
+  'west-hartford': {collector: {scope: 'month', inferYear: true}, allowedHosts: ['resources.finalsite.net']},
   milford: {collector: {scope: 'month', match: 'permit', listUrls: ['https://www.milfordct.us/Archive.aspx?AMID=41']}},
   amesbury: {collector: {scope: 'month', match: 'permit|bldg', dateKind: 'submitted', leadDate: true, columns: ['applicant', 'address', 'description', 'value']}},
   'north-attleborough': {collector: {scope: 'month', match: 'permit|building'}, allowedHosts: ['northattleborough.gov', 'nattleboro.com']},
@@ -42,6 +40,7 @@ export const ACCELA_SOURCES = {
 
 // No scriptable bulk source yet. These stay import-only, with the reason shown in the job log.
 export const PORTAL_REASONS = {
+  danvers: 'O site de Danvers bloqueia acesso automático (HTTP 403) e a lista só chega até dezembro de 2025. Não há tentativa de contornar. Baixe o relatório pelo navegador e importe.',
   southbury: 'Southbury publica relatórios mensais sem coleta automática validada. Importe o relatório do mês.',
   bethel: 'Bethel publica relatórios mensais sem coleta automática validada. Importe o relatório do mês.',
   springfield: 'Springfield publica os permits em um portal OpenGov sem exportação automática. Importe o relatório pela tela de importação.',
