@@ -364,3 +364,19 @@ td.rowact{white-space:nowrap}
 .iconbtn2{position:relative;background:transparent;border:0;padding:6px;color:#d9d5ff}
 .iconbtn2 .ico{width:26px;height:26px}
 .dot2{position:absolute;top:4px;right:5px;width:9px;height:9px;border-radius:50%;background:#a855f7}
+
+/* unified call-to-action buttons */
+button.primary,button.ghost,.btn.primary{background:linear-gradient(135deg,#8b3dff,#6d28d9);border-color:transparent;color:#fff;font-weight:600;padding:11px 22px;border-radius:14px;width:auto;line-height:1.2;white-space:nowrap}
+button.primary:hover,button.ghost:hover{background:linear-gradient(135deg,#9a55ff,#7c3aed);border-color:transparent;filter:none}
+button.primary:disabled,button.ghost:disabled{opacity:.5}
+.settings-panel>button.primary[type=submit]{width:100%}
+.panel>button.primary:not([type=submit]),.panel>div>button.primary:not([type=submit]){align-self:flex-start}
+.picker-foot .primary{width:100%}
+/* checkbox toggles */
+label.archive-toggle{display:flex;align-items:center;gap:12px;font-size:15px;color:var(--text);cursor:pointer}
+input[type=checkbox]{appearance:none;-webkit-appearance:none;flex:none;width:22px;height:22px;margin:0;border:1.5px solid var(--accent2);border-radius:7px;background:var(--card2);display:inline-grid;place-content:center;cursor:pointer;transition:.15s}
+input[type=checkbox]::after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg) scale(0);margin-top:-2px;transition:.12s}
+input[type=checkbox]:checked{background:linear-gradient(135deg,#8b3dff,#6d28d9);border-color:transparent}
+input[type=checkbox]:checked::after{transform:rotate(45deg) scale(1)}
+input[type=checkbox]:focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
+label input[type=checkbox],fieldset input[type=checkbox]{width:22px;height:22px;padding:0}
