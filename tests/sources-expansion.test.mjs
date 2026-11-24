@@ -4,7 +4,7 @@ import {SOURCES,sourceById} from '../src/sources.mjs';
 import {NATIVE_MODES,collect} from '../src/collectors.mjs';
 
 const additions={
-  MA:['springfield','lowell','chicopee'],
+  MA:['springfield','chicopee'],
   CT:['bridgeport','stamford'],
   RI:['pawtucket']
 };

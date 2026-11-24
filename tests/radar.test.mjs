@@ -37,9 +37,9 @@ test('ArcGIS repeated full page fails rather than reporting complete',async()=>{
 });
 
 test('monthly report sources are discoverable but not falsely marked as native',async()=>{
- for(const name of ['southbury','bethel']){
+ for(const name of ['springfield','chicopee']){
   const source=SOURCES.find(s=>s.id===name);
-  assert.ok(source);assert.equal(source.state,'CT');assert.equal(source.mode,'report');
+  assert.ok(source);assert.equal(source.state,'MA');assert.ok(['report','portal'].includes(source.mode));
   const result=await collect(source,'2026-10');assert.equal(result.status,'pending');
  }
 });
@@ -56,10 +56,10 @@ test('unsupported source jobs stay pending rather than showing successful collec
  const {enqueue,worker}=await import('../src/jobs.mjs');
  const db=openDatabase(':memory:');
  try{
-  enqueue(db,['southbury'],'2026-10','2026-10');
+  enqueue(db,['pawtucket'],'2026-10','2026-10');
   await worker(db)();
   const job=db.prepare('SELECT status FROM jobs').get();
-  const coverage=db.prepare('SELECT status,count FROM coverage WHERE source_id=? AND month=?').get('southbury','2026-10');
+  const coverage=db.prepare('SELECT status,count FROM coverage WHERE source_id=? AND month=?').get('pawtucket','2026-10');
   assert.equal(job.status,'pending');assert.equal(coverage.status,'pending');assert.equal(coverage.count,0);
  }finally{db.close();}
 });
