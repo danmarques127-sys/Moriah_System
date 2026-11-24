@@ -17,8 +17,8 @@ import {sendMail,mailConfig} from './mailer.mjs';
 import {runRetentionIfDue,retentionStatus,cutoffDate,getSetting} from './retention.mjs';
 import {recordManualImport,manualImportStatus} from './manual.mjs';
 const assets={'/':'../public/index.html','/app.mjs':'../public/app.mjs','/style.css':'../public/style.css'};
-for(const f of ['logo.png','logo-mark.png','favicon.png','favicon.ico','icon-192.png','apple-touch-icon.png'])assets['/'+f]='../public/'+f;
-const mimes={'.png':'image/png','.ico':'image/x-icon','.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
+for(const f of ['logo.png','logo-mark.png','favicon.png','favicon.ico','icon-192.png','apple-touch-icon.png','login-bg.svg'])assets['/'+f]='../public/'+f;
+const mimes={'.png':'image/png','.svg':'image/svg+xml','.ico':'image/x-icon','.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
 class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
 async function body(req){
  if(!String(req.headers['content-type']||'').startsWith('application/json'))throw new HttpError(415,'Use application/json.');

@@ -295,3 +295,22 @@ button.outline{background:transparent;border:1px solid var(--accent2);color:#c9a
 .city-list .city-option{padding:12px 14px;border-bottom:1px solid var(--line)}
 td.rowact{white-space:nowrap}
 @media (max-width:900px){.profile-grid{grid-template-columns:1fr}.profile-form{grid-template-columns:1fr}.profile-form .save{grid-column:1}.form-grid.inline label,.rowform label{grid-template-columns:1fr}}
+
+/* login v2: closer to the mockup */
+.login{background:#0b0a1c url(/login-bg.svg) center/cover no-repeat}
+.login::before,.login::after{display:none}
+.login-wrap{width:min(720px,94vw);gap:44px}
+.login-brand{gap:22px}
+.login-mark{width:110px;height:110px;border-radius:26px}
+.login-brand .brand-text b{font-size:64px;letter-spacing:4px}
+.login-brand .brand-text small{font-size:30px;letter-spacing:14px}
+.login .panel{padding:48px 56px;border-radius:28px;background:#16152bcc;backdrop-filter:blur(6px);box-shadow:0 30px 80px #000a}
+.login .panel h1{font-size:52px;margin:0 0 6px}
+.login form{gap:22px}
+.login label{font-size:20px;color:var(--text);font-weight:600}
+.login input{padding:20px 22px;font-size:22px;border-radius:16px;border-width:2px}
+.login .pw input{padding-right:64px}
+.login .eye .ico{width:28px;height:28px}
+.login .form-error{font-size:20px}
+.login .primary{padding:22px;font-size:28px;font-weight:700;border-radius:16px;background:linear-gradient(180deg,#8a3cff,#6a22e8)}
+@media (max-width:600px){.login .panel{padding:28px 22px}.login-brand .brand-text b{font-size:36px}.login-mark{width:72px;height:72px}.login .panel h1{font-size:36px}.login input{font-size:18px;padding:16px}.login .primary{font-size:22px}}
