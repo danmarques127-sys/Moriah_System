@@ -8,10 +8,10 @@ import {openDatabase} from '../src/db.mjs';
 test('every migration saves its version, and a half-applied migration is repaired on the next start', () => {
   const path = join(mkdtempSync(join(tmpdir(), 'mig-')), 'x.sqlite');
   let db = openDatabase(path);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 18);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 19);
   db.exec('PRAGMA user_version=16'); db.close(); // simulate the old database: 017 columns exist but the version stayed at 16
   db = openDatabase(path);
-  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 18);
+  assert.equal(db.prepare('PRAGMA user_version').get().user_version, 19);
   assert.ok(db.prepare("SELECT 1 FROM pragma_table_info('estimate_requests') WHERE name='prospect_phone'").get());
   assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE name='ins_materials'").get());
 });

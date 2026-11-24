@@ -1,87 +1,81 @@
-// Insulation job pricing from materials.
-// Spray foam: net area (sq ft, minus openings) x thickness (in) = BOARD FEET; gallons = board feet / yield (bd ft per gallon);
-// barrels = gallons / barrel size (45 by default); material cost = gallons x price per gallon. Open and closed cell are
-// calculated separately, each with its own yield. Hybrid: closed cell first, then open cell fills the rest of the target R.
-// Batts and blown-in: sq ft / coverage per pack x pack price.
-// Starting values are EDITABLE: yields and prices come from the previous Insulation Estimator calibration; confirm them with the
-// client's spec sheet (UPC data sheets) and supplier prices before quoting.
+// Insulation proposal lines (PPU), modeled on the tool the business already uses.
+//   foam:   inches = target R / R per inch;  board feet = FT x inches;  price = board feet x unit price (sell price per board foot)
+//   batts / blown-in: price = FT x unit price (per sq ft);  R is fixed by the product
+//   materials list: foam gallons = total board feet / Factor M (yield, bd ft per gallon); batts = total FT / Factor M (sq ft per pack)
+//   proposal total: original price - discount % + extra to be charged (may be negative) + optional sales tax
+// Private side (never shown to customers): cost per gallon / pack + crew productivity give cost, profit and margin.
+// Starting values are EDITABLE and come from the existing proposals' unit prices and yields; confirm with the spec sheet.
 const fail = (m, s = 400) => { const e = new Error(m); e.status = s; throw e; };
 const clean = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, ' ').trim().slice(0, n);
 const round2 = v => Math.round(v * 100) / 100;
 const KINDS = ['foam_open', 'foam_closed', 'batt', 'blown'];
-// [name, kind, pack, unit_cost, pack_gal(unused), pack_cover, r_per_inch, r_fixed, note]   (foam: cost per gallon, cover = bd ft per gallon)
+export const PLACES = ['UNDER SIDE OF ROOF', 'EXTERIOR WALLS', 'ATTIC FLOOR', 'GARAGE CEILING', 'GARAGE WALLS', 'GARAGE HOUSE WALLS', 'IN BETWEEN UNIT WALLS', 'BASEMENT WALLS', 'RIM JOIST', 'CRAWL SPACE', 'KNEE WALLS', 'FLOOR OVER GARAGE'];
+// [name, kind, pack, unit_cost, pack_gal(unused), pack_cover (Factor M), r_per_inch, r_fixed, note, unit_price]
 export const DEFAULT_MATERIALS = [
-  ['UPC open-cell spray foam (UPC 400)', 'foam_open', 'gal', 37, 1, 382, 3.7, 0, 'Previous calibration: $37/gal, ~382 bd ft/gal. Data sheet: R-4.0/in, up to 20,000 bd ft per set.'],
-  ['UPC closed-cell spray foam (UPC 2.0)', 'foam_closed', 'gal', 50, 1, 96, 6.5, 0, 'Previous calibration: $50/gal, ~96 bd ft/gal. Set R/in and yield from the spec sheet.'],
-  ['Fiberglass batt R-13 (pink)', 'batt', 'sq ft', 0.45, 0, 1, 0, 13, '2x4 walls.'],
-  ['Fiberglass batt R-19 (pink)', 'batt', 'sq ft', 0.7, 0, 1, 0, 19, '2x6 walls / floors.'],
-  ['Fiberglass batt R-30 (pink)', 'batt', 'sq ft', 0.95, 0, 1, 0, 30, 'Attics / floors.'],
-  ['Rockwool batt R-15', 'batt', 'sq ft', 0.85, 0, 1, 0, 15, 'Mineral wool costs roughly 40-50% more than fiberglass.'],
-  ['Rockwool batt R-23', 'batt', 'sq ft', 1.25, 0, 1, 0, 23, ''],
-  ['Blown-in fiberglass R-38 (attic)', 'blown', 'bag', 38, 0, 55, 0, 38, 'Coverage per bag depends on R-value; check the bag label.']
+  ['Open Cell Spray Foam', 'foam_open', 'gal', 37, 1, 379, 4.2, 0, 'Sell $/bd ft, yield (Factor M) in bd ft per gallon, R per inch. Private cost per gallon.', 0.35],
+  ['Closed Cell Spray Foam', 'foam_closed', 'gal', 50, 1, 95, 7.5, 0, 'Sell $/bd ft, yield (Factor M) in bd ft per gallon, R per inch.', 1.3],
+  ['Fiberglass batt R-13', 'batt', 'sq ft', 0.45, 0, 1, 0, 13, '2x4 walls.', 1.25],
+  ['Fiberglass batt R-19', 'batt', 'sq ft', 0.7, 0, 1, 0, 19, '2x6 walls / floors.', 1.66],
+  ['Fiberglass batt R-30', 'batt', 'sq ft', 0.95, 0, 1, 0, 30, 'Attics / floors.', 2.25],
+  ['Roxul 3 inches 3x15', 'batt', 'pack', 1.0, 0, 80, 0, 15, 'Factor M = sq ft per pack.', 1.85],
+  ['Roxul 5.5 inches R-23', 'batt', 'pack', 1.5, 0, 60, 0, 23, 'Factor M = sq ft per pack.', 2.6],
+  ['Blown-in fiberglass R-38 (attic)', 'blown', 'bag', 38, 0, 55, 0, 38, 'Factor M = sq ft per bag (check the label).', 2.1]
 ];
-export const DEFAULT_SETTINGS = {crewSize: 2, galPerDay: 60, crewDayCost: 800, wastePct: 10, markupPct: 35, sqftPerDay: 1500, barrelGal: 45};
+export const DEFAULT_SETTINGS = {crewSize: 2, galPerDay: 60, crewDayCost: 800, wastePct: 10, markupPct: 0, sqftPerDay: 1500, barrelGal: 45};
 
 function seed(db, co) {
-  if (!db.prepare('SELECT 1 FROM ins_materials WHERE company_id=? LIMIT 1').get(co)) for (const m of DEFAULT_MATERIALS) db.prepare('INSERT INTO ins_materials(company_id,name,kind,pack,unit_cost,pack_gal,pack_cover,r_per_inch,r_fixed,note) VALUES(?,?,?,?,?,?,?,?,?,?)').run(co, ...m);
+  if (!db.prepare('SELECT 1 FROM ins_materials WHERE company_id=? LIMIT 1').get(co)) for (const m of DEFAULT_MATERIALS) db.prepare('INSERT INTO ins_materials(company_id,name,kind,pack,unit_cost,pack_gal,pack_cover,r_per_inch,r_fixed,note,unit_price) VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(co, ...m);
   db.prepare('INSERT OR IGNORE INTO ins_settings(company_id) VALUES(?)').run(co);
 }
-const shapeMat = r => ({id: r.id, name: r.name, kind: r.kind, pack: r.pack, unitCost: r.unit_cost, packGal: r.pack_gal, packCover: r.pack_cover, rPerInch: r.r_per_inch, rFixed: r.r_fixed, note: r.note});
+const shapeMat = r => ({id: r.id, name: r.name, kind: r.kind, pack: r.pack, unitCost: r.unit_cost, packGal: r.pack_gal, packCover: r.pack_cover, rPerInch: r.r_per_inch, rFixed: r.r_fixed, note: r.note, unitPrice: r.unit_price});
 function settings(db, co) {
   const s = db.prepare('SELECT * FROM ins_settings WHERE company_id=?').get(co);
   return {crewSize: s.crew_size, galPerDay: s.gal_per_day, crewDayCost: s.crew_day_cost, wastePct: s.waste_pct, markupPct: s.markup_pct, sqftPerDay: s.sqft_per_day, barrelGal: s.barrel_gal};
 }
 export function listInsulation(db, owner) {
   seed(db, owner.companyId);
-  return {materials: db.prepare('SELECT * FROM ins_materials WHERE company_id=? ORDER BY id').all(owner.companyId).map(shapeMat), settings: settings(db, owner.companyId)};
+  return {materials: db.prepare('SELECT * FROM ins_materials WHERE company_id=? ORDER BY id').all(owner.companyId).map(shapeMat), settings: settings(db, owner.companyId), places: PLACES};
 }
 const num = (v, lo, hi, label) => { const n = Number(v); if (!(n >= lo && n <= hi)) fail(label + ' inválido.'); return n; };
 
 export function calcInsulation(db, owner, b) {
   seed(db, owner.companyId);
-  const st = settings(db, owner.companyId), waste = 1 + st.wastePct / 100, markup = 1 + st.markupPct / 100;
-  const rows = [], items = []; let material = 0, labor = 0, days = 0;
-  const mat = id => { const m = db.prepare('SELECT * FROM ins_materials WHERE id=? AND company_id=?').get(Number(id), owner.companyId); if (!m) fail('Material não encontrado.', 404); return m; };
-  // One layer of one product over a net area.
-  const layer = (m, net, inches) => {
-    const foam = m.kind.startsWith('foam'), covered = net * waste * (foam ? inches : 1);   // board feet (foam) or sq ft
-    const packs = covered / Math.max(m.pack_cover, 0.0001), gallons = foam ? packs : 0;
-    const mc = packs * m.unit_cost, crewDays = foam ? gallons / Math.max(st.galPerDay, 1) : net / Math.max(st.sqftPerDay, 1), lab = crewDays * st.crewDayCost;
-    material += mc; labor += lab; days += crewDays;
-    const r = foam ? round2(m.r_per_inch * inches) : m.r_fixed, cost = mc + lab;
-    rows.push({material: m.name, kind: m.kind, sqft: round2(net), inches: foam ? round2(inches) : 0, r, boardFeet: foam ? round2(covered) : 0, gallons: round2(gallons), barrels: foam ? round2(gallons / st.barrelGal) : 0, packs: round2(packs), packLabel: m.pack, materialCost: round2(mc), crewDays: round2(crewDays), laborCost: round2(lab), cost: round2(cost), price: round2(cost * markup)});
-    return {r, price: cost * markup, label: m.name + (foam ? ' ' + round2(inches) + '"' : '') + (r ? ' (R-' + r + ')' : '')};
-  };
-  for (const l of (Array.isArray(b.lines) ? b.lines : []).slice(0, 20)) {
-    const gross = Number(l.sqft); if (!(gross > 0)) continue; if (gross > 1000000) fail('Área inválida.');
-    const net = gross - Math.max(0, Number(l.openings) || 0); if (!(net > 0)) fail('As aberturas não podem ser maiores que a área.');
-    const first = mat(l.materialId), parts = [];
-    if (first.kind.startsWith('foam')) parts.push(layer(first, net, num(l.inches, 0.25, 24, 'Espessura')));
-    else parts.push(layer(first, net, 0));
-    if (l.hybridId) { // hybrid: the second foam (open cell) fills what is left of the target R after the first layer
-      const second = mat(l.hybridId), target = num(l.targetR, 1, 100, 'R-value alvo'); if (!second.kind.startsWith('foam') || second.r_per_inch <= 0) fail('Escolha uma espuma com R por polegada.');
-      const left = target - parts[0].r; if (left > 0) parts.push(layer(second, net, left / second.r_per_inch));
-    }
-    const total = parts.reduce((t, p) => t + p.price, 0);
-    items.push({description: parts.map(p => p.label).join(' + ') + ' — installed, per sq ft', qty: round2(net), price: round2(total / net)});
+  const st = settings(db, owner.companyId), waste = 1 + st.wastePct / 100;
+  const rows = [], groups = new Map(); let original = 0, cost = 0, crewDays = 0;
+  for (const [i, l] of (Array.isArray(b.lines) ? b.lines : []).slice(0, 60).entries()) {
+    const ft = Number(l.ft); if (!(ft > 0)) continue; if (ft > 10000000) fail('Quantidade (ft) inválida.');
+    const m = db.prepare('SELECT * FROM ins_materials WHERE id=? AND company_id=?').get(Number(l.materialId), owner.companyId); if (!m) fail('Material não encontrado.', 404);
+    const foam = m.kind.startsWith('foam'); let rv, inches = 0, bf = 0;
+    if (foam) { rv = num(l.rv, 1, 200, 'RV (R-value)'); if (!(m.r_per_inch > 0)) fail('Defina o R por polegada do produto.'); inches = rv / m.r_per_inch; bf = ft * inches; } else rv = m.r_fixed;
+    const price = foam ? bf * m.unit_price : ft * m.unit_price;
+    const amount = foam ? bf / Math.max(m.pack_cover, 0.0001) : ft / Math.max(m.pack_cover, 0.0001);   // gallons, or packs
+    const mcost = amount * waste * m.unit_cost, days = foam ? amount * waste / Math.max(st.galPerDay, 1) : ft / Math.max(st.sqftPerDay, 1);
+    const lcost = mcost + days * st.crewDayCost;
+    original += price; cost += lcost; crewDays += days;
+    const g = groups.get(m.id) || {material: m.name, kind: m.kind, unit: foam ? 'GL' : (m.pack === 'sq ft' ? 'SF' : m.pack.toUpperCase()), bf: 0, ft: 0, factor: m.pack_cover}; g.bf += bf; g.ft += ft; groups.set(m.id, g);
+    rows.push({order: Number(l.order) || i + 1, place: clean(l.place, 80), depth: clean(l.depth, 20), workplace: clean(l.workplace, 80), noteCustomer: clean(l.noteCustomer, 400), noteCrew: clean(l.noteCrew, 400), materialId: m.id, product: m.name, kind: m.kind, inches: round2(inches), rPerInch: m.r_per_inch, unitPrice: m.unit_price, rv: round2(rv), ft, boardFeet: round2(bf), price: round2(price), cost: round2(lcost)});
   }
-  const cost = material + labor, price = cost * markup;
-  return {rows, items, totals: {materialCost: round2(material), laborCost: round2(labor), crewDays: round2(days), cost: round2(cost), price: round2(price), profit: round2(price - cost), margin: price > 0 ? round2((price - cost) / price * 100) : 0}, settings: st};
+  rows.sort((x, y) => x.order - y.order);
+  const discountPct = num(b.discountPct || 0, 0, 100, 'Desconto'), extra = Number(b.extra || 0); if (!(Math.abs(extra) <= 100000000)) fail('Valor extra inválido.');
+  const extraNote = clean(b.extraNote, 200); if (extra && !extraNote) fail('Descreva o valor extra ("Extra to be charged").');
+  const discount = original * discountPct / 100, subtotal = original - discount + extra, taxRate = b.taxOn ? num(b.taxRate || 0, 0, 30, 'Imposto') : 0, tax = subtotal * taxRate / 100, total = subtotal + tax;
+  const materials = [...groups.values()].map(g => { const foam = g.kind.startsWith('foam'), qty = Math.round(foam ? g.bf / Math.max(g.factor, 0.0001) : g.ft / Math.max(g.factor, 0.0001)); return {material: g.material, unit: g.unit, qty, barrels: foam ? round2(qty / st.barrelGal) : 0, ft: round2(g.ft)}; });
+  return {rows, materials, totals: {original: round2(original), discount: round2(discount), extra: round2(extra), extraNote, subtotal: round2(subtotal), taxRate, tax: round2(tax), total: round2(total), cost: round2(cost), profit: round2(subtotal - cost), margin: subtotal > 0 ? round2((subtotal - cost) / subtotal * 100) : 0, crewDays: round2(crewDays)}, settings: st};
 }
 
 export function insulationAction(db, owner, b) {
   seed(db, owner.companyId);
   if (b.op === 'calc') return calcInsulation(db, owner, b);
   if (b.op === 'settings') {
-    const v = [Math.round(num(b.crewSize, 1, 20, 'Equipe')), num(b.galPerDay, 1, 5000, 'Galões por dia'), num(b.crewDayCost, 0, 100000, 'Custo do dia'), num(b.wastePct, 0, 100, 'Desperdício'), num(b.markupPct, 0, 500, 'Markup'), num(b.sqftPerDay, 1, 100000, 'Produtividade'), num(b.barrelGal || 45, 1, 500, 'Galões por barril')];
+    const v = [Math.round(num(b.crewSize, 1, 20, 'Equipe')), num(b.galPerDay, 1, 5000, 'Galões por dia'), num(b.crewDayCost, 0, 100000, 'Custo do dia'), num(b.wastePct, 0, 100, 'Desperdício'), num(b.markupPct ?? 0, 0, 500, 'Markup'), num(b.sqftPerDay, 1, 100000, 'Produtividade'), num(b.barrelGal || 45, 1, 500, 'Galões por barril')];
     db.prepare('UPDATE ins_settings SET crew_size=?,gal_per_day=?,crew_day_cost=?,waste_pct=?,markup_pct=?,sqft_per_day=?,barrel_gal=? WHERE company_id=?').run(...v, owner.companyId); return {ok: true};
   }
   if (b.op === 'save') {
     const name = clean(b.name, 120); if (!name) fail('Informe o nome do material.'); if (!KINDS.includes(b.kind)) fail('Tipo inválido.');
     const foam = b.kind.startsWith('foam');
-    const v = [name, b.kind, clean(b.pack, 60) || (foam ? 'set' : 'pack'), num(b.unitCost, 0, 1000000, 'Preço'), foam ? 1 : 0, num(b.packCover, 0.01, 10000000, 'Rendimento'), foam ? num(b.rPerInch, 0, 20, 'R por polegada') : 0, foam ? 0 : num(b.rFixed || 0, 0, 100, 'R-value'), clean(b.note, 300)];
-    if (b.id) { if (!db.prepare('UPDATE ins_materials SET name=?,kind=?,pack=?,unit_cost=?,pack_gal=?,pack_cover=?,r_per_inch=?,r_fixed=?,note=? WHERE id=? AND company_id=?').run(...v, Number(b.id), owner.companyId).changes) fail('Material não encontrado.', 404); return {id: Number(b.id)}; }
-    return {id: Number(db.prepare('INSERT INTO ins_materials(company_id,name,kind,pack,unit_cost,pack_gal,pack_cover,r_per_inch,r_fixed,note) VALUES(?,?,?,?,?,?,?,?,?,?)').run(owner.companyId, ...v).lastInsertRowid)};
+    const v = [name, b.kind, clean(b.pack, 60) || (foam ? 'gal' : 'pack'), num(b.unitCost || 0, 0, 1000000, 'Custo'), foam ? 1 : 0, num(b.packCover, 0.01, 10000000, 'Rendimento'), foam ? num(b.rPerInch, 0, 20, 'R por polegada') : 0, foam ? 0 : num(b.rFixed || 0, 0, 100, 'R-value'), clean(b.note, 300), num(b.unitPrice, 0, 1000000, 'Preço de venda')];
+    if (b.id) { if (!db.prepare('UPDATE ins_materials SET name=?,kind=?,pack=?,unit_cost=?,pack_gal=?,pack_cover=?,r_per_inch=?,r_fixed=?,note=?,unit_price=? WHERE id=? AND company_id=?').run(...v, Number(b.id), owner.companyId).changes) fail('Material não encontrado.', 404); return {id: Number(b.id)}; }
+    return {id: Number(db.prepare('INSERT INTO ins_materials(company_id,name,kind,pack,unit_cost,pack_gal,pack_cover,r_per_inch,r_fixed,note,unit_price) VALUES(?,?,?,?,?,?,?,?,?,?,?)').run(owner.companyId, ...v).lastInsertRowid)};
   }
   if (b.op === 'delete') { db.prepare('DELETE FROM ins_materials WHERE id=? AND company_id=?').run(Number(b.id), owner.companyId); return {ok: true}; }
   if (b.op === 'reset') { db.prepare('DELETE FROM ins_materials WHERE company_id=?').run(owner.companyId); db.prepare('DELETE FROM ins_settings WHERE company_id=?').run(owner.companyId); seed(db, owner.companyId); return {ok: true}; }
