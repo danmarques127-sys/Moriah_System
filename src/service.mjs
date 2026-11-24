@@ -28,13 +28,17 @@ export function radarData(db,user,query){
  if(ids.length){where+=' AND source_id IN ('+ids.map(()=>'?').join(',')+')';params.push(...ids);}
  const rows=db.prepare('SELECT data FROM permits WHERE '+where+' ORDER BY issued DESC,id LIMIT 30001').all(...params),truncated=rows.length>30000;
  const records=rows.slice(0,30000).map(r=>JSON.parse(r.data));const reviews=db.prepare('SELECT project_key AS projectKey,status,notes,contact_date AS contactDate FROM lead_reviews WHERE workspace_id=?').all(user.workspace_id);
- let projects=groupProjects(records,reviews);if(!includeArchived)projects=projects.filter(p=>!p.records.every(r=>/^(closed|finaled|completed|complete|cancelled|canceled|void|expired)$/i.test(String(r.status||'').trim())));if(query.mode!=='all')projects=projects.filter(p=>p.qualified);if(query.kind&&query.kind!=='All')projects=projects.filter(p=>p.kind===query.kind);if(query.tier&&query.tier!=='All')projects=projects.filter(p=>p.tier===query.tier);if(query.status&&query.status!=='All')projects=projects.filter(p=>p.review.status===query.status);
+ let projects=groupProjects(records,reviews);if(!includeArchived)projects=projects.filter(p=>!p.records.every(r=>/^(closed|finaled|completed|complete|cancelled|canceled|void|expired)$/i.test(String(r.status||'').trim())));if(query.mode!=='all')projects=projects.filter(p=>p.qualified);if(query.tier&&query.tier!=='All')projects=projects.filter(p=>p.tier===query.tier);if(query.status&&query.status!=='All')projects=projects.filter(p=>p.review.status===query.status);
  if(query.q){const q=String(query.q).toLowerCase();projects=projects.filter(p=>[p.master.address,p.master.city,...p.records.map(r=>r.description+' '+r.number+' '+r.contractor)].join(' ').toLowerCase().includes(q));}
+ const kinds={};for(const p of projects)kinds[p.kind]=(kinds[p.kind]||0)+1;
+ const weekMap={};for(const p of projects){const d=new Date((p.master.issued||'')+'T00:00:00Z');if(isNaN(d))continue;d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));const k=d.toISOString().slice(0,10);weekMap[k]=(weekMap[k]||0)+1;}
+ const weeks=Object.entries(weekMap).sort().slice(-16).map(([week,count])=>({week,count}));const declaredValue=projects.reduce((a,p)=>a+(Number(p.value)||0),0);
+ if(query.kind&&query.kind!=='All')projects=projects.filter(p=>p.kind===query.kind);
  if(query.order==='recent')projects.sort((a,b)=>b.master.issued.localeCompare(a.master.issued));else if(query.order!=='score')projects=diversify(projects);
  const total=projects.length,page=Math.max(1,Math.floor(Number(query.page)||1)),offset=(page-1)*50;
  const coverage=db.prepare('SELECT source_id AS sourceId,month,status,message,count,checked_at AS checkedAt FROM coverage WHERE month>=? AND month<=?').all(from,to);
  const cityCounts=db.prepare('SELECT source_id AS sourceId,COUNT(*) AS count FROM permits WHERE issued>=? AND issued<=? GROUP BY source_id').all(from+'-01',to+'-31');
- return {from,to,months,sources:allSources(db),coverage,cityCounts,total,page,pages:Math.max(1,Math.ceil(total/50)),projects:query.export==='1'?projects:projects.slice(offset,offset+50),truncated,recordsLoaded:records.length,qualified:projects.length};
+ return {from,to,months,sources:allSources(db),coverage,cityCounts,total,page,pages:Math.max(1,Math.ceil(total/50)),projects:query.export==='1'?projects:projects.slice(offset,offset+50),truncated,recordsLoaded:records.length,qualified:projects.length,kinds,weeks,declaredValue};
 }
 export function addSource(db,raw){
  const id=text(String(raw.id||''),60),city=text(String(raw.city||''),80),state=raw.state,url=new URL(raw.url);

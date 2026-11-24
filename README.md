@@ -135,3 +135,6 @@ The insulation estimator, proposals, projects, payments, employees/time entries,
 ## Cities added by the public-list survey (unvalidated, always `partial`)
 Barnstable (MA, monthly PDF `{Month}-{year}.pdf`), Southbury (CT, monthly M5 Permit Report), Bethel (CT, two known file names per month), Lowell (MA, yearly DocumentCenter folders), Manchester-by-the-Sea (MA, Archive Center "Building Permits"). `fileTemplates` in `src/source-configs.mjs` builds one URL per month: `{Month}` `{month}` `{mm}` `{year}` `{yy}`.
 Leads not yet wired (need a stable listing URL): Plymouth (MA Archive Center, "Permits Issued <Month> <Year>"), Truro (MA DocumentCenter "Monthly Building Report"), Newton (MA monthly "Building Permits Issued" PDFs under showpublisheddocument), Harwich (MA page links only).
+
+## New design
+Dark purple Moriah System look: sidebar menu, metric cards, "Permits by Week" and "Permits by Type" charts (real data from the selected filters), type pills that filter the table. Logo and favicons are in `public/`. Inline styles are blocked by the CSP, so charts are styled from JavaScript after render.
