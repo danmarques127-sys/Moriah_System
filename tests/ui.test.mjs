@@ -19,10 +19,10 @@ test('admin tab shows accounts, health filters and escapes values',()=>{
  x.s.admin={users:[{id:'1',email:'<b>boss</b>@x.test',role:'owner',systemAdmin:true,activeSessions:2,workspace:'Main',createdAt:'2026-11-01T10:00:00Z'}],
   sources:[{id:'a',city:'Alpha',state:'MA',mode:'documents',automatic:true,reason:'',url:'https://a.gov'},{id:'b',city:'Beta',state:'CT',mode:'portal',automatic:false,reason:'Import by hand.',url:'https://b.gov'}],
   coverage:[{sourceId:'a',month:'2026-10',status:'unavailable',message:'HTTP 403 <script>x</script>',count:0,checkedAt:'2026-11-23T10:00:00Z'}],
-  checks:[{sourceId:'a',ok:false,httpStatus:403,note:'Blocked.',checkedAt:'2026-11-23T10:00:00Z'}],failedJobs:[]};
+  checks:[{sourceId:'a',ok:false,httpStatus:403,note:'Blocked.',checkedAt:'2026-11-23T10:00:00Z'}],failedJobs:[],retention:{months:12,totalDeleted:7,last:{createdAt:'2026-11-23T10:00:00Z',cutoff:'2025-11-23',deleted:3},runs:[]}};
  x.render();
  const html=x.root.innerHTML;
- assert.match(html,/Registered accounts \(1\)/);assert.match(html,/&lt;b&gt;boss/);
+ assert.match(html,/Registered accounts \(1\)/);assert.match(html,/12 months/);assert.match(html,/3 deleted/);assert.match(html,/&lt;b&gt;boss/);
  assert.match(html,/Alpha/);assert.doesNotMatch(html,/<script>x/);assert.match(html,/Failed/);
  assert.match(html,/Check source links/);assert.match(html,/Retry failed collections/);
  assert.doesNotMatch(html,/<td><b>Beta/); // manual cities are hidden by the default "needs attention" filter
@@ -32,7 +32,7 @@ test('admin tab shows accounts, health filters and escapes values',()=>{
 test('errors tab lists every recorded failure with its reason and filters by area',()=>{
  const x=ui();x.s.me={role:'owner',email:'o@x.test',systemAdmin:true};x.s.settings=structuredClone(DEFAULT_SETTINGS);
  x.s.radar={total:0,recordsLoaded:0,cityCounts:[],projects:[],pages:1,page:1,coverage:[],months:['2026-10']};x.s.tab='errors';
- x.s.admin={users:[],sources:[{id:'danvers',city:'Danvers',state:'MA',mode:'documents',automatic:true,reason:'',url:'https://d.gov'}],coverage:[],checks:[],failedJobs:[],
+ x.s.admin={retention:{months:12,totalDeleted:0,last:null,runs:[]},users:[],sources:[{id:'danvers',city:'Danvers',state:'MA',mode:'documents',automatic:true,reason:'',url:'https://d.gov'}],coverage:[],checks:[],failedJobs:[],
   errors:[{id:2,createdAt:'2026-11-23T10:00:00Z',area:'collection',sourceId:'danvers',month:'2026-10',message:'Fonte respondeu HTTP 403 <i>x</i>'},{id:1,createdAt:'2026-11-22T10:00:00Z',area:'import',sourceId:'',month:'',message:'Arquivo inválido'}]};
  x.render();let html=x.root.innerHTML;
  assert.match(html,/Danvers/);assert.match(html,/HTTP 403 &lt;i&gt;/);assert.match(html,/Arquivo inválido/);assert.match(html,/City collection/);

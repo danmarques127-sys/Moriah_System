@@ -11,6 +11,7 @@ import {previousMonth,monthsBetween,validatePermit} from './radar.mjs';
 import {parseUploadedFile} from './documents.mjs';
 import {checkAllSources} from './source-audit.mjs';
 import {NATIVE_MODES} from './collectors.mjs';
+import {runRetentionIfDue,retentionStatus} from './retention.mjs';
 const assets={'/':'../public/index.html','/app.mjs':'../public/app.mjs','/style.css':'../public/style.css','/shared/estimator.mjs':'./estimator.mjs'};
 const mimes={'.html':'text/html; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
 class HttpError extends Error{constructor(status,message){super(message);this.status=status;}}
@@ -142,7 +143,7 @@ export async function createApplication(options={}){
     const checks=db.prepare('SELECT source_id AS sourceId,checked_at AS checkedAt,ok,http_status AS httpStatus,note FROM source_checks').all().map(c=>({...c,ok:!!c.ok}));
     const failedJobs=db.prepare("SELECT source_id AS sourceId,month,message,updated_at AS updatedAt FROM jobs WHERE status='failed' ORDER BY updated_at DESC LIMIT 50").all();
     const errors=db.prepare('SELECT id,created_at AS createdAt,area,source_id AS sourceId,month,message FROM error_log ORDER BY id DESC LIMIT 300').all();
-    return send(res,200,{users,sources,coverage,checks,failedJobs,errors});}
+    return send(res,200,{users,sources,coverage,checks,failedJobs,errors,retention:retentionStatus(db)});}
    if(path==='/api/admin/check-sources'&&req.method==='POST'){admin();if(!collectRate(user.id))throw new HttpError(429,'Aguarde para iniciar outra verificação.');
     const list=allSources(db);checkAllSources(db,list).catch(()=>{});audit(db,user.workspace_id,'admin:check-sources');return send(res,202,{started:list.length});}
    if(path==='/api/admin/retry-failed'&&req.method==='POST'){admin();if(!collectRate(user.id))throw new HttpError(429,'Aguarde para iniciar outra coleta.');
@@ -160,7 +161,7 @@ export async function createApplication(options={}){
  server.requestTimeout=30000;server.headersTimeout=15000;
  let jobTimer,scheduleTimer;
  if(options.startBackground!==false){db.prepare("UPDATE jobs SET status='queued',message='Retomada após reinício' WHERE status='running'").run();const run=worker(db);jobTimer=setInterval(()=>run().catch(e=>console.error('Collector worker error',e.name)),2000);
- if(process.env.ENABLE_SCHEDULER==='1'){const tick=()=>{try{const n=scheduler(db,process.env.SCAN_TIMEZONE||'America/New_York');if(n)checkAllSources(db,allSources(db)).catch(()=>{});}catch(e){console.error('Scheduler error',e.name);}};tick();scheduleTimer=setInterval(tick,60000);}}
+ if(process.env.ENABLE_SCHEDULER==='1'){const tick=()=>{try{runRetentionIfDue(db,process.env.SCAN_TIMEZONE||'America/New_York');const n=scheduler(db,process.env.SCAN_TIMEZONE||'America/New_York');if(n)checkAllSources(db,allSources(db)).catch(()=>{});}catch(e){console.error('Scheduler error',e.name);}};tick();scheduleTimer=setInterval(tick,60000);}}
  return {server,db,config,async close(){clearInterval(jobTimer);clearInterval(scheduleTimer);await new Promise(r=>server.close(r));db.close();}};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
