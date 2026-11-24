@@ -61,3 +61,18 @@ test('a failed e-mail never marks the estimate as sent', async () => {
   await assert.rejects(estimateAction(db, owner, SRC, {op: 'send', id}, {send: async () => ({sent: false, reason: 'smtp down'})}), /smtp down/);
   assert.equal(listEstimates(db, owner).estimates[0].status, 'with_owner');
 });
+
+test('line items: totals with tax are computed on the server; internal cost and margin are owner-only', async () => {
+  const {db, owner, seller, key} = await setup();
+  const send = async () => ({sent: true});
+  const {id} = await estimateAction(db, seller, SRC, {op: 'save', permitKey: key, prospectName: 'Jo', prospectEmail: 'jo@x.co', submit: true}, {send});
+  const r = await estimateAction(db, owner, SRC, {op: 'prepare', id, lineItems: [{description: 'Spray foam', qty: 960, price: 2}, {description: 'Prep', qty: 1, price: 280}], taxRate: 10, internalCost: 1500, total: 1}, {send});
+  assert.equal(r.total, 2420);
+  const o = listEstimates(db, owner).estimates[0]; assert.equal(o.subtotal, 2200); assert.equal(o.tax, 220); assert.equal(o.internalCost, 1500); assert.equal(o.margin, 38.02);
+  const s = listEstimates(db, seller).estimates[0]; assert.equal(s.total, 2420); assert.equal(s.lineItems.length, 2);
+  assert.ok(!('internalCost' in s) && !('margin' in s) && !('profit' in s), 'seller must not see internal cost');
+  assert.doesNotMatch(JSON.stringify(s), /internal/i);
+  await assert.rejects(estimateAction(db, owner, SRC, {op: 'prepare', id, lineItems: [{description: 'x', qty: 0, price: 1}]}, {send}), /Quantidade/);
+  const sent = []; await estimateAction(db, owner, SRC, {op: 'send', id, companyName: 'Acme'}, {send: async m => { sent.push(m); return {sent: true}; }});
+  assert.equal(sent[0].attachments[0].mime, 'application/pdf'); assert.ok(sent[0].attachments[0].data.subarray(0, 5).toString() === '%PDF-'); assert.doesNotMatch(sent[0].text, /internal|margin/i);
+});
