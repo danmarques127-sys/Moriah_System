@@ -58,3 +58,8 @@ test('manual cities section lists the reason, the last upload, overdue status an
  assert.match(html,/data-action="openUpload" data-id="danvers"/);assert.match(html,/<b>1<\/b> are overdue/);
  assert.doesNotMatch(html,/Official source ↗<\/a><\/small><\/td><td>[^<]*Boston/);
 });
+
+test('partners tab renders every admin section and escapes values',()=>{const x=ui();x.s.me={role:'owner',email:'o@x.test',systemAdmin:true};x.s.settings=structuredClone(DEFAULT_SETTINGS);x.s.sources=[{id:'a',city:'Alpha',state:'MA'}];
+ x.s.partners={trades:[{id:1,name:'Painting',active:true}],companies:[{id:1,name:'<b>Acme</b>',contactName:'',contactEmail:'',contactPhone:'',active:true,joinedOn:'2026-01-01',tradeIds:[1]}],clients:[{id:1,companyId:1,email:'c@x.test',name:'',active:true,cities:['a']}],coverage:[{companyId:1,name:'Acme',active:true,trades:['Painting'],cities:['a']}],usage:[{companyId:1,name:'Acme',seen:3,exported:1,lastAt:null}],freshness:[{sourceId:'a',city:'Alpha',state:'MA',permits:0,lastPermit:null,lastCollection:null,daysSincePermit:null,stale:true}],retention:{months:12,last:null,totalDeleted:0,runs:[]},settings:{retention_months:12,stale_days:45},audit:[{id:1,createdAt:'2026-11-01T00:00:00Z',actor:'mestre',kind:'login',event:'Login'}]};
+ x.s.tab='partners';for(const [sec,re] of [['companies',/&lt;b&gt;Acme/],['trades',/Painting/],['clients',/c@x\.test/],['coverage',/Alpha, MA/],['freshness',/No data/],['retention',/12 months/],['audit',/mestre/],['usage',/Permits exported/],['psettings',/Alert after days/]]){x.s.pSection=sec;x.render();assert.match(x.root.innerHTML,re,sec);}
+ assert.match(x.root.innerHTML,/>Partners</);});

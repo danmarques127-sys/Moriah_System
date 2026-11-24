@@ -114,3 +114,7 @@ Run `npm run start:test` with Node 24. This explicitly starts a test-only server
 This command uses a separate persistent `data/permit-finder-test.sqlite` database, ignores the real account bootstrap variables, and does not reset your existing accounts or estimates. The normal `npm start` command never creates this account. Test startup and test login configuration are rejected in production.
 
 In Codespaces the preview address is derived automatically from its environment. The test server also supports the Codespaces localhost Origin rewrite only for a same-origin request with an exactly matching localhost Host. Foreign origins and cross-site requests remain blocked. Outside Codespaces this exception is absent.
+
+## Admin portal (login `mestre`)
+Tabs: Permit Radar, Sources & Coverage, Admin (accounts, collection health, manual cities, retention), **Partners**, Errors, Account.
+Partners sections: Affiliated companies, Trades (editable), Client access (accounts linked to a company and cities; client sign-in is not enabled yet), Coverage by client, Data freshness (alert after N days without permits), Retention, Audit log (who imported, logged in, changed settings), Usage (permits seen/exported per company) and Settings (retention months, stale-days limit). Tables `permit_marks` and `client_cities` are the data model for the future client area; nothing else of it is built.
