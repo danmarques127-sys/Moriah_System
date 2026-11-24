@@ -37,7 +37,7 @@ export const DOCUMENT_SOURCES = {
   // Bethel: the town changes the file name from month to month, so both known names are tried.
   bethel: {collector: {scope: 'month', fileTemplates: ['https://bethel-ct.gov/vertical/sites/%7B90B1B948-C443-4CA6-8B88-90B1EEA9B1E2%7D/uploads/{Month}_{year}_Permit_Report.pdf', 'https://bethel-ct.gov/vertical/sites/%7B90B1B948-C443-4CA6-8B88-90B1EEA9B1E2%7D/uploads/{Month}_{year}_Permits_Issued.pdf']}},
   // Lowell: the Monthly Permit Reports page links one DocumentCenter folder per year.
-  lowell: {collector: {scope: 'month', listUrls: ['https://lowellma.gov/DocumentCenter/Index/3611', 'https://lowellma.gov/DocumentCenter/Index/3228']}, allowedHosts: ['lowellma.gov']},
+  lowell: {collector: {scope: 'month', listUrls: ['https://www.lowellma.gov/1084/Monthly-Permit-Reports', 'https://lowellma.gov/DocumentCenter/Index/3611', 'https://lowellma.gov/DocumentCenter/Index/3228']}, allowedHosts: ['lowellma.gov']},
   // Manchester-by-the-Sea: Archive Center category "Building Permits" with one item per month.
   manchester: {collector: {scope: 'month', match: 'Building Permits Issued', crawl: true, crawlRe: 'Archive\\.aspx|Building Permits'}},
   chatham: {collector: {scope: 'month', match: 'Building-Permits-Issued|Building Permits Issued|permit', columns: ['date', 'streetNo', 'street', 'description', 'applicant', 'value', 'skip', 'skip']}}
