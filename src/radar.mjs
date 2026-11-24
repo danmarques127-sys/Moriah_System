@@ -27,6 +27,7 @@ export function validatePermit(raw,source){
  const d=new Date(p.issued+'T00:00:00Z');if(!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==p.issued)throw new Error('Data de emissão inválida.');
  const u=new URL(p.sourceUrl),hosts=[new URL(source.url).hostname,...(source.allowedHosts||[])];if(u.protocol!=='https:'||!hosts.includes(u.hostname))throw new Error('Evidência fora da fonte municipal cadastrada.');
  p.sourceId=source.id;p.city=source.city;p.state=source.state;p.value=Number(raw.value??0);if(!Number.isFinite(p.value)||p.value<0||p.value>1e12)throw new Error('Valor declarado inválido.');
+ for(const k of ['owner','phone','email']){const v=String(raw[k]??'').replace(/\s+/g,' ').trim().slice(0,200);if(v&&(k!=='email'||/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))&&(k!=='phone'||/\d{7}/.test(v.replace(/\D/g,'')+'0000000')&&/^[\d\s().+\-x]+$/i.test(v)))p[k]=v;}
  if(raw.dateApprox===true)p.dateApprox=true;
  for(const k of ['phone','email','inspection','contactUrl'])if(raw[k]){p[k]=String(raw[k]).slice(0,3000);if(k==='contactUrl'&&new URL(p[k]).protocol!=='https:')throw new Error('URL de contato inválida.');}return p;
 }
