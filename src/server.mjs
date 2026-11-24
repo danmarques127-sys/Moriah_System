@@ -38,7 +38,7 @@ export async function createApplication(options={}){
  if(config.testLoginEmail&&(config.production||process.env.NODE_ENV==='production'))throw new Error('Acesso de teste proibido em produção.');
  const origin=new URL(config.appUrl).origin;if(config.production&&!origin.startsWith('https:'))throw new Error('APP_URL deve usar HTTPS em produção.');
  const db=config.db||openDatabase(config.databasePath);await bootstrap(db,config);
- const loginRate=rateLimit(),mutationRate=rateLimit(60000,120),collectRate=rateLimit(60000,5),uploadRate=rateLimit(60000,30);
+ const loginRate=rateLimit(),mutationRate=rateLimit(60000,120),collectRate=rateLimit(60000,5),clientRefreshRate=rateLimit(300000,4),uploadRate=rateLimit(60000,30);
  const send=(res,status,value)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(value));};
  const server=http.createServer(async(req,res)=>{
   const requestId=randomUUID();res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','same-origin');res.setHeader('Cache-Control','no-store');res.setHeader('X-Request-Id',requestId);
@@ -98,6 +98,9 @@ export async function createApplication(options={}){
     if(path==='/api/client/lists'&&req.method==='GET')return send(res,200,listLists(db,client));
     if(path==='/api/client/lists'&&req.method==='POST')return send(res,200,listAction(db,client,await body(req)));
     if(path==='/api/client/list-permits'&&req.method==='GET'){const q=Object.fromEntries(url.searchParams),keys=listKeys(db,client,q.listId);q.keys=keys.length?keys.join(','):'none';delete q.fav;const r=clientPermits(db,client,q,allSources(db));recordClientUsage(db,client,'seen',r.permits.length);return send(res,200,r);}
+    // A client can pull fresh permits for its own cities, same collectors as the master; limited to 3 months and 4 runs per 5 minutes per company.
+    if(path==='/api/client/refresh'&&req.method==='GET'){const ids=clientCities(db,client.id,allSources(db)).map(c=>c.id);const n=ids.length?db.prepare("SELECT COUNT(*) n FROM jobs WHERE status IN ('queued','running') AND source_id IN ("+ids.map(()=>'?').join(',')+")").get(...ids).n:0;return send(res,200,{active:n});}
+    if(path==='/api/client/refresh'&&req.method==='POST'){if(client.role==='employee')throw new HttpError(403,'Seu perfil não pode atualizar permits.');if(!clientRefreshRate(client.companyId))throw new HttpError(429,'Aguarde alguns minutos para atualizar de novo.');const b=await body(req),all=allSources(db),mine=clientCities(db,client.id,all),want=new Set((Array.isArray(b.city)?b.city:[]).map(String)),picked=mine.filter(c=>!want.size||want.has(c.key)).map(c=>c.id).filter(id=>NATIVE_MODES.includes(all.find(x=>x.id===id)?.mode));if(!picked.length)return send(res,200,{queued:0,message:'Estas cidades ainda não têm atualização automática.'});const d=new Date(),cur=d.toISOString().slice(0,7),from=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()-2,1)).toISOString().slice(0,7);return send(res,202,{queued:enqueue(db,picked,from,cur)});}
     if(path==='/api/client/permit'&&req.method==='GET')return send(res,200,permitDetail(db,client,allSources(db),url.searchParams.get('key')));
     if(path==='/api/client/note'&&req.method==='POST')return send(res,200,saveNote(db,client,await body(req)));
     if(path==='/api/client/followups'&&req.method==='GET')return send(res,200,listFollowups(db,client,new Date().toLocaleString('sv-SE',{timeZone:'America/New_York'}).replace(' ','T')));
