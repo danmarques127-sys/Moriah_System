@@ -20,12 +20,12 @@ function fakeFetch(map, calls = []) {
 const pdfBytes = '%PDF-1.4 fake';
 
 test('every city is either automatic or has an explicit import-only reason', () => {
-  assert.equal(SOURCES.length, 36);
+  assert.equal(SOURCES.length, 35);
   for (const s of SOURCES) {
     if (NATIVE_MODES.includes(s.mode)) continue;
     assert.ok(s.reason, s.id + ' needs a documented reason');
   }
-  assert.equal(SOURCES.filter(s => s.mode === 'documents').length, 20);
+  assert.equal(SOURCES.filter(s => s.mode === 'documents').length, 19);
   for (const s of SOURCES.filter(s => s.mode === 'documents')) {
     assert.ok(s.collector, s.id);
     assert.ok(s.allowedHosts.length >= 1, s.id + ' needs a www/non-www host variant');
@@ -348,13 +348,12 @@ test('Waltham: the month is the heading above a link whose text is only the year
   assert.equal(result.records[0].issued, '2026-09-01'); assert.equal(result.records[0].dateApprox, true);
 });
 
-test('file templates build one predictable file name per month (Barnstable, Southbury)', async () => {
+test('file templates build one predictable file name per month (Southbury)', async () => {
   const {SOURCES} = await import('../src/sources.mjs'), {collectDocuments} = await import('../src/documents.mjs');
   const seen = [];
-  for (const id of ['barnstable', 'southbury']) {
+  for (const id of ['southbury']) {
     const src = SOURCES.find(s => s.id === id);
     await collectDocuments(src, '2026-03', {fetch: async url => { seen.push(String(url)); return new Response('x', {status: 404}); }, sleep: async () => {}}).catch(() => {});
   }
-  assert.ok(seen.includes('https://www.barnstable.gov/Departments/Building/Office_Resources/March-2026.pdf'), seen.join(' '));
   assert.ok(seen.includes('https://www.southbury-ct.org/filestorage/20556/20567/20573/39794/Building_Permit_Report-March_2026.pdf'), seen.join(' '));
 });

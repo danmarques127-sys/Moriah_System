@@ -182,3 +182,13 @@ td.msg{color:var(--muted);font-size:13px;max-width:380px}
 td.rowact{white-space:nowrap}
 table.cov td small{display:block;margin-top:2px}
 @media(max-width:560px){.kv-grid{grid-template-columns:1fr}}
+
+/* profile */
+.avatar.big{width:96px;height:96px;font-size:30px}
+img.avatar{object-fit:cover}
+.profile-form{display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start}
+.profile-form>button{grid-column:1/-1;justify-self:start}
+.photo-box{display:grid;gap:10px;justify-items:center}
+.filebtn{cursor:pointer;border:1px solid var(--line);background:var(--card2);padding:9px 16px;border-radius:12px;color:var(--text)}
+.filebtn:hover{border-color:var(--accent2)}
+@media(max-width:700px){.profile-form{grid-template-columns:1fr}}

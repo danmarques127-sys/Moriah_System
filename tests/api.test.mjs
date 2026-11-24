@@ -13,3 +13,16 @@ test('public records upsert idempotently and radar groups them',async t=>{const 
  upsertPermits(f.db,source,[{...record,value:700000}]);assert.equal((await f.request('/api/radar?from=2026-10&to=2026-10')).data.projects[0].value,700000);});
 test('invalid date ranges and date ranges fail',async t=>{const f=await fixture(t);await f.login();assert.equal((await f.request('/api/radar?from=2026-12&to=2026-01')).status,400);});
 test('password change revokes previous sessions',async t=>{const f=await fixture(t);await f.login();assert.equal((await f.request('/api/password',{currentPassword:password,newPassword:'replacement-test-password-98765'})).status,200);assert.equal((await f.request('/api/radar?from=2026-10&to=2026-10')).status,401);await f.login('owner@example.test','replacement-test-password-98765');assert.equal((await f.request('/api/radar?from=2026-10&to=2026-10')).status,200);});
+
+test('profile: save name, title, phone and a small photo; reject bad photos and phones; shows up in /api/me', async t => {
+ const f = await fixture(t); await f.login();
+ const png = 'data:image/png;base64,iVBORw0KGgo=';
+ const ok = await f.request('/api/profile', {displayName: 'Dan Marques', title: 'Administrator', phone: '+1 (617) 555-0100', photo: png});
+ assert.equal(ok.status, 200);
+ const me = await f.request('/api/me');
+ assert.equal(me.data.user.profile.displayName, 'Dan Marques'); assert.equal(me.data.user.profile.photo, png);
+ assert.equal((await f.request('/api/profile', {displayName: 'X', photo: 'data:text/html;base64,PGI+'})).status, 400);
+ assert.equal((await f.request('/api/profile', {displayName: 'X', phone: 'call me'})).status, 400);
+ assert.equal((await f.request('/api/profile', {displayName: 'Dan', phone: '', photo: ''})).status, 200);
+ assert.equal((await f.request("/api/me")).data.user.profile.photo, '');
+});
