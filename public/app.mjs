@@ -295,8 +295,8 @@ document.addEventListener('click',event=>{
   if(a==='removePhoto'){const f=document.querySelector('form[data-form="profile"]');if(f){f.elements.photo.value='';const img=f.querySelector('.avatar.big');if(img){const sp=document.createElement('span');sp.className='avatar big';sp.textContent=(f.elements.displayName.value||s.me.email).slice(0,2).toUpperCase();img.replaceWith(sp);}}return;}
   if(a==='stateTab'){s.filters.state=id;s.filters.cities=[];return render();}
   if(a==='kind'){s.filters.kind=id||'All';s.filters.page=1;return refresh();}
-  if(a==='pEdit'){const [kind,i]=id.split(':');s.pEdit={kind,id:Number(i)};return render();}
-  if(a==='pPassword'){s.pEdit={kind:'password',id:Number(id)};return render();}
+  if(a==='pEdit'){const [kind,i]=id.split(':');s.pEdit={kind,id:Number(i)};render();requestAnimationFrame(()=>document.querySelector('.settings-panel')?.scrollIntoView({behavior:'smooth',block:'start'}));return;}
+  if(a==='pPassword'){s.pEdit={kind:'password',id:Number(id)};render();requestAnimationFrame(()=>document.querySelector('.settings-panel')?.scrollIntoView({behavior:'smooth',block:'start'}));return;}
   if(a==='pCancel'){s.pEdit=null;return render();}
   if(a==='pToggle'){const [kind,i,v]=id.split(':'),active=v==='1';await api('/api/admin/partners',kind==='company'?{op:'setCompanyActive',id:Number(i),active}:kind==='client'?{op:'setClientActive',id:Number(i),active}:{op:'saveTrade',id:Number(i),name:s.partners.trades.find(x=>x.id===Number(i)).name,active});s.partners=await api('/api/admin/partners');return render();}
   if(a==='logout'){await api('/api/logout',{});clearWorkspace();return render();}

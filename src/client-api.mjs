@@ -62,9 +62,10 @@ export function clientPermits(db, client, query, sources) {
   let list = rows.slice(0, 30000).map(r => JSON.parse(r.data));
   if (query.q) { const q = String(query.q).toLowerCase(); list = list.filter(r => [r.address, r.description, r.type, r.contractor, r.number].join(' ').toLowerCase().includes(q)); }
   const companyTrades = db.prepare('SELECT t.name FROM company_trades ct JOIN trades t ON t.id=ct.trade_id WHERE ct.company_id=? AND t.active=1 ORDER BY t.name').all(client.companyId).map(r => r.name);
-  if (companyTrades.length) list = list.filter(r => tradesOf(r).some(t => companyTrades.includes(t)));
+  const allTrades = String(query.scope || '') === 'all';
+  if (companyTrades.length && !allTrades) list = list.filter(r => tradesOf(r).some(t => companyTrades.includes(t)));
   const wantTrade = String(query.trade || '');
-  if (wantTrade && (!companyTrades.length || companyTrades.includes(wantTrade))) list = list.filter(r => tradesOf(r).includes(wantTrade));
+  if (wantTrade && !allTrades && (!companyTrades.length || companyTrades.includes(wantTrade))) list = list.filter(r => tradesOf(r).includes(wantTrade));
   // Same project classification as the master radar (New house, Gut renovation, ADU, ...), counted per project.
   const kindOf = new Map(), kinds = {};
   for (const g of groupProjects(list)) { kinds[g.kind] = (kinds[g.kind] || 0) + 1; for (const r of g.records) kindOf.set(r.id, g.kind); }

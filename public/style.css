@@ -527,3 +527,9 @@ button.cl-right,.cl-right{padding:0 22px}
 .cl-kv{display:flex;justify-content:space-between;gap:16px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}.cl-kv span{color:var(--muted)}.cl-kv b{text-align:right;font-weight:600}.cl-kv a{color:#c9a8ff}
 .cl-pills{margin:4px 0 16px}.cl-pills button{height:auto;min-height:0;padding:9px 18px;border-radius:999px;font-weight:500;font-size:15px}.cl-pills button.active{font-weight:600}
 .lcard .primary{display:flex;align-items:center;justify-content:center;height:auto;min-height:0;padding:.95em 1em;line-height:1.2;text-align:center}
+.cl-card.col .cl-kv{display:flex;grid-template-columns:none;padding:8px 0;align-items:baseline}.cl-card .cl-kv span{display:inline;font-size:14px}.cl-card .cl-kv b{font-size:15px}
+.side-drawer>header button,.modal>header button{width:36px;min-width:36px;height:36px;min-height:36px;padding:0;border-radius:12px;display:grid;place-items:center;font-size:18px;line-height:1}
+.cl-pills~form,.cl-filters{flex-wrap:wrap}
+.cl-card.col{align-content:start;grid-auto-rows:min-content}.cl-card.col .cl-kv{min-height:0;height:auto}
+.modal.side-drawer>header>button,.overlay .modal>header>button[data-action=close]{width:36px;height:36px;min-height:36px;display:grid;place-items:center;padding:0}
+.cl-card.col{gap:0}.cl-card.col .cl-kv{margin:0}.cl-card.col>p{margin:0 0 8px}.cl-card.col h3{margin:0 0 6px}
