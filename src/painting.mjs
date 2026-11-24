@@ -7,13 +7,13 @@ const clean = (v, n) => String(v ?? '').replace(/[\u0000-\u0008\u000b\u000c\u000
 const round2 = v => Math.round(v * 100) / 100;
 const KINDS = ['interior', 'ceiling', 'trim', 'exterior', 'primer'];
 export const PAINT_PLACES = ['LIVING ROOM', 'BEDROOMS', 'KITCHEN', 'BATHROOMS', 'HALLWAYS', 'CEILINGS', 'TRIM AND DOORS', 'EXTERIOR WALLS', 'EXTERIOR TRIM', 'GARAGE', 'BASEMENT'];
-// [name, kind, coverage (sq ft per gallon, one coat), gal_price, bucket_price (5 gal), note] - typical label values; confirm with your paint's can
+// [name, kind, coverage (sq ft per gallon, one coat), gal_price, bucket_price (5 gal), note] - coverage is the typical label value; prices are store prices (Sherwin-Williams SuperPaint, Behr, Nov 2026)
 export const DEFAULT_PAINT = [
-  ['Interior wall paint', 'interior', 350, 45, 190, 'Smooth walls, one coat. Rough or porous walls cover less (200-250).'],
-  ['Ceiling paint', 'ceiling', 350, 38, 160, 'Flat white.'],
+  ['Interior wall paint', 'interior', 350, 62, 280, 'Smooth walls, one coat. Rough or porous walls cover less (200-250).'],
+  ['Ceiling paint', 'ceiling', 350, 32, 130, 'Flat white.'],
   ['Trim and door enamel', 'trim', 400, 55, 250, 'Semi-gloss.'],
-  ['Exterior paint', 'exterior', 300, 55, 240, 'Siding; 250-350 depending on surface.'],
-  ['Primer', 'primer', 275, 32, 140, 'Bare, patched or stained surfaces.']
+  ['Exterior paint', 'exterior', 300, 54.6, 273, 'Siding; 250-350 depending on surface.'],
+  ['Primer', 'primer', 275, 31, 140, 'Bare, patched or stained surfaces.']
 ];
 export const DEFAULT_PAINT_SETTINGS = {crewSize: 2, sqftPerHour: 150, hourCost: 70, hourProfit: 60, bucketGal: 5};
 function seed(db, co) {

@@ -15,9 +15,9 @@ export const PLACES = ['UNDER SIDE OF ROOF', 'EXTERIOR WALLS', 'ATTIC FLOOR', 'G
 export const DEFAULT_MATERIALS = [
   ['Open Cell Spray Foam', 'foam_open', 'gal', 37, 1, 379, 4.2, 0, 'Sell $/bd ft, yield (Factor M) in bd ft per gallon, R per inch. Private cost per gallon.', 0.35],
   ['Closed Cell Spray Foam', 'foam_closed', 'gal', 55, 1, 95, 7.5, 0, 'Sell $/bd ft, yield (Factor M) in bd ft per gallon, R per inch.', 1.3],
-  ['Fiberglass batt R-13', 'batt', 'sq ft', 0.45, 0, 1, 0, 13, '2x4 walls.', 1.25],
-  ['Fiberglass batt R-19', 'batt', 'sq ft', 0.7, 0, 1, 0, 19, '2x6 walls / floors.', 1.66],
-  ['Fiberglass batt R-30', 'batt', 'sq ft', 0.95, 0, 1, 0, 30, 'Attics / floors.', 2.25],
+  ['Fiberglass batt R-13', 'batt', 'pack', 106, 0, 195.2, 0, 13, '2x4 walls. Store price of a 13-batt pack (195 sq ft), Nov 2026: set your all-in pack price.', 1.25],
+  ['Fiberglass batt R-19', 'batt', 'pack', 117, 0, 118.83, 0, 19, '2x6 walls / floors. Store price of a bag (118.83 sq ft), Nov 2026: set your all-in pack price.', 1.66],
+  ['Fiberglass batt R-30', 'batt', 'pack', 88.82, 0, 53.33, 0, 30, 'Attics / floors. Store price of a bag (53.33 sq ft), Nov 2026: set your all-in pack price.', 2.25],
   ['Roxul 3 inches 3x15', 'batt', 'pack', 70, 0, 80, 0, 15, 'Factor M = sq ft per pack.', 1.85],
   ['Roxul 5.5 inches R-23', 'batt', 'pack', 1.5, 0, 60, 0, 23, 'Factor M = sq ft per pack.', 2.6],
   ['Blown-in fiberglass R-38 (attic)', 'blown', 'bag', 38, 0, 55, 0, 38, 'Factor M = sq ft per bag (check the label).', 2.1]
