@@ -320,67 +320,18 @@ td.rowact{white-space:nowrap}
 #toast.show{cursor:pointer}
 #toast.error{border-color:#66262b}
 
-/* login v3: smaller box, elegant spaced lettering (system fonts only: the CSP blocks web fonts) */
-.login{--elegant:"Century Gothic","Avenir Next","Avenir","Futura","Questrial","Segoe UI",system-ui,sans-serif}
-.login-wrap{width:min(560px,94vw);gap:34px}
-.login-mark{width:84px;height:84px;border-radius:22px}
-.login-brand .brand-text{font-family:var(--elegant)}
-.login-brand .brand-text b{font-size:46px;font-weight:300;letter-spacing:.22em;line-height:1}
-.login-brand .brand-text small{font-size:20px;font-weight:400;letter-spacing:.7em;margin-top:6px}
-.login .panel{padding:36px 40px;border-radius:24px;font-family:var(--elegant)}
-.login .panel h1{font-size:36px;font-weight:300;letter-spacing:.12em;margin:0 0 4px}
-.login form{gap:16px}
-.login label{font-size:15px;font-weight:400;letter-spacing:.06em}
-.login input{padding:14px 18px;font-size:17px;border-radius:14px;border-width:1px}
-.login .pw input{padding-right:52px}
-.login .eye .ico{width:22px;height:22px}
-.login .form-error{font-size:15px}
-.login .primary{padding:15px;font-size:19px;font-weight:400;letter-spacing:.2em;text-transform:uppercase;border-radius:14px}
-@media (max-width:600px){.login-brand .brand-text b{font-size:28px}.login-mark{width:56px;height:56px}.login .panel{padding:24px 20px}.login .panel h1{font-size:28px}}
-
-/* login v4: blueprint street, chunky lettering, smaller box */
-.login-wrap{width:min(440px,94vw);gap:26px}
-.login-mark{width:78px;height:78px;border-radius:20px}
-.login-brand{gap:18px}
-.login-brand .brand-text{gap:8px;font-family:var(--elegant)}
-.wordmark{width:230px;height:auto;display:block;color:#f6f2ff;filter:drop-shadow(0 0 14px #7c3aed88)}
-.login-brand .brand-text small{font-size:19px;font-weight:700;letter-spacing:.62em;color:var(--accent2);margin:0}
-.login .panel{padding:28px 30px;border-radius:22px}
-.login .panel h1{font-size:30px;font-weight:700;letter-spacing:.06em}
+/* login: blueprint street background, 440px box, classic logo sizes */
+.login-wrap{width:min(560px,94vw);gap:44px}
+.login-brand{gap:22px}
+.login-mark{width:110px;height:110px;border-radius:26px}
+.login-brand .brand-text b{font-size:64px;letter-spacing:4px}
+.login-brand .brand-text small{font-size:30px;letter-spacing:14px}
+.login .panel{width:min(440px,100%);padding:28px 30px;border-radius:22px;background:#16152bcc;backdrop-filter:blur(6px);box-shadow:0 30px 80px #000a}
+.login .panel h1{font-size:30px;font-weight:700;letter-spacing:.06em;margin:0 0 4px}
 .login form{gap:13px}
-.login label{font-size:14px;font-weight:600}
-.login input{padding:12px 16px;font-size:16px}
-.login .primary{padding:13px;font-size:17px;font-weight:700;letter-spacing:.18em}
-@media (max-width:600px){.wordmark{width:160px}.login-mark{width:56px;height:56px}}
-
-.wordmark{width:250px}
-.wordmark path,.wordmark circle{stroke-width:12}
-
-/* login v5: bigger, aligned wordmark with one clean slit through every letter */
-.login-wrap{width:min(540px,94vw)}
-.login .panel{width:min(440px,100%)}
-.login-mark{width:104px;height:104px;border-radius:26px}
-.login-brand{gap:16px}
-.wordmark{width:330px;filter:drop-shadow(0 0 16px #7c3aed99)}
-.wordmark path,.wordmark rect{stroke-width:14}
-.login-brand .brand-text small{font-size:22px;letter-spacing:.66em;margin-top:2px}
-@media (max-width:600px){.wordmark{width:200px}.login-mark{width:64px;height:64px}}
-.login-brand .brand-text small.sys{display:flex;justify-content:space-between;width:330px;font-size:24px;font-weight:800;letter-spacing:0;color:#c9a0ff;text-shadow:0 0 14px #9b5cff,0 0 2px #e6d4ff}
-.login-brand .brand-text small.sys i{font-style:normal}
-@media (max-width:600px){.login-brand .brand-text small.sys{width:200px;font-size:15px}}
-
-/* login v6: self-hosted Inter Display (SIL Open Font License), see public/fonts */
-@font-face{font-family:"Inter Display";font-weight:800;font-style:normal;font-display:swap;src:url(/fonts/inter-display-800.woff) format("woff")}
-@font-face{font-family:"Inter Display";font-weight:600;font-style:normal;font-display:swap;src:url(/fonts/inter-display-600.woff) format("woff")}
-.login-wrap{width:min(520px,94vw)}
-.login-brand{gap:18px;align-items:center}
-.login-mark{width:92px;height:92px;border-radius:24px;box-shadow:0 0 34px #7c3aed88}
-.login-brand .brand-text{gap:4px;font-family:"Inter Display",Inter,"Segoe UI",system-ui,sans-serif}
-.login-brand .brand-text b.wm{font-size:58px;font-weight:800;letter-spacing:.1em;line-height:1;color:#fff;text-shadow:0 0 22px #7c3aed99;margin-right:-.1em}
-.login-brand .brand-text small.sys{width:auto;font-size:20px;font-weight:800;letter-spacing:.62em;color:#c9a0ff;display:block;text-shadow:0 0 14px #9b5cff}
-.login-brand .brand-text small.sys i{font-style:normal}
-.login .panel h1,.login .primary{font-family:"Inter Display",Inter,"Segoe UI",system-ui,sans-serif}
-.login .panel h1{font-weight:800;letter-spacing:.02em}
-@media (max-width:600px){.login-brand .brand-text b.wm{font-size:34px}.login-brand .brand-text small.sys{font-size:12px}.login-mark{width:60px;height:60px}}
-.login-brand .brand-text small.sys{display:flex;justify-content:space-between;letter-spacing:0;width:100%;font-size:21px}
-.login-brand .brand-text{width:max-content}
+.login label{font-size:14px;font-weight:600;color:var(--text)}
+.login input{padding:12px 16px;font-size:16px;border-radius:14px}
+.login .pw input{padding-right:52px}
+.login .primary{padding:13px;font-size:17px;font-weight:700;letter-spacing:.18em;border-radius:14px}
+@media (max-width:600px){.login-brand .brand-text b{font-size:36px}.login-brand .brand-text small{font-size:16px;letter-spacing:8px}.login-mark{width:64px;height:64px}}
+.login-brand .brand-text small{color:#b98cff;font-weight:600;text-shadow:0 0 12px #8b4dff88}
