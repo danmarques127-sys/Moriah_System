@@ -49,16 +49,18 @@ export function periodMatches(text, month, scope = 'month') {
 /* ---------- HTML helpers ---------- */
 export function extractAnchors(html, base) {
   const out = [], source = String(html);
-  let pos = 0, year = '';
+  let pos = 0, year = '', monthName = '';
   for (const m of source.matchAll(/<a\b[^>]*?\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')[^>]*>([\s\S]*?)<\/a>/gi)) {
     // The year heading above a link (e.g. "2026" over "3rd Quarter") is the year of that link.
     const between = [...clean(source.slice(pos, m.index)).matchAll(/(?<!\d)(20\d{2})(?!\d)/g)];
     if (between.length) year = between.at(-1)[1];
+    const named = [...clean(source.slice(pos, m.index)).matchAll(new RegExp('(?<![A-Za-z])(' + FULL.join('|') + ')(?![A-Za-z])', 'gi'))];
+    if (named.length) monthName = named.at(-1)[1];
     pos = m.index + m[0].length;
     const raw = decode(m[1] ?? m[2] ?? '').trim();
     if (!raw || /^(?:#|javascript:|mailto:|tel:)/i.test(raw)) continue;
     let href; try { href = new URL(raw, base).href; } catch { continue; }
-    out.push({href, text: clean(m[3]), ctx: year});
+    out.push({href, text: clean(m[3]), ctx: year, ctxMonth: monthName});
   }
   return out;
 }
@@ -225,7 +227,8 @@ function byRoles(chunks, roles) {
 function finishRow(cur, cfg, month) {
   const dates = datesIn(cur.head);
   let issued = dates.length ? (cfg.dateWhich === 'last' ? dates.at(-1) : dates[0]) : '';
-  if (!issued && cfg.dateFallback === 'month-start') issued = month + '-01';
+  let approx = false;
+  if (!issued && cfg.dateFallback === 'month-start') { issued = month + '-01'; approx = true; }
   let chunks = cur.chunks.slice(), dateIdx = -1;
   const pick = cfg.dateWhich === 'last' ? [...chunks.keys()].reverse() : [...chunks.keys()];
   for (const i of pick) if (datesIn(chunks[i]).length) { dateIdx = i; break; }
@@ -241,7 +244,7 @@ function finishRow(cur, cfg, month) {
   }
   const extra = cur.extra.join(' ');
   const description = clean([fields.description, extra].filter(Boolean).join(' '));
-  return {number: cur.number, issued, address: clean(fields.address || ''), description, type: clean(fields.type || ''), value: fields.value || 0,
+  return {number: cur.number, issued, approx, address: clean(fields.address || ''), description, type: clean(fields.type || ''), value: fields.value || 0,
     contractor: clean(fields.contractor || ''), applicant: clean(fields.applicant || ''), status: clean(fields.status || ''), raw: cur.head + ' ' + extra};
 }
 export function parseTextRows(text, cfg = {}, month = '') {
@@ -304,9 +307,9 @@ export function mapStructured(table, cfg = {}, month = '') {
     if (r.every(c => !String(c ?? '').trim())) continue;
     const number = String(get(r, 'number')).trim();
     if (!number || number === headers[col.number]) continue;
-    const issued = toIso(get(r, 'issued')) || toIso(get(r, 'dateAlt')) || (cfg.dateFallback === 'month-start' ? month + '-01' : '');
+    const exact = toIso(get(r, 'issued')) || toIso(get(r, 'dateAlt')), issued = exact || (cfg.dateFallback === 'month-start' ? month + '-01' : '');
     const address = col.address !== undefined ? get(r, 'address') : [get(r, 'streetNo'), get(r, 'street')].filter(Boolean).join(' ');
-    out.push({number, issued, address: clean(address), description: clean(get(r, 'description')), type: clean(get(r, 'type')), value: amount(get(r, 'value')),
+    out.push({number, issued, approx: !exact && !!issued, address: clean(address), description: clean(get(r, 'description')), type: clean(get(r, 'type')), value: amount(get(r, 'value')),
       contractor: clean(get(r, 'contractor')), applicant: clean(get(r, 'applicant')), status: clean(get(r, 'status')), raw: r.join(' ')});
   }
   return out;
@@ -350,7 +353,9 @@ export function docxToText(buf) {
 }
 // Keeps the first lines of what was read, so an unrecognized layout can be diagnosed from the error message alone.
 const withPeek = (rows, text) => { rows.peek = String(text).split(/\r?\n/).map(l => l.trim()).filter(Boolean).slice(0, 4).map(l => l.slice(0, 110)).join(' ¶ '); return rows; };
-async function parseDocument(doc, cfg, month, deps = {}) {
+async function parseDocument(doc, config, month, deps = {}) {
+  // The file belongs to a known month: rows without their own date take the first day of that month (flagged as approximate).
+  const cfg = config.dateFallback === undefined && (config.scope === 'month' || !config.scope) ? {...config, dateFallback: 'month-start'} : config;
   const format = detectFormat(doc);
   if (format === 'pdf') { const text = await (deps.pdfToText || pdfToText)(doc.buffer); return withPeek(parseTextRows(text, cfg, month), text); }
   if (format === 'docx') { const text = docxToText(doc.buffer); return withPeek(parseTextRows(text, cfg, month), text); }
@@ -371,7 +376,7 @@ export function toRecord(source, row, month, cfg, url) {
   const key = row.number || 'row-' + createHash('sha1').update(row.raw.replace(/\s+/g, ' ')).digest('hex').slice(0, 16);
   return {id: source.id + ':' + key, sourceId: source.id, city: source.city, state: source.state, address: row.address, number: row.number, issued: row.issued,
     description: (row.description || 'Descrição não disponibilizada; conferir o documento municipal.') + note, type: row.type, value: row.value || 0,
-    contractor: row.contractor === 'N/A' ? '' : row.contractor, applicant: row.applicant, sourceUrl: url, status: row.status};
+    contractor: row.contractor === 'N/A' ? '' : row.contractor, applicant: row.applicant, sourceUrl: url, status: row.status, ...(row.approx ? {dateApprox: true} : {})};
 }
 export async function collectDocuments(source, month, deps = {}) {
   const cfg = source.collector || {}, scope = cfg.scope || 'month', latest = scope === 'latest';
@@ -421,13 +426,15 @@ export async function collectDocuments(source, month, deps = {}) {
     }
     for (const raw of anchors) {
       // A link without its own year ("October", "3rd Quarter") takes the year of the heading above it.
-      const a = /(?<!\d)20\d{2}(?!\d)/.test(raw.text + ' ' + slugOf(raw.href)) || !raw.ctx ? raw : {...raw, text: raw.text + ' ' + raw.ctx};
+      let a = /(?<!\d)20\d{2}(?!\d)/.test(raw.text + ' ' + slugOf(raw.href)) || !raw.ctx ? raw : {...raw, text: raw.text + ' ' + raw.ctx};
+      // monthHeading: the month is the heading above the link and the link text is only the year (Waltham).
+      if (cfg.monthHeading && raw.ctxMonth && !new RegExp('(?<![A-Za-z])(?:' + FULL.join('|') + ')', 'i').test(raw.text)) a = {...raw, text: raw.ctxMonth + ' ' + raw.text};
       const hay = a.text + ' ' + decodeURIComponent(a.href.replace(/%(?![0-9a-f]{2})/gi, ''));
       // itemPages: each period is a small page of the site that holds the file (followed below), not a file link.
       if ((!fileLike(a.href) && !(cfg.itemPages && a.text && !latest)) || (filter && !filter.test(hay)) || (!latest && !matchesPeriod(hay))) continue;
       const host = new URL(a.href).hostname;
       if (!allowedHost(host)) { skippedHosts.add(host); continue; }
-      if (cfg.textEquals && a.text.trim() !== cfg.textEquals.replace('{year}', month.slice(0, 4))) continue;
+      if (cfg.textEquals && raw.text.trim() !== cfg.textEquals.replace('{year}', month.slice(0, 4))) continue;
       if (!bySource.has(a.href)) bySource.set(a.href, {...a, own: !latest && matchesPeriod(a.text), rank: periodRank(a.text + ' ' + slugOf(a.href))});
     }
     candidates = [...bySource.values()];
@@ -463,15 +470,15 @@ export async function collectDocuments(source, month, deps = {}) {
     issuedDates.sort();
     return {status: 'pending', records: [], message: files + ' documento(s) lido(s), mas nenhum permit emitido em ' + label + '.' + (issuedDates.length ? ' O que foi lido cobre ' + issuedDates[0] + ' a ' + issuedDates.at(-1) + '.' : ' As ' + parsedRows + ' linhas lidas não trazem data reconhecida. Exemplo de linha: «' + undatedSample + '»') + ' Pode não estar publicado ainda. Isso não significa zero permits.'};
   }
-  const list = [...records.values()], proxyNote = cfg.dateKind && cfg.dateKind !== 'issued' ? ' A data usada é a de ' + ({paid: 'pagamento', submitted: 'submissão', range: 'período do relatório'}[cfg.dateKind] || cfg.dateKind) + ', não a de emissão.' : '';
-  const message = files + ' documento(s) lido(s); ' + list.length + ' registro(s) em ' + label + '.' + (cfg.verified ? '' : ' Layout ainda não validado contra o documento real: conferir contagem e descrições.') + proxyNote + (notes.length ? ' ' + notes.slice(0, 2).join(' ') : '');
+  const list = [...records.values()], approxCount = list.filter(r => r.dateApprox).length, proxyNote = cfg.dateKind && cfg.dateKind !== 'issued' ? ' A data usada é a de ' + ({paid: 'pagamento', submitted: 'submissão', range: 'período do relatório'}[cfg.dateKind] || cfg.dateKind) + ', não a de emissão.' : '';
+  const message = files + ' documento(s) lido(s); ' + list.length + ' registro(s) em ' + label + '.' + (cfg.verified ? '' : ' Layout ainda não validado contra o documento real: conferir contagem e descrições.') + proxyNote + (approxCount ? ' ' + approxCount + ' permit(s) sem data própria usam o mês do arquivo (data aproximada).' : '') + (notes.length ? ' ' + notes.slice(0, 2).join(' ') : '');
   return {status: cfg.verified && list.length ? 'complete' : 'partial', records: list, message};
 }
 
 /* ---------- manual upload (admin): same readers as the collectors, but the file comes from the operator ---------- */
 export async function parseUploadedFile({buffer, source, month, deps = {}}) {
   const cfg = source.collector || {}, doc = {buffer, contentType: '', url: source.url};
-  const rows = await parseDocument(doc, cfg, month, deps);
+  const rows = await parseDocument(doc, {...cfg, dateFallback: 'month-start'}, month, deps);
   if (!rows.length) throw new Error('Nenhuma linha de permit reconhecida neste arquivo (PDF digitalizado, planilha sem cabeçalho de permits ou layout diferente). Converta para CSV ou use a importação JSON.');
   const records = [], dates = []; let outside = 0, undated = 0;
   for (const row of rows) {
@@ -481,5 +488,5 @@ export async function parseUploadedFile({buffer, source, month, deps = {}}) {
     if (rec) records.push(rec); else outside++;
   }
   dates.sort();
-  return {format: detectFormat(doc), rowsRead: rows.length, records: [...new Map(records.map(r => [r.id, r])).values()], outside, undated, range: dates.length ? {from: dates[0], to: dates.at(-1)} : null};
+  return {format: detectFormat(doc), approx: records.filter(r => r.dateApprox).length, rowsRead: rows.length, records: [...new Map(records.map(r => [r.id, r])).values()], outside, undated, range: dates.length ? {from: dates[0], to: dates.at(-1)} : null};
 }

@@ -27,6 +27,7 @@ export function validatePermit(raw,source){
  const d=new Date(p.issued+'T00:00:00Z');if(!Number.isFinite(d.getTime())||d.toISOString().slice(0,10)!==p.issued)throw new Error('Data de emissão inválida.');
  const u=new URL(p.sourceUrl),hosts=[new URL(source.url).hostname,...(source.allowedHosts||[])];if(u.protocol!=='https:'||!hosts.includes(u.hostname))throw new Error('Evidência fora da fonte municipal cadastrada.');
  p.sourceId=source.id;p.city=source.city;p.state=source.state;p.value=Number(raw.value??0);if(!Number.isFinite(p.value)||p.value<0||p.value>1e12)throw new Error('Valor declarado inválido.');
+ if(raw.dateApprox===true)p.dateApprox=true;
  for(const k of ['phone','email','inspection','contactUrl'])if(raw[k]){p[k]=String(raw[k]).slice(0,3000);if(k==='contactUrl'&&new URL(p[k]).protocol!=='https:')throw new Error('URL de contato inválida.');}return p;
 }
 export function assess(records,now=new Date()){

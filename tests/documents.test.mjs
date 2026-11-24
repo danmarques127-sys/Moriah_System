@@ -53,7 +53,7 @@ test('period matching handles month names, abbreviations, combined months, quart
 
 test('anchors are extracted and resolved against the page', () => {
   const links = extractAnchors('<a href="/DocumentCenter/View/9/May-2026">May &amp; June 2026</a><a href="javascript:x()">no</a><a href="#top">no</a>', 'https://x.gov/page');
-  assert.deepEqual(links, [{href: 'https://x.gov/DocumentCenter/View/9/May-2026', text: 'May & June 2026', ctx: ''}]);
+  assert.deepEqual(links, [{href: 'https://x.gov/DocumentCenter/View/9/May-2026', text: 'May & June 2026', ctx: '', ctxMonth: ''}]);
 });
 
 test('wakefield-style rows parse by column role; paid date is flagged as a proxy', () => {
@@ -324,9 +324,26 @@ test('an unrecognized layout error carries the first lines that were read', asyn
   await assert.rejects(collectDocuments(source, '2026-10', {fetch: fakeFetch({[source.url]: listing, [base + '5']: {body: pdfBytes, type: 'application/pdf'}}), pdfToText: async () => 'Weird header line\nnothing that looks like a permit\n', ...noSleep}), /Início do que foi lido: Weird header line/);
 });
 
-test('rows without a recognizable date say so instead of claiming the month is empty', async () => {
-  const source = {...src('lexington'), collector: {scope: 'month', rowMode: 'dated-line'}}, base = 'https://www.lexingtonma.gov/DocumentCenter/View/';
+test('rows without a date take the month of the monthly file and are flagged approximate', async () => {
+  const source = src('lexington'), base = 'https://www.lexingtonma.gov/DocumentCenter/View/';
   const listing = '<a href="/DocumentCenter/View/5">October 2026</a>';
-  const result = await collectDocuments(source, '2026-10', {fetch: fakeFetch({[source.url]: listing, [base + '5']: {body: pdfBytes, type: 'application/pdf'}}), pdfToText: async () => 'BP-26-77  Sept 5 2026  1 A ST  New dwelling  $5,000.00\n', ...noSleep});
-  assert.equal(result.status, 'pending'); assert.match(result.message, /não trazem data reconhecida/);
+  const result = await collectDocuments(source, '2026-10', {fetch: fakeFetch({[source.url]: listing, [base + '5']: {body: pdfBytes, type: 'application/pdf'}}), pdfToText: async () => 'BP-26-77  1 A ST  New dwelling  $5,000.00\nBP-26-78  8/5/2026  2 B ST  Roof  $2,000.00\n', ...noSleep});
+  const byNumber = Object.fromEntries(result.records.map(r => [r.number, r]));
+  assert.equal(byNumber['BP-26-77'].issued, '2026-10-01'); assert.equal(byNumber['BP-26-77'].dateApprox, true);
+  assert.equal(result.status, 'partial'); assert.match(result.message, /data aproximada/);
+});
+
+test('a row that has an exact date keeps it and is not flagged', async () => {
+  const source = src('lexington'), base = 'https://www.lexingtonma.gov/DocumentCenter/View/';
+  const result = await collectDocuments(source, '2026-10', {fetch: fakeFetch({[source.url]: '<a href="/DocumentCenter/View/5">October 2026</a>', [base + '5']: {body: pdfBytes, type: 'application/pdf'}}), pdfToText: async () => 'BP-26-78  10/5/2026  2 B ST  Roof  $2,000.00\n', ...noSleep});
+  assert.equal(result.records[0].issued, '2026-10-05'); assert.equal(result.records[0].dateApprox, undefined);
+});
+
+test('Waltham: the month is the heading above a link whose text is only the year', async () => {
+  const source = src('waltham'), base = 'https://www.city.waltham.ma.us/DocumentCenter/View/';
+  const listing = '<h3>September</h3><a href="/DocumentCenter/View/10727/2026">2026</a><a href="/DocumentCenter/View/508/2025">2025</a><h3>October</h3><a href="/DocumentCenter/View/533/2025">2025</a>';
+  const calls = [];
+  const result = await collectDocuments(source, '2026-09', {fetch: fakeFetch({[source.url]: listing, [base + '10727/2026']: {body: pdfBytes, type: 'application/pdf'}}, calls), pdfToText: async () => 'BP-26-77  1 A ST  New dwelling  $5,000.00\n', ...noSleep});
+  assert.deepEqual(calls.slice(1), [base + '10727/2026']);
+  assert.equal(result.records[0].issued, '2026-09-01'); assert.equal(result.records[0].dateApprox, true);
 });
