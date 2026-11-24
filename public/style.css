@@ -336,3 +336,9 @@ td.rowact{white-space:nowrap}
 .lcard .form-error{font-size:.95em}
 .lcard .primary{padding:.85em;font-size:1.15em;font-weight:600;border-radius:.8em;background:#7048e8}
 @media (max-width:620px){.login{font-size:16px;background-position:center top}.lcard{width:min(92vw,400px);min-height:0;margin:0;padding:24px 22px;border-radius:22px}}
+
+/* "Moriah System" written by hand, like a signature on a blueprint (Caveat, SIL Open Font License, see public/fonts) */
+@font-face{font-family:"Caveat";font-weight:700;font-style:normal;font-display:swap;src:url(/fonts/caveat-700.woff) format("woff")}
+.lbrand{gap:.55em}
+.lbrand span{font-family:"Caveat","Segoe Print","Bradley Hand",cursive;font-size:2.9em;font-weight:700;line-height:1;letter-spacing:.02em;transform:rotate(-3deg);transform-origin:left center;color:#efe9ff;text-shadow:0 0 .5em #8b6bff99;display:inline-block;padding-bottom:.12em;border-bottom:.06em solid #a58bff77;border-radius:0 0 50% 50% / 0 0 100% 100%}
+.lbrand img{width:2.6em;height:2.6em}
