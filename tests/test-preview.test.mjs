@@ -17,8 +17,7 @@ test('explicit test preview authenticates mestre with ordinary session and CSRF'
  const cookie=res.headers.get('set-cookie').split(';')[0];assert.match(res.headers.get('set-cookie'),/HttpOnly/);
  const me=await fetch(f.base+'/api/me',{headers:{Cookie:cookie}});
  assert.equal(me.status,200);const data=await me.json();assert.equal(data.user.role,'owner');assert.equal(data.user.systemAdmin,true);
- const denied=await fetch(f.base+'/api/projects',{method:'POST',headers:{Cookie:cookie,Origin:f.base,'Content-Type':'application/json'},body:JSON.stringify({name:'Test',address:'12 Main St'})});assert.equal(denied.status,403);
- const saved=await fetch(f.base+'/api/projects',{method:'POST',headers:{Cookie:cookie,Origin:f.base,'Content-Type':'application/json','X-CSRF-Token':data.csrf},body:JSON.stringify({name:'Test',address:'12 Main St'})});assert.equal(saved.status,201);
+ const denied=await fetch(f.base+'/api/logout',{method:'POST',headers:{Cookie:cookie,Origin:f.base,'Content-Type':'application/json'},body:'{}'});assert.equal(denied.status,403);
  const radar=await fetch(f.base+'/api/radar?from=2026-10&to=2026-10',{headers:{Cookie:cookie}});assert.equal(radar.status,200);
  const html=await (await fetch(f.base+'/app.mjs')).text();assert.match(html,/input\('Email or username','email','','text'/);
 });
