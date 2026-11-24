@@ -525,3 +525,5 @@ button.cl-punch{height:64px;min-height:64px;font-size:18px}
 button.danger,.cl-table button.danger{margin-right:0}
 button.cl-right,.cl-right{padding:0 22px}
 .cl-kv{display:flex;justify-content:space-between;gap:16px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}.cl-kv span{color:var(--muted)}.cl-kv b{text-align:right;font-weight:600}.cl-kv a{color:#c9a8ff}
+.cl-pills{margin:4px 0 16px}.cl-pills button{height:auto;min-height:0;padding:9px 18px;border-radius:999px;font-weight:500;font-size:15px}.cl-pills button.active{font-weight:600}
+.lcard .primary{display:flex;align-items:center;justify-content:center;height:auto;min-height:0;padding:.95em 1em;line-height:1.2;text-align:center}

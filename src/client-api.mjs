@@ -7,7 +7,7 @@ import {digest, checkPassword} from './auth.mjs';
 import {getSetting, cutoffDate} from './retention.mjs';
 import {timestamp} from './db.mjs';
 import {monthKey, monthUsed} from './partners.mjs';
-import {tradeKind} from './radar.mjs';
+import {tradeKind, groupProjects} from './radar.mjs';
 
 // Trade classification by keywords in the permit type/description. A permit can match several trades; no match = Other.
 const TRADE_WORDS = {Roofing: /roof|shingle/, Electrical: /electric|wiring|solar|photovoltaic|\bpv\b|generator|service upgrade/, Plumbing: /plumb|water heater|sewer|septic|backflow/, HVAC: /hvac|heat pump|furnace|boiler|mini[- ]?split|air condition|mechanical|ductwork|\bgas\b/, Insulation: /insulat/, Painting: /\bpaint/, Flooring: /\bfloor/, Framing: /\bfram|\bdeck\b|addition|structural|foundation|\bgarage\b/, Sheetrock: /sheetrock|drywall|gypsum/};
@@ -65,6 +65,10 @@ export function clientPermits(db, client, query, sources) {
   if (companyTrades.length) list = list.filter(r => tradesOf(r).some(t => companyTrades.includes(t)));
   const wantTrade = String(query.trade || '');
   if (wantTrade && (!companyTrades.length || companyTrades.includes(wantTrade))) list = list.filter(r => tradesOf(r).includes(wantTrade));
+  // Same project classification as the master radar (New house, Gut renovation, ADU, ...), counted per project.
+  const kindOf = new Map(), kinds = {};
+  for (const g of groupProjects(list)) { kinds[g.kind] = (kinds[g.kind] || 0) + 1; for (const r of g.records) kindOf.set(r.id, g.kind); }
+  const wantKind = String(query.kind || ''); if (wantKind && kinds[wantKind]) list = list.filter(r => kindOf.get(r.id) === wantKind);
   if (query.keys) { const ks = new Set(String(query.keys).split(',').filter(Boolean)); list = list.filter(r => ks.has(opaque(r.id))); }
   const favs = favoriteKeys(db, client);
   if (query.fav === '1') list = list.filter(r => favs.has(opaque(r.id)));
@@ -78,7 +82,7 @@ export function clientPermits(db, client, query, sources) {
   for (const r of slice) { const k = keyOf(r); if (seen.has(k)) visible.push(r); else if (left > 0) { left--; visible.push(r); fresh.push(k); } }
   for (const k of fresh) db.prepare('INSERT OR IGNORE INTO permit_seen VALUES(?,?,?)').run(client.companyId, month, k);
   const used = monthUsed(db, client.companyId, month);
-  return {total, page, pages: Math.max(1, Math.ceil(total / 50)), cities: allowed.map(({id, ...c}) => c), trades: companyTrades, limits: {cities: allowed.length, maxCities: Number(co.maxCities), monthlyLimit: Number(co.cap), used, remaining: Math.max(0, Number(co.cap) - used), month, capped: visible.length < slice.length}, permits: visible.map(r => ({...clientPermit(r), fav: favs.has(opaque(r.id))})), role: client.role};
+  return {total, page, pages: Math.max(1, Math.ceil(total / 50)), cities: allowed.map(({id, ...c}) => c), trades: companyTrades, limits: {cities: allowed.length, maxCities: Number(co.maxCities), monthlyLimit: Number(co.cap), used, remaining: Math.max(0, Number(co.cap) - used), month, capped: visible.length < slice.length}, kinds, permits: visible.map(r => ({...clientPermit(r), kind: kindOf.get(r.id) || clientPermit(r).kind, fav: favs.has(opaque(r.id))})), role: client.role};
 }
 export function recordClientUsage(db, client, kind, permits) {
   if (permits > 0) db.prepare('INSERT INTO usage_events(company_id,kind,permits,created_at) VALUES(?,?,?,?)').run(client.companyId, kind, permits, timestamp());
