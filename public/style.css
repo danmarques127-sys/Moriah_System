@@ -337,22 +337,10 @@ td.rowact{white-space:nowrap}
 .lcard .primary{padding:.85em;font-size:1.15em;font-weight:600;border-radius:.8em;background:#7048e8}
 @media (max-width:620px){.login{font-size:16px;background-position:center top}.lcard{width:min(92vw,400px);min-height:0;margin:0;padding:24px 22px;border-radius:22px}}
 
-/* "Moriah System" written by hand, like a signature on a blueprint (Caveat, SIL Open Font License, see public/fonts) */
-@font-face{font-family:"Great Vibes";font-weight:400;font-style:normal;font-display:swap;src:url(/fonts/great-vibes.woff) format("woff")}
-.lbrand{gap:.55em}
-.lbrand span{font-family:"Caveat","Segoe Print","Bradley Hand",cursive;font-size:2.9em;font-weight:700;line-height:1;letter-spacing:.02em;transform:rotate(-3deg);transform-origin:left center;color:#efe9ff;text-shadow:0 0 .5em #8b6bff99;display:inline-block;padding-bottom:.12em;border-bottom:.06em solid #a58bff77;border-radius:0 0 50% 50% / 0 0 100% 100%}
-.lbrand img{width:2.6em;height:2.6em}
-
-/* legible handwriting: larger, almost level, no underline, crisp white */
-.lbrand span{font-size:3.6em;font-weight:700;letter-spacing:.03em;transform:rotate(-1.5deg);transform-origin:center;color:#fff;text-shadow:0 0 .25em #7c5cff88;border-bottom:0;border-radius:0;padding:0}
-.lbrand{gap:.5em}
-.lbrand img{width:2.8em;height:2.8em}
-
-/* signature script: Great Vibes (SIL Open Font License, see public/fonts) */
-.lbrand span{font-family:"Great Vibes","Brush Script MT","Segoe Script",cursive;font-size:3.4em;font-weight:400;letter-spacing:.01em;transform:rotate(-2deg);text-shadow:0 0 .3em #7c5cff88}
-
-/* pen-written look: ink edges (SVG filter) and a quick pen stroke under the name */
-.ink-defs{position:absolute;width:0;height:0}
-.lbrand span.pen{display:grid;transform:rotate(-2deg);text-shadow:none}
-.lbrand span.pen b{font-family:"Great Vibes","Brush Script MT","Segoe Script",cursive;font-size:1em;font-weight:400;filter:url(#ink);color:#f4f0ff;text-shadow:0 0 .22em #8b6bffaa;letter-spacing:.01em;line-height:1.05}
-.lbrand span.pen .stroke{width:100%;height:.28em;color:#cbbaff;opacity:.85;margin-top:-.05em;filter:url(#ink)}
+/* classic MORIAH / SYSTEM lettering, centered over the form */
+.lbrand{display:flex;flex-direction:column;align-items:center;gap:.35em;text-align:center}
+.lbrand img{width:4.6em;height:4.6em;border-radius:1.1em;box-shadow:0 0 1.6em #7c3aed88}
+.lbrand b{font-size:3em;font-weight:700;letter-spacing:.09em;line-height:1;margin-right:-.09em}
+.lbrand small{font-size:1.25em;font-weight:600;letter-spacing:.62em;margin-right:-.62em;color:#b98cff;text-shadow:0 0 .6em #8b4dff88}
+.lcard{gap:.9em}
+.lcard h1{font-size:2em;text-align:left}
