@@ -1,6 +1,8 @@
 import {monthsBetween} from './radar.mjs';
 import {collectDocuments} from './documents.mjs';
 import {collectAccela} from './accela.mjs';
+// Finds a cost/value field in an open-data row whose column names are not known in advance.
+function valueField(r){const k=Object.keys(r||{}).find(x=>/(cost|valu|amount)/i.test(x)&&!/fee|paid|balance/i.test(x)&&Number(r[x])>0);return k?r[k]:0;}
 export const NATIVE_MODES=['boston','cambridge','somerville','milton','worcester','hartford','westerly','documents','accela'];
 const clean=v=>String(v??'').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/&nbsp;/g,' ').replace(/&#39;|&apos;/g,"'").replace(/&quot;/g,'"').replace(/\s+/g,' ').trim();
 const amount=v=>Math.max(0,Number(String(v??0).replace(/[$,]/g,''))||0);
@@ -49,7 +51,7 @@ export async function collect(source,month){
  if(offset>0&&page.features.length&&pageKey===previousPageKey)throw new Error('Paginação ArcGIS repetiu registros; cobertura não certificada.');
  previousPageKey=pageKey;
  for(const feature of page.features){const r=feature.attributes,type=hart?[r.RECORD_TYPE_TYPE,r.B1_APP_TYPE_ALIAS].filter(Boolean).join(' '):r.Record_Type;if(/certificate|occupancy|completion|complaint|zoning/i.test(type)&&!/building|construction|addition|alteration/i.test(type))continue;
- records.push(record(source,r.OBJECTID??r.ObjectId,hart?r.DateIssued:r.Permit_License_Issued_Date,hart?r.PROPERTY_ADDRESS:r.Address,hart?r.RECORD_ID:r.Record__,hart?r.DESCRIPTION:r.Permit_For==='N/A'?'Descrição não disponibilizada; escopo desconhecido.':r.Permit_For,type,hart?r.Total_Construction_Cost:0,hart?'':r.Contractor_Name,'',source.url,hart?r.RECORD_STATUS:r.Record_Status));}
+ records.push(record(source,r.OBJECTID??r.ObjectId,hart?r.DateIssued:r.Permit_License_Issued_Date,hart?r.PROPERTY_ADDRESS:r.Address,hart?r.RECORD_ID:r.Record__,hart?r.DESCRIPTION:r.Permit_For==='N/A'?'Descrição não disponibilizada; escopo desconhecido.':r.Permit_For,hart?type:[type,r.Permit_For&&r.Permit_For!=='N/A'?r.Permit_For:''].filter(Boolean).join(' - '),hart?r.Total_Construction_Cost:valueField(r),hart?'':r.Contractor_Name,'',source.url,hart?r.RECORD_STATUS:r.Record_Status));}
  if(page.features.length<1000&&page.exceededTransferLimit!==true)break;
  if(offset===19000)complete=false;}
  }else if(source.mode==='milton'){
@@ -67,7 +69,7 @@ export async function collect(source,month){
  const url=new URL(match[1].replace(/&amp;/g,'&'),source.url);if(url.hostname.replace(/^www[.]/,'')!=='westerlyri.gov')throw new Error('CSV fora do domínio municipal.');
  const rows=parseCsv(await http(url.href));if(rows.length&&!('Date Issued' in rows[0]))throw new Error('Colunas do relatório mudaram.');
  for(const r of rows){if(r.Title!=='Building Permit'||r.Type!=='Permit/License')continue;const issued=issueDate(r['Date Issued']);if(!issued)throw new Error('Data não reconhecida no CSV.');if(issued<start||issued>=end)continue;
- const p=record(source,r['Record #'],issued,r['Full Address'],r['Record #'],'Categoria municipal: '+r['Type of Improvement']+'. Descrição integral ausente no CSV.','Building Permit',r['Estimated cost of Labor and Materials'],r['GC Name'],r['Applicant Name'],url.href);if(r['GC Phone #'])p.phone=r['GC Phone #'];records.push(p);}
+ const p=record(source,r['Record #'],issued,r['Full Address'],r['Record #'],'Categoria municipal: '+r['Type of Improvement']+'. Descrição integral ausente no CSV.',['Building Permit',r['Type of Improvement']].filter(Boolean).join(' - '),r['Estimated cost of Labor and Materials'],r['GC Name'],r['Applicant Name'],url.href);if(r['GC Phone #'])p.phone=r['GC Phone #'];records.push(p);}
  }
  const unique=[...new Map(records.map(p=>[p.id,p])).values()];return {status:complete?'complete':'partial',records:unique,message:(complete?'Período coletado com paginação.':'Limite de segurança atingido; cobertura parcial.')+(['worcester','westerly','milton'].includes(source.mode)?' A fonte contém descrições ausentes ou resumidas; revisar escopo.':'')};
 }

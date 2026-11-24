@@ -5,7 +5,7 @@ test('date range includes month boundaries and limits size',()=>{assert.deepEqua
 test('unit notation normalized without merging different units',()=>{assert.equal(normalizeAddress('12 Main Street Apt 2'),normalizeAddress('12 MAIN ST #2'));assert.notEqual(projectKey(p({address:'12 Main St #1'})),projectKey(p({address:'12 Main St #2'})));});
 test('new house score follows rules and is qualified',()=>{const r=assess([p({value:1200000,contractor:'GC'})],now);assert.equal(r.score,100);assert.equal(r.tier,'HOT');assert.equal(r.kind,'New house');assert.equal(r.qualified,true);});
 test('electrical wire new house alone is not a new-house bid',()=>{const r=assess([p({type:'Residential Electrical',description:'Wire new house'})],now);assert.equal(r.qualified,false);});
-test('deck under Residential Addition category does not get major addition points',()=>{const r=assess([p({type:'Residential Addition',description:'Build a small open deck'})],now);assert.equal(r.qualified,false);assert.equal(r.kind,'Other');});
+test('deck under Residential Addition category does not get major addition points',()=>{const r=assess([p({type:'Residential Addition',description:'Build a small open deck'})],now);assert.equal(r.qualified,false);assert.equal(r.kind,'Deck / Outdoor');});
 test('ADU and full gut are selected',()=>{assert.equal(assess([p({description:'Create an ADU in existing structure'})],now).kind,'ADU');assert.equal(assess([p({description:'Full gut renovation of the dwelling'})],now).qualified,true);});
 test('trade associated to an actual building permit is grouped and not penalized',()=>{const r=groupProjects([p(),p({id:'boston:E1',type:'Electrical',description:'Wire new house',address:'12 Main ST'})],[],now);assert.equal(r.length,1);assert.equal(r[0].score,60);assert.equal(r[0].qualified,true);});
 test('permit age never proves stage',()=>assert.equal(assess([p()],now).stage,'ESTIMATED STAGE'));
@@ -75,4 +75,13 @@ test('new municipal lookup endpoints are registered but not mistaken for live fe
  assert.equal(new URL(newton.url).hostname,'newtonma.viewpointcloud.com');
  assert.equal(newton.mode,'portal');
  assert.equal(new URL(springfield.url).hostname,'springfieldma.portal.opengov.com');
+});
+test('small jobs are labelled from the permit type and description',()=>{
+ const k=(type,description)=>assess([p({type,description})],now).kind;
+ assert.equal(k('Roofing-Siding','Remove and replace asphalt shingles'),'Roofing');
+ assert.equal(k('Alteration','Replace 12 windows'),'Siding / Windows');
+ assert.equal(k('Plumbing','Replace water heater'),'Plumbing');
+ assert.equal(k('Alteration - R','Kitchen renovation'),'Renovation');
+ assert.equal(k('Electrical Permit','New 200 amp panel'),'Electrical');
+ assert.equal(k('Mechanical','Install heat pump'),'HVAC / Mechanical');
 });
