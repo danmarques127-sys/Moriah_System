@@ -476,19 +476,23 @@ export async function collectDocuments(source, month, deps = {}) {
 }
 
 /* ---------- manual upload (admin): same readers as the collectors, but the file comes from the operator ---------- */
-export async function parseUploadedFile({buffer, source, month, deps = {}}) {
+export async function parseUploadedFile({buffer, source, month, toMonth, deps = {}}) {
   const cfg = source.collector || {}, doc = {buffer, contentType: '', url: source.url};
-  const rows = await parseDocument(doc, {...cfg, dateFallback: 'month-start'}, month, deps);
+  const last = toMonth && toMonth > month ? toMonth : month, multi = last !== month;
+  if (multi && (last.slice(0, 4) - month.slice(0, 4)) * 12 + Number(last.slice(5)) - Number(month.slice(5)) > 23) throw new Error('O período do arquivo pode ter no máximo 24 meses.');
+  // One month: undated rows take that month (approximate). Several months: undated rows cannot be placed, so they are skipped.
+  const rows = await parseDocument(doc, {...cfg, dateFallback: multi ? 'none' : 'month-start'}, month, deps);
   if (!rows.length) throw new Error('Nenhuma linha de permit reconhecida neste arquivo (PDF digitalizado, planilha sem cabeçalho de permits ou layout diferente). Converta para CSV ou use a importação JSON.');
   const records = [], dates = []; let outside = 0, undated = 0;
   for (const row of rows) {
     if (!row.issued) { undated++; continue; }
     dates.push(row.issued);
-    const rec = toRecord(source, row, month, cfg, source.url);
+    const m = row.issued.slice(0, 7), rec = m >= month && m <= last ? toRecord(source, row, m, cfg, source.url) : null;
     if (rec) records.push(rec); else outside++;
   }
   dates.sort();
   const monthCounts = {}; for (const d of dates) monthCounts[d.slice(0, 7)] = (monthCounts[d.slice(0, 7)] || 0) + 1;
   const suggestedMonth = Object.entries(monthCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
-  return {suggestedMonth, addresses: rows.slice(0, 300).map(r => String(r.address || '')), format: detectFormat(doc), approx: records.filter(r => r.dateApprox).length, rowsRead: rows.length, records: [...new Map(records.map(r => [r.id, r])).values()], outside, undated, range: dates.length ? {from: dates[0], to: dates.at(-1)} : null};
+  const unique = [...new Map(records.map(r => [r.id, r])).values()];
+  return {suggestedMonth, fileFrom: dates[0] ? dates[0].slice(0, 7) : null, fileTo: dates.length ? dates.at(-1).slice(0, 7) : null, addresses: rows.slice(0, 300).map(r => String(r.address || '')), format: detectFormat(doc), approx: unique.filter(r => r.dateApprox).length, rowsRead: rows.length, records: unique, outside, undated, range: dates.length ? {from: dates[0], to: dates.at(-1)} : null};
 }

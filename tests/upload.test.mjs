@@ -70,3 +70,31 @@ test('upload preview suggests the right month and detects a file from another ci
   assert.equal(r.suggestedMonth, '2026-10'); assert.equal(r.records.length, 0);
   assert.ok(r.addresses.every(a => /Westerly/.test(a)));
 });
+
+test('a multi-month file is split by month, undated rows are skipped and the range is capped at 24 months', async () => {
+  const {parseUploadedFile} = await import('../src/documents.mjs');
+  const csv = 'Record #,Date Issued,Full Address,Type of Improvement\nB-1,2026-08-01,"1 MAIN ST",Addition\nB-2,2026-09-05,"2 OAK ST",Pool\nB-3,2026-10-20,"3 ELM ST",Roof\nB-4,2025-01-02,"4 ELM ST",Roof\nB-5,,"5 ELM ST",Roof\n';
+  const src = {id: 'x', city: 'X', state: 'MA', url: 'https://www.x.gov/p', mode: 'report'};
+  const r = await parseUploadedFile({buffer: Buffer.from(csv), source: src, month: '2026-08', toMonth: '2026-10'});
+  assert.deepEqual(r.records.map(x => x.issued).sort(), ['2026-08-01', '2026-09-05', '2026-10-20']);
+  assert.equal(r.outside, 1); assert.equal(r.undated, 1);
+  await assert.rejects(parseUploadedFile({buffer: Buffer.from(csv), source: src, month: '2024-01', toMonth: '2026-10'}), /24 meses/);
+});
+
+test('API: multi-month upload previews per month, drops permits older than the retention limit and stores coverage per month', async t => {
+  const {createApplication} = await import('../src/server.mjs');
+  const app = await createApplication({databasePath: ':memory:', adminEmail: 'owner@example.test', adminPassword: 'long-test-password-123', appUrl: 'http://127.0.0.1', startBackground: false});
+  await new Promise(r => app.server.listen(0, '127.0.0.1', r)); const base = 'http://127.0.0.1:' + app.server.address().port;
+  app.config.appUrl = base; t.after(() => app.close());
+  const login = await fetch(base + '/api/login', {method: 'POST', headers: {Origin: base, 'Content-Type': 'application/json'}, body: JSON.stringify({email: 'owner@example.test', password: 'long-test-password-123'})});
+  const cookie = login.headers.get('set-cookie').split(';')[0], me = await (await fetch(base + '/api/me', {headers: {Cookie: cookie}})).json();
+  const d = new Date(); const iso = k => { const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - k, 10)); return x.toISOString().slice(0, 10); };
+  const csv = 'Record #,Date Issued,Full Address,Type of Improvement\nB-1,' + iso(3) + ',"1 MAIN ST",Addition\nB-2,' + iso(2) + ',"2 OAK ST",Pool\nB-3,' + iso(1) + ',"3 ELM ST",Roof\nB-4,' + iso(20) + ',"4 ELM ST",Roof\n';
+  const send = confirm => fetch(base + '/api/import-file?' + new URLSearchParams({sourceId: 'chicopee', month: iso(20).slice(0, 7), to: iso(1).slice(0, 7), filename: 'x.csv', confirm}), {method: 'POST', headers: {Origin: base, Cookie: cookie, 'X-CSRF-Token': me.csrf, 'Content-Type': 'application/octet-stream'}, body: csv});
+  const prev = await (await send('0')).json();
+  assert.equal(prev.inMonth, 3); assert.equal(prev.tooOld, 1); assert.equal(Object.keys(prev.months).length, 3);
+  const done = await (await send('1')).json();
+  assert.equal(done.added, 3);
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS n FROM coverage WHERE source_id='chicopee'").get().n, 3);
+  assert.equal(app.db.prepare("SELECT COUNT(*) AS n FROM manual_imports WHERE source_id='chicopee'").get().n, 3);
+});
