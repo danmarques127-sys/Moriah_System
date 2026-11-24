@@ -1,49 +1,132 @@
-# Moriah System · Permit Radar
+<div align="center">
 
-Private web application. Moriah System collects issued municipal building permits (MA/CT/RI) into a searchable radar and, from any permit, continues into the estimator workflow:
+<img src="docs/hero.svg" alt="Moriah System — Permit Intelligence" width="100%">
 
-**Municipal permit → project/client → insulation takeoff → materials/cost → saved proposal.**
+![Node](https://img.shields.io/badge/Node.js-24-5fa04e?logo=nodedotjs&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES%20modules-f7df1e?logo=javascript&logoColor=black)
+![SQLite](https://img.shields.io/badge/SQLite-node%3Asqlite-003b57?logo=sqlite&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Caddy%20HTTPS-2496ed?logo=docker&logoColor=white)
+![Python](https://img.shields.io/badge/Python-report%20tools-3776ab?logo=python&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-122%20passing-34d399)
+![AI](https://img.shields.io/badge/AI%20in%20the%20product-none-9b6bff)
+![Dependencies](https://img.shields.io/badge/runtime%20deps-0-7c3aed)
 
-No OpenAI/ChatGPT login, API, model, embedding, AI agent, or AI token is used by this application. Authentication session tokens and CSRF tokens are ordinary security mechanisms, not AI usage. Hosting, disk, backups and domains are separate infrastructure costs.
+**Private web app that gathers issued municipal building permits in Massachusetts, Connecticut and Rhode Island, and shows them in a radar for the owner and, later, for affiliated companies.**
 
-## Included
+</div>
 
-- Private email/password login, owner/estimator/viewer roles and workspace-scoped projects, estimates, pricing and lead notes.
-- Radar across MA/CT/RI, multiple cities, inclusive from/to months (up to24), type/priority/status filters, CSV export, evidence and balanced ordering across cities.
-- New houses, ADUs, major additions, gut renovation, conversions and insulation signals. A lone electrical permit saying “wire new house” is not treated as a verified new-house building permit. Minor decks/roofing/window jobs stay outside the qualified view.
-- Project creation directly from a permit with its address and municipal reference.
-- Eight insulation sections: roof/rafters, slopes, ceiling, gables, exterior walls, basement walls, blockers and crawl space.
-- Rectangle/triangle/projected-roof/direct area, feet/inches, quantity, one/two sides, total opening deductions, cavity depth, target R and extra waste.
-- Layered assemblies: fixed2-inch CC plus OC fill to the remaining R, or configurable individual layers.
-- Foam board feet, calibrated gallons,45-gallon barrel volume equivalents, rounded package totals across sections, fiberglass/ROCKWOOL/blow-in/foam board/coating catalog and editable coverage/prices.
-- Material/labor/overhead/margin, optional manual subtotal, discount, configurable tax/deposit, material CSV and printable English proposal/PDF via the browser.
-- Saved immutable estimate versions, company/project snapshots and workspace JSON backup.
-- Persistent collection jobs and a daily local non-AI scheduler, with source errors and pending months visible.
+---
 
-## Coverage is measured, not promised
+## At a glance
 
-The registry starts with 32 municipal sources. Seven API/CSV collectors and 15 document collectors are implemented (Brookline and Newton are imported by hand) (see below). Source availability can change.
+| | |
+|---|---|
+| **Coverage** | 32 cities: 7 open-data APIs, 16 document collectors (PDF, XLSX, CSV, HTML), 9 manual (imported by hand) |
+| **Data rule** | Always the newest data. A failed collection never deletes old permits. A missing month is "pending", never an invented zero. |
+| **Clients** | Never receive municipal, PDF or source links. The client channel is off by default. |
+| **AI** | None. All readers are deterministic code. |
+| **Runtime dependencies** | None. Node 24 plus the system tool `pdftotext` (poppler-utils). |
 
-**Newton and other report/OpenGov/Accela sources are listed but are not presented as automatically connected.** A homepage or search link does not prove bulk collection works. CAPTCHA, login barriers and HTTP403 are not bypassed. Missing/unpublished reports are pending, never an invented zero. No indiscriminate all-address crawl is implemented. This is not a claim that all559municipalities in the three states are connected.
+## How the data flows
 
-**Document collectors.** 15 cities (Needham, Wellesley, Belmont, Arlington, Lexington, Sudbury, Andover, Wakefield, Reading, Waltham, West Hartford, Milford, Amesbury, North Attleborough, Chatham) use `src/documents.mjs`: the collector reads the city's listing page (or a fixed file link), picks the file for the requested period (or the newest one), downloads it (PDF via `pdftotext`, XLSX, CSV or HTML) and extracts rows deterministically. Per-city settings live in `src/source-configs.mjs`. **None of these layouts has been validated against a live document yet**, so they finish as `partial` (never `complete`) and say so in the job log; a layout that is not recognized fails the job, and a document that has no permits for the month stays `pending`. Where a city publishes the payment or submission date instead of the issue date, the permit description says so. The Accela collector (`src/accela.mjs`) is kept but not enabled for any city. Brookline (Accela portal), Newton (OpenGov export button) and Carlisle (summary tables without permit numbers or dates) have no collector and are import-only; use the admin file import (PDF/CSV/XLSX) on the Cities screen for it. Weston, Newport, Warwick and Providence were removed because no public source exists. Requires `poppler-utils` (already in the Docker image) when running outside Docker.
+<img src="docs/pipeline.svg" alt="Pipeline from city sources to the radar" width="100%">
 
-Other sources can be added by the system administrator for normalized import. Deterministic CSV/XLSX/PDF-table conversion is available in tools/normalize_report.py. PDF layouts that cannot be extracted reliably require a dedicated parser or a municipal export; no AI fallback runs behind the scenes.
+```mermaid
+flowchart LR
+  A[City site / API] --> B{Collector}
+  B -->|JSON / CSV| C[Native collector]
+  B -->|PDF / XLSX / HTML| D[Document reader]
+  D --> D1[Text layout]
+  D --> D2[Column-position reader]
+  D --> D3[Permit cards]
+  C --> E[Normalize and classify]
+  D1 --> E
+  D2 --> E
+  D3 --> E
+  E --> F[(SQLite)]
+  F --> G[Permit Radar]
+  F --> H[Coverage and Errors]
+  H --> I[Daily backup and e-mail alert]
+```
 
-No historical permit database, client records or saved estimates from earlier applications are embedded in this repository. The application begins empty.
+## What is inside
 
-## Quick start on a local computer
+<details open>
+<summary><b>Permit Radar</b></summary>
 
-Requires Node24 (native node:sqlite); no JavaScript packages need installing.
+- Filters by state, several cities at once (Confirm button), months, text search and type pills.
+- Metric cards, "Permits by Week" and "Permits by Type" charts, built from the real filtered data.
+- Permit drawer with description, declared value, owner/contractor contacts and trade classification. Municipal evidence and source links are shown **only to the owner**.
+- Classification reads the type column and, when it is vague, the description: New house, ADU, Addition, Gut renovation, Conversion, Commercial, Insulation, then trades (Roofing, Solar, Siding / Windows, HVAC, Plumbing, Electrical, Demolition, Deck / Outdoor, Renovation).
+</details>
 
-1. Set ADMIN_EMAIL and a unique ADMIN_PASSWORD of at least16characters in your shell, or use Node's --env-file option with a private .env file.
-2. For local testing use NODE_ENV=development and APP_URL=http://localhost:3000.
-3. Run npm start, or node --env-file=.env src/server.mjs.
-4. Open http://localhost:3000 and sign in with the account you configured.
+<details>
+<summary><b>Sources &amp; Coverage</b></summary>
 
-The owner account is initialized only when the database has no users. There is no public signup or default shared password. ADMIN_PASSWORD is not a password reset mechanism for an existing database.
+- Status per city and month (complete, partial, pending, unavailable), last sync and permit counts.
+- Manual cities list with the reason each one cannot be automated.
+- File import (PDF, CSV, XLSX) with a review step before anything is saved; "Add city" dialog for new sources.
+</details>
 
-## Independent production hosting
+<details>
+<summary><b>Errors</b></summary>
+
+- Failures grouped by city, month and area, with Open / Resolved / All tabs.
+- Click a row for the latest response and the check history; recheck one item or all open ones, with a result banner.
+</details>
+
+<details>
+<summary><b>Partners and client access</b></summary>
+
+- Affiliated companies, trades, client accounts with the cities each client may see (search, company filter, side drawer).
+- Data freshness alerts, retention, audit log, usage per company and system settings.
+</details>
+
+<details>
+<summary><b>Profile and workspace users</b></summary>
+
+- Display name, title, phone, photo and password change (show/hide eye).
+- Owners add workspace users (read-only or owner) from a dialog.
+</details>
+
+<details>
+<summary><b>Daily automation</b></summary>
+
+- Collection every day after 8:00 New York time; backup and health check after 10:00.
+- Backup of the last 14 days, and an e-mail alert when a city fails or its newest permit is too old.
+</details>
+
+## Languages and tools
+
+| Layer | Technology | Where |
+|---|---|---|
+| Server and collectors | **JavaScript (ES modules, Node 24)**, built-in `node:http`, `node:sqlite`, `node:test` | `src/`, `scripts/` |
+| Front end | **Vanilla JavaScript + HTML + CSS**, no framework or build step, strict CSP (no inline styles) | `public/` |
+| Database | **SQLite** (single instance) with numbered **SQL** migrations | `migrations/` |
+| PDF reading | `pdftotext -bbox` (poppler) with word coordinates; column, card and text-layout readers | `src/documents.mjs` |
+| Report conversion | **Python** helper for CSV/XLSX/PDF tables | `tools/normalize_report.py` |
+| Hosting | **Docker** + **Caddy** (automatic HTTPS) | `Dockerfile`, `compose.yml`, `Caddyfile` |
+| CI | **GitHub Actions** (syntax check, tests, Docker build, source probe) | `.github/workflows/` |
+| Dev environment | GitHub Codespaces dev container | `.devcontainer/` |
+
+About 3,800 lines of JavaScript, 300 of CSS, 100 of SQL and 127 tests.
+
+## Run it
+
+```bash
+git checkout main && git pull
+npm run atualizar     # updates the data and starts the test server
+npm test              # 122 tests, in-memory databases and mocked city responses
+npm run check         # syntax check of every module
+```
+
+Layout readers for several PDFs were written from page screenshots and tested with synthetic documents; the first real collection confirms them. Coverage is measured, not promised: CAPTCHA, login barriers and HTTP 403 are never bypassed.
+
+---
+
+## Setup details
+
+### Production hosting
 
 Use a single persistent Docker host with a domain. Set DNS to the host, allow ports80/443, copy .env.example to a private .env and configure:
 
@@ -59,87 +142,73 @@ Run docker compose up -d --build. Caddy terminates HTTPS. The app is not exposed
 
 No external hosting account, domain, certificate deployment or live production URL has been created by this repository commit. There is no paid subscription checkout or public self-service signup; workspace provisioning is administrator-controlled.
 
-## Scheduler and collection
+### Scheduler and collection
 
-With ENABLE_SCHEDULER=1, at08:00 America/New_York or the next application tick, the server queues the previous and current month for native collectors. SQLite records the claimed day and queued jobs. Failed jobs preserve old records and report the failure. A daily scheduler is independent of the original ChatGPT automation, which is not modified.
+With `ENABLE_SCHEDULER=1`, after 8:00 America/New_York the server queues the previous and current month for the native collectors. SQLite records the claimed day and queued jobs. Failed jobs preserve old records and report the failure.
 
 For a manual local/operator run:
 - npm run collect -- 2026-09 2026-10
 - npm run collect -- 2026-10 2026-10 boston
 
-The web “Coletar fontes automáticas” action queues selected native cities without blocking the page. A global system administrator controls collection and imports because municipal records are shared public-source data. Workspaces never share client projects, estimates, notes or contacts stored in lead reviews.
+The "Sync all sources" action queues the automatic cities without blocking the page. Only the system administrator controls collection and imports, because municipal records are shared public-source data.
 
-## Product setup and calculation notes
-
-CC starts at50USD/gallon, OC at37USD/gallon, barrel volume45gallons, R/in7.5and4.2. Initial effective yields96BF/gal CC and384BF/gal OC reproduce the supplied consumption example after rounding: around42gal CC and82gal OC.
-
-These are editable workflow calibration parameters, not a guarantee of manufacturer yield. Confirm whether your gallon measurement means combined chemicals or one component. Barrel equivalents are volume references, not automatic A/B-set purchasing quantities.
-
-FiberglassR15 coverage65.67sqft/bag is provisional from the supplied788sqft/12bags example. Other package coverage and prices must be entered from the exact product sheet. Zero coverage fails the calculation; zero prices remain visibly incomplete. Blow-in coverage is keyed by R-value; coating adds no thermal R in this model.
-
-Target R is user-defined. The software does not determine code compliance, foam approval, vapor/thermal barrier suitability or legal contract requirements. Tax/deposit defaults are0 and must be configured by the business. Proposal notes are user-authored. All calculations are repeated on the server before saving.
-
-## Import and migration
+### Import and migration
 
 The radar accepts JSON containing records or permits, including a normalized export from the old radar when sourceIDs match. It splits uploads by source/month, preserves repeated IDs, and can import compatible lead reviews after their records exist. Manual imports remain marked partial because completeness has not been machine-verified.
 
-See docs/imports.md. Estimates from the earlier standalone estimator may use a different schema; they are not silently migrated. Export and retain their backups before any migration.
+See `docs/imports.md`.
 
-## Accounts and data
+### Accounts and data
 
-Owners can add users to their own workspace and change pricing/company settings. Estimators can manage projects and estimates; viewers can only read. All users can change their own password; this revokes existing sessions.
+Owners can add users to their own workspace (read-only or owner). All users can change their own password; this revokes existing sessions.
 
 An operator can create another isolated workspace with:
 NEW_USER_EMAIL, NEW_USER_PASSWORD and optionally NEW_WORKSPACE_NAME set privately, then node scripts/admin.mjs create-workspace.
 
 Password recovery: set NEW_USER_EMAIL and NEW_USER_PASSWORD privately, then node scripts/admin.mjs reset-password. No email/SMS is sent. Do not put real credentials in command history, GitHub issues, logs or source files.
 
-## Backup, validation and limits
+### Backup, validation and limits
 
 - npm run backup -- /private/backups/permit-finder.sqlite uses SQLite's online backup API.
 - Store database backups privately; they include account hashes and business records.
 - The Settings backup button exports only the signed-in workspace's application data, never passwords/sessions or another workspace.
 - Restore a database backup with the application stopped and preserve volume ownership. Back up before code/database changes.
 - npm run check checks JavaScript syntax.
-- npm test runs estimator/radar and HTTP authentication/tenant-isolation tests with in-memory databases and mocked municipal responses.
+- `npm test` runs the radar, readers, HTTP authentication and isolation tests with in-memory databases and mocked municipal responses.
 - GitHub Actions runs syntax checks, tests and Docker build on main pushes and PRs.
 - Live municipal availability and browser visual behavior are not certified by unit tests. Check the actual workflow result; do not infer that tests ran simply because a workflow file exists.
 
 Source publication is independent of production deployment. Keep this repository private unless you intentionally choose to open-source the code. Never commit .env, SQLite files, exports or customer data.
 
-## Private test preview
+### Private test preview
 
 Run `npm run start:test` with Node 24. This explicitly starts a test-only server with username `mestre` and the agreed public fixture password `shazam123@`. Do not reuse this password for real accounts. Keep Codespaces port visibility **Private**.
 
-This command uses a separate persistent `data/permit-finder-test.sqlite` database, ignores the real account bootstrap variables, and does not reset your existing accounts or estimates. The normal `npm start` command never creates this account. Test startup and test login configuration are rejected in production.
+This command uses a separate persistent `data/permit-finder-test.sqlite` database, ignores the real account bootstrap variables, and does not reset your existing accounts. The normal `npm start` command never creates this account. Test startup and test login configuration are rejected in production.
 
 In Codespaces the preview address is derived automatically from its environment. The test server also supports the Codespaces localhost Origin rewrite only for a same-origin request with an exactly matching localhost Host. Foreign origins and cross-site requests remain blocked. Outside Codespaces this exception is absent.
 
-## Admin portal (login `mestre`)
+### Admin portal (login `mestre`)
 Tabs: Permit Radar, Sources & Coverage, Admin (accounts, collection health, manual cities, retention), **Partners**, Errors, Account.
 Partners sections: Affiliated companies, Trades (editable), Client access (accounts linked to a company and cities; client sign-in is not enabled yet), Coverage by client, Data freshness (alert after N days without permits), Retention, Audit log (who imported, logged in, changed settings), Usage (permits seen/exported per company) and Settings (retention months, stale-days limit). Tables `permit_marks` and `client_cities` are the data model for the future client area; nothing else of it is built.
 
-## Smarter file readers
+### Smarter file readers
 - **PDF text layout** first; if no rows are found, **position reader**: finds the header band, splits columns at the emptiest strip between header labels and reads each cell by position (wide tables with wrapped cells, e.g. Bethel's "M5 Permit Report"). `UPLOAD_CONFIGS` in `src/source-configs.mjs` can pin the columns of a city.
 - **CSV**: comma, semicolon, tab or pipe; title lines above the header are skipped; many header names (Permit ID, Property Address, Issue Date, Job Cost...).
 - **Dates**: `10/1/2026`, `2026-10-01`, `Oct 1, 2026`, `1-Oct-2026`, `10.01.2026`, `20261001`, Excel serials.
 - A page that repeats the first rows of the previous page keeps the first complete copy.
 
-## Client channel (prepared, OFF by default)
+### Client channel (prepared, OFF by default)
 Switch on in Partners → Settings. Clients (Partners → Client access → Set password) sign in at `POST /api/client/login` with their own cookie (`pf_client`, 8 h) and read `GET /api/client/permits` (filters: `q`, `state`, `city`, `from`, `to`, `page`, `export=1`).
 Rules enforced and tested: only the cities assigned to the account; account and company must be active; **no municipal link, source id or source name is ever returned** (links are also stripped from descriptions, permit keys are opaque); a client cookie cannot open any internal route; usage (seen/exported) is counted per company. No client screen exists yet. `TEST_PASSWORD` can override the fixed test-server password.
 
-## Removed (dead code)
-The insulation estimator, proposals, projects, payments, employees/time entries, lead reviews, company pricing/materials and workspace JSON backup were removed from the app and API. Their tables stay in the database (migrations are never rewritten). Database backup: `npm run backup`.
+### Leads not yet wired
+Plymouth (MA Archive Center), Truro (MA DocumentCenter "Monthly Building Report"), Newton (monthly "Building Permits Issued" PDFs) and Harwich need a stable listing URL. `fileTemplates` in `src/source-configs.mjs` builds one URL per month: `{Month}` `{month}` `{mm}` `{year}` `{yy}`.
 
-## Cities added by the public-list survey (unvalidated, always `partial`)
-Barnstable (MA, monthly PDF `{Month}-{year}.pdf`), Southbury (CT, monthly M5 Permit Report), Bethel (CT, two known file names per month), Lowell (MA, yearly DocumentCenter folders), Manchester-by-the-Sea (MA, Archive Center "Building Permits"). `fileTemplates` in `src/source-configs.mjs` builds one URL per month: `{Month}` `{month}` `{mm}` `{year}` `{yy}`.
-Leads not yet wired (need a stable listing URL): Plymouth (MA Archive Center, "Permits Issued <Month> <Year>"), Truro (MA DocumentCenter "Monthly Building Report"), Newton (MA monthly "Building Permits Issued" PDFs under showpublisheddocument), Harwich (MA page links only).
-
-## New design
+### New design
 Dark purple Moriah System look: sidebar menu, metric cards, "Permits by Week" and "Permits by Type" charts (real data from the selected filters), type pills that filter the table. Logo and favicons are in `public/`. Inline styles are blocked by the CSP, so charts are styled from JavaScript after render.
 
-## Daily automation (production)
+### Daily automation (production)
 With `ENABLE_SCHEDULER=1` the server collects every day after 8:00 (New York) and, after 10:00, runs the daily check once per day:
 - **Backup:** `data/backups/permit-finder-YYYY-MM-DD.sqlite` (override with `BACKUP_DIR`), newest 14 kept. Copy them off the server too.
 - **Alerts:** automatic collectors whose latest run failed, and cities whose newest permit is older than the limit in Partners > System settings. The e-mail goes to the address saved there (or `ALERT_EMAIL`) when the problem list changes, or weekly while it persists. Without a mail server the result is shown only in Partners > System settings > Automation.
