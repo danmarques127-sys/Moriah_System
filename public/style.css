@@ -337,3 +337,21 @@ td.rowact{white-space:nowrap}
 .login .form-error{font-size:15px}
 .login .primary{padding:15px;font-size:19px;font-weight:400;letter-spacing:.2em;text-transform:uppercase;border-radius:14px}
 @media (max-width:600px){.login-brand .brand-text b{font-size:28px}.login-mark{width:56px;height:56px}.login .panel{padding:24px 20px}.login .panel h1{font-size:28px}}
+
+/* login v4: blueprint street, chunky lettering, smaller box */
+.login-wrap{width:min(440px,94vw);gap:26px}
+.login-mark{width:78px;height:78px;border-radius:20px}
+.login-brand{gap:18px}
+.login-brand .brand-text{gap:8px;font-family:var(--elegant)}
+.wordmark{width:230px;height:auto;display:block;color:#f6f2ff;filter:drop-shadow(0 0 14px #7c3aed88)}
+.login-brand .brand-text small{font-size:19px;font-weight:700;letter-spacing:.62em;color:var(--accent2);margin:0}
+.login .panel{padding:28px 30px;border-radius:22px}
+.login .panel h1{font-size:30px;font-weight:700;letter-spacing:.06em}
+.login form{gap:13px}
+.login label{font-size:14px;font-weight:600}
+.login input{padding:12px 16px;font-size:16px}
+.login .primary{padding:13px;font-size:17px;font-weight:700;letter-spacing:.18em}
+@media (max-width:600px){.wordmark{width:160px}.login-mark{width:56px;height:56px}}
+
+.wordmark{width:250px}
+.wordmark path,.wordmark circle{stroke-width:12}
