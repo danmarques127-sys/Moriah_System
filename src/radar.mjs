@@ -51,7 +51,7 @@ export function assess(records,now=new Date()){
  add(newHome,'Construção residencial nova',50);add(adu,'ADU',40);add(gut,'Reforma completa',40);add(addition,'Grande adição / área habitável',35);add(newHome&&records.some(p=>/demolition/i.test(p.type)),'Demolição associada à reconstrução',35);
  add(value>=1e6,'Valor declarado ≥ US$ 1 milhão',35);add(value>=5e5&&value<1e6,'Valor declarado ≥ US$ 500 mil',25);add(conversion,'Conversão de área para uso habitável',20);add(multiConversion,'Conversão multifamily / condo',20);add(envelope,'Insulation / envelope explícito',30);
  const recent=records.some(p=>{const age=(now-Date.parse(p.issued+'T12:00:00Z'))/86400000;return age>=0&&age<=30;});add(recent,'Emissão nos últimos 30 dias',10);add(records.some(p=>p.contractor),'Empresa executora informada',5);add(tradeOnly,'Somente trade; projeto principal não verificado',-60);add(minor,'Serviço pequeno / isolado',-40);
- const score=Math.max(0,Math.min(100,reasons.reduce((s,r)=>s+r.points,0))),kind=adu?'ADU':newHome?'New house':addition?'Addition':gut?'Gut renovation':conversion||multiConversion?'Conversion':commercial?'Commercial':envelope?'Insulation':'Other';
+ const score=Math.max(0,Math.min(100,reasons.reduce((s,r)=>s+r.points,0))),kind=adu?'ADU':newHome?'New house':addition?'Addition':gut?'Gut renovation':conversion||multiConversion?'Conversion':commercial?'Commercial':envelope?'Insulation':tradeKind(text);
  const master=[...basis].sort((a,b)=>b.issued.localeCompare(a.issued))[0];const inspection=records.find(p=>p.inspection);
  return {score,tier:score>=70?'HOT':score>=50?'GOOD':score>=30?'POSSIBLE':'REVIEW',kind,qualified:scope&&!tradeOnly&&score>=30,reasons,master,value,stage:inspection?'VERIFIED':'ESTIMATED STAGE',stageText:inspection?.inspection||'Sem inspeção que confirme a fase. Emissão não comprova prontidão para insulation.',potentialScope:newHome||gut||addition?['Exterior Walls','Roof / Rafters','Floors']:conversion?['Área convertida — conferir plantas']:envelope?['Conforme descrição municipal']:[]};
 }
@@ -60,3 +60,18 @@ export function groupProjects(records,reviews=[],now=new Date()){
  return [...map].map(([key,list])=>({key,records:list,...assess(list,now),review:reviewMap.get(key)||{status:'Novo',notes:'',contactDate:''}})).sort((a,b)=>b.score-a.score||b.master.issued.localeCompare(a.master.issued));
 }
 export function diversify(projects){const buckets=new Map();for(const p of projects){const k=p.master.state+'|'+p.master.city;if(!buckets.has(k))buckets.set(k,[]);buckets.get(k).push(p);}const groups=[...buckets].sort(([a],[b])=>a.localeCompare(b)).map(([,v])=>v),out=[];let i=0;while(groups.some(g=>g.length>i)){for(const g of groups)if(g[i])out.push(g[i]);i++;}return out;}
+
+// Work label for everything that is not a big project, read from the permit type and the description.
+export function tradeKind(text){
+ const x=String(text||'').toLowerCase();
+ if(/\broof|shingle|re-?roof/.test(x))return 'Roofing';
+ if(/solar|photovoltaic|\bpv\b/.test(x))return 'Solar';
+ if(/siding|window|\bdoors?\b|exterior trim/.test(x))return 'Siding / Windows';
+ if(/hvac|heat pump|furnace|boiler|mechanical|air.?condition|mini.?split|\bduct|oil tank|gas (?:line|pipe)|fireplace|chimney/.test(x))return 'HVAC / Mechanical';
+ if(/plumb|water heater|sewer|septic|water service/.test(x))return 'Plumbing';
+ if(/electric|wiring|\bpanel|generator|service upgrade|ev charg/.test(x))return 'Electrical';
+ if(/demoli/.test(x))return 'Demolition';
+ if(/\bdeck|porch|patio|stair|retaining wall|fence|shed|garage|pool/.test(x))return 'Deck / Outdoor';
+ if(/kitchen|bath|renovat|remodel|alteration|interior|finish|repair|replace|upgrade|fire damage/.test(x))return 'Renovation';
+ return 'Other';
+}

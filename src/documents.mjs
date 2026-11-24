@@ -134,6 +134,7 @@ export async function pdfWords(buffer) {
     const unesc = s => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
     return stdout.split('<page ').slice(1).map(pg => ({
       height: Number((/height="([\d.]+)"/.exec(pg) || [])[1]) || 0,
+      width: Number((/width="([\d.]+)"/.exec(pg) || [])[1]) || 0,
       words: [...pg.matchAll(/<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">([^<]*)<\/word>/g)].map(m => ({x0: +m[1], y0: +m[2], x1: +m[3], y1: +m[4], text: unesc(m[5])})),
     }));
   } catch (e) {
@@ -141,36 +142,99 @@ export async function pdfWords(buffer) {
     throw new Error('Falha ao extrair texto do PDF: ' + String(e.message).slice(0, 200));
   } finally { await rm(dir, {recursive: true, force: true}); }
 }
-// Rows of a wide PDF table. Each row is found by its permit number; the other cells are vertically centred on it,
-// and the (long) description is grouped by line gaps, then given to the nearest row.
+// Rows of a wide PDF table. Each row is found by its permit number. Cells are given to the nearest row (cells centred on the
+// number) or, with anchor.assign = 'above', to the last number printed above them (cells that start at the top and run down).
+// Column ranges are PDF points, or fractions of the page width when bbox.relX is set. A column can be {x: [a, b], maxDy}:
+// it only reads words within maxDy points below the number, so text further down (the description) is not swallowed.
+const trimAddress = a => { const m = /^(.*?\b[A-Z]{2}\s+\d{5}(?:-\d{4})?)\b/.exec(a); return (m ? m[1] : a).replace(/\s+/g, ' ').trim(); };
+function mergeSplitNumbers(words, anchor, sx) {
+  if (!anchor.splitHead) return words;
+  const head = new RegExp(anchor.splitHead), [a, b] = anchor.number.map(v => v * sx), gone = new Set();
+  const merged = words.map(w => {
+    if (gone.has(w) || w.x0 < a - 2.5 || w.x0 >= b || !head.test(w.text)) return w;
+    const next = words.filter(v => v !== w && !gone.has(v) && /^[\w-]{1,12}$/.test(v.text) && v.y0 > w.y0 && v.y0 - w.y1 < 14 && Math.abs(v.x0 - w.x0) < 20).sort((p, q) => p.y0 - q.y0)[0];
+    if (!next) return w;
+    gone.add(next); return {...w, text: w.text + next.text};
+  });
+  return merged.filter(w => !gone.has(w));
+}
+const contactName = s => String(s).split(/,\s*(?:Address|Phone):/i)[0].replace(/^(?:Contact Type|Contact Description)\s*/i, '').trim();
 export function bboxRows(pages, bbox) {
-  const {anchor, columns} = bbox, re = new RegExp(anchor.pattern), inCol = (w, [a, b]) => w.x0 >= a - 2.5 && w.x0 < b;
+  const {anchor, columns} = bbox, re = new RegExp(anchor.pattern), above = anchor.assign === 'above';
   const join_ = ws => ws.sort((p, q) => Math.abs(p.y0 - q.y0) > 3 ? p.y0 - q.y0 : p.x0 - q.x0).map(w => w.text).join(' ').replace(/\s+/g, ' ').trim();
   const out = [];
   for (const page of pages) {
-    const words = page.words.filter(w => w.y0 >= anchor.headerBottom && w.y0 < (anchor.footerTop || 1e9));
-    const anchors = words.filter(w => inCol(w, anchor.number) && re.test(w.text)).map(w => ({number: w.text, y: (w.y0 + w.y1) / 2, cells: {}, desc: []}));
+    const sx = bbox.relX && page.width ? page.width : 1, scale = r => [r[0] * sx, r[1] * sx];
+    const cols = Object.entries(columns).map(([name, spec]) => [name, scale(Array.isArray(spec) ? spec : spec.x), Array.isArray(spec) ? null : spec.maxDy ?? null]);
+    const inCol = (w, [a, b]) => w.x0 >= a - 2.5 && w.x0 < b, numRange = scale(anchor.number);
+    const words = mergeSplitNumbers(page.words, anchor, sx).filter(w => w.y0 >= (anchor.headerBottom || 0) && w.y0 < (anchor.footerTop || 1e9));
+    const anchors = words.filter(w => inCol(w, numRange) && re.test(w.text)).map(w => ({number: w.text, y: (w.y0 + w.y1) / 2, cells: {}, desc: []})).sort((p, q) => p.y - q.y);
     if (!anchors.length) continue;
-    const nearest = y => anchors.reduce((best, a) => Math.abs(a.y - y) < Math.abs(best.y - y) ? a : best, anchors[0]);
+    const owner = y => above ? ([...anchors].reverse().find(a => a.y - 3 <= y) || null) : anchors.reduce((best, a) => Math.abs(a.y - y) < Math.abs(best.y - y) ? a : best, anchors[0]);
     const descWords = [];
     for (const w of words) {
-      for (const [name, range] of Object.entries(columns)) {
+      const yc = (w.y0 + w.y1) / 2, a = owner(yc); if (!a) continue;
+      for (const [name, range, maxDy] of cols) {
         if (!inCol(w, range)) continue;
+        if (maxDy !== null && yc - a.y > maxDy) continue;
         if (name === 'description') { descWords.push(w); break; }
-        const a = nearest((w.y0 + w.y1) / 2); (a.cells[name] ||= []).push(w); break;
+        (a.cells[name] ||= []).push(w); break;
       }
     }
     descWords.sort((p, q) => p.y0 - q.y0);
     const groups = []; let prev = -1e9;
     for (const w of descWords) { if (w.y0 - prev > 8.5 || !groups.length) groups.push([]); groups.at(-1).push(w); prev = Math.max(prev, w.y0); }
-    for (const g of groups) { const c = (Math.min(...g.map(w => w.y0)) + Math.max(...g.map(w => w.y1))) / 2; nearest(c).desc.push(...g); }
+    for (const g of groups) { const c = above ? (g[0].y0 + g[0].y1) / 2 : (Math.min(...g.map(w => w.y0)) + Math.max(...g.map(w => w.y1))) / 2, a = owner(c); if (a) a.desc.push(...g); }
     for (const a of anchors) {
       const get = n => join_(a.cells[n] || []);
-      const issued = toIso(get('issued')), valueText = get('value').replace(/[$,]/g, '');
-      out.push({number: a.number, issued, address: get('address'), type: get('type'), value: Number(valueText) || 0, description: join_(a.desc), contractor: get('contractor') || get('company'), applicant: get('owner'), status: '', raw: a.number + ' ' + get('issued') + ' ' + get('address')});
+      const issued = toIso(get('issued')) || toIso(get('applied')), valueText = get('value').replace(/[$,]/g, '');
+      const contacts = get('contacts').replace(/Contact (?:Type|Description)/gi, ' ').replace(/\s+/g, ' ').trim();
+      const type = [get('type'), get('class')].filter(Boolean).join(' - ');
+      out.push({number: a.number, issued, address: trimAddress(get('address')), type, value: Number(valueText) || 0, description: join_(a.desc), contractor: get('contractor') || get('company'),
+        applicant: get('owner') || (contacts ? contactName(contacts) : ''), phone: (/Phone:\s*([\d()\s.+-]{7,20})/.exec(contacts) || [])[1]?.trim() || get('phone'), status: '', raw: a.number + ' ' + get('issued') + ' ' + get('address')});
     }
   }
   // Rows cut by a page break are printed again on the next pages: keep the first (complete) copy.
+  const seen = new Set();
+  return out.filter(r => r.issued && !seen.has(r.number) && seen.add(r.number));
+}
+
+// Reports printed as one card per permit (Needham): a label row, then its value row; people on the right-hand side.
+const KEY_NUM = /^[A-Z]{1,5}-\d{2}-\d{1,7}$/;
+export function cardRows(pages) {
+  const out = [];
+  for (const page of pages) {
+    const words = page.words, starts = words.filter(w => /^PERMIT$/i.test(w.text) && words.some(v => v.text === '#' && Math.abs(v.y0 - w.y0) < 3 && v.x0 - w.x1 < 6)).sort((a, b) => a.y0 - b.y0);
+    starts.forEach((st, i) => {
+      const top = st.y0 - 3, bottom = starts[i + 1] ? starts[i + 1].y0 - 3 : 1e9, card = words.filter(w => w.y0 >= top && w.y0 < bottom);
+      // The right-hand column (people) starts after the widest gap on the row that holds the permit number.
+      const numWord = card.find(w => KEY_NUM.test(w.text)), rowWords = numWord ? card.filter(w => Math.abs(w.y0 - numWord.y0) < 3.5).sort((p, q) => p.x0 - q.x0) : [];
+      let splitX = 1e9; for (let k = 1; k < rowWords.length; k++) if (rowWords[k].x0 - rowWords[k - 1].x1 > 220) { splitX = rowWords[k].x0 - 4; break; }
+      const left = card.filter(w => w.x0 < splitX), right = card.filter(w => w.x0 >= splitX);
+      const lines = ws => { const out2 = []; for (const w of [...ws].sort((p, q) => p.y0 - q.y0 || p.x0 - q.x0)) { const l = out2.find(x => Math.abs(x.y - w.y0) < 3.5); if (l) l.w.push(w); else out2.push({y: w.y0, w: [w]}); } return out2.map(l => ({y: l.y, w: l.w.sort((p, q) => p.x0 - q.x0)})); };
+      const text = l => l.w.map(w => w.text).join(' '), L = lines(left), R = lines(right);
+      const find = rx => L.findIndex(l => rx.test(text(l))), next = (idx, from) => L[idx + 1];
+      const head = find(/^PERMIT #/i), headVals = head >= 0 ? text(L[head + 1] || {w: []}) : '';
+      const number = (headVals.split(/\s+/).find(x => KEY_NUM.test(x))) || '', date = (headVals.match(/\d{1,2}\/\d{1,2}\/\d{4}/) || [])[0] || '';
+      const status = headVals.split(/\s+/).slice(-1)[0];
+      const ptype = find(/^PERMIT TYPE/i), zx = (L[ptype]?.w.find(w => /^ZONING$/i.test(w.text)) || {}).x0 ?? 1e9;
+      const permitType = ptype >= 0 ? (L[ptype + 1]?.w.filter(w => w.x0 < zx - 2).map(w => w.text).join(' ') || '') : '';
+      const ad = find(/^ADDRESS/i), address = ad >= 0 ? text(L[ad + 1] || {w: []}) : '';
+      const ct = find(/^CONST\. TYPE/i), ux = (L[ct]?.w.find(w => /^USE$/i.test(w.text)) || {}).x0 ?? 1e9;
+      const constType = ct >= 0 ? (L[ct + 1]?.w.filter(w => w.x0 < ux - 2).map(w => w.text).join(' ') || '') : '';
+      const de = find(/^DESCRIPTION/i), est = left.find(w => /^ESTIMATED$/i.test(w.text)), limit = est ? est.x0 - 3 : 1e9;
+      const descLines = de >= 0 ? L.slice(de + 1).map(l => l.w.filter(w => w.x1 < limit).map(w => w.text).join(' ')).filter(Boolean) : [];
+      const costWord = est ? left.filter(w => w.y0 > est.y1 && /^\$[\d,]+(?:\.\d+)?$/.test(w.text) && w.x1 > est.x0 - 40 && w.x0 < est.x1 + 10).sort((a, b) => a.y0 - b.y0)[0] : null;
+      const section = name => { const i2 = R.findIndex(l => new RegExp('^' + name + '$', 'i').test(text(l))); if (i2 < 0) return {}; const l1 = R[i2 + 1], l2 = R[i2 + 2]; if (!l1) return {};
+        const groups = []; for (const w of l1.w) { const g = groups.at(-1); if (g && w.x0 - g.x1 < 14) { g.t += ' ' + w.text; g.x1 = w.x1; } else groups.push({t: w.text, x1: w.x1}); }
+        const lic = l2 && /^Licen[cs]e\s*#/i.test(text(l2)) ? text(l2).replace(/^Licen[cs]e\s*#\s*/i, '').trim() : '';
+        return {name: groups[0]?.t || '', address: groups[1]?.t || '', license: lic}; };
+      const owner = section('OWNER'), contractor = section('CONTRACTOR');
+      if (!number || !date) return;
+      out.push({number, issued: toIso(date), address: address.replace(/\s+/g, ' ').trim(), type: [permitType, constType].filter(Boolean).join(' - '), value: costWord ? Number(costWord.text.replace(/[$,]/g, '')) : 0,
+        description: descLines.join(' ').replace(/\s+/g, ' ').trim(), contractor: [contractor.name, contractor.license ? 'Lic. ' + contractor.license : ''].filter(Boolean).join(' · '), applicant: owner.name || '', status, raw: number + ' ' + date + ' ' + address});
+    });
+  }
   const seen = new Set();
   return out.filter(r => r.issued && !seen.has(r.number) && seen.add(r.number));
 }
@@ -183,14 +247,16 @@ const AUTO_LABELS = {
   issued: /(date\s*issued|issue\s*date|issued|permit\s*date|date\s*of\s*issue|approval\s*date)/i,
   applied: /(application\s*date|date\s*submitted|submit|applied|filed)/i,
   address: /(address|location|site|premises|street)/i,
-  type: /(permit\s*type|record\s*type|^type$|work\s*type|type\s*of\s*(work|improvement))/i,
+  type: /(permit\s*type|permit\s*for|record\s*type|^type$|work\s*type|type\s*of\s*(work|improvement)|application\s*type)/i,
   owner: /(owner|applicant)/i,
   contractor: /(contractor\s*name|^contractor$|builder|license)/i,
   description: /(description|scope|work\s*to\s*be|project\s*description|work\s*desc)/i,
   value: /(cost|valuation|value|estimated)/i,
 };
-const AUTO_VOCAB = /^(permit|date|number|no\.?|#|application|issued|issue|type|owner|address|legal|location|description|work|cost|valuation|value|contractor|applicant|parcel|class|fee|total|phone|record|status|close|of|construction|square|footage|company|expires?|submitted)$/i;
+const AUTO_VOCAB = /^(permit|date|number|no\.?|#|application|issued|issue|type|owner|address|legal|location|description|work|cost|valuation|value|contractor|applicant|parcel|class|fee|total|phone|record|status|close|of|construction|square|footage|company|expires?|submitted|for|name|pin|estimated|cost)$/i;
 const NUMBER_TOKEN = /^[A-Z]{0,5}-?\d{2,4}-\d{2,7}[A-Z]?$/;
+// Permit numbers printed on two lines ("B-26-" over "1734") are joined before the column reader looks for them.
+export const prepPages = pages => pages.map(pg => ({...pg, words: mergeSplitNumbers(pg.words, {splitHead: '^[A-Z]{1,5}-\\d{2}-$', number: [0, 1e9]}, 1)}));
 export function autoBboxConfig(pages) {
   for (const page of pages) {
     const tokens = page.words.filter(w => NUMBER_TOKEN.test(w.text) && /\d/.test(w.text));
@@ -206,7 +272,7 @@ export function autoBboxConfig(pages) {
     const best = clusters.sort((x, y) => y.length - x.length)[0], bottom = Math.max(...best.map(w => w.y1)), top = Math.min(...best.map(w => w.y0));
     const headerBottom = bottom + 1, header = page.words.filter(w => w.y0 >= top - 2 && w.y1 <= headerBottom + 1).sort((a, b) => a.x0 - b.x0);
     const cols = []; // merge header words stacked over each other into one label
-    for (const w of header) { const c = cols.find(c => w.x0 <= c.x1 + 2.5 && w.x1 >= c.x0 - 2.5); if (c) { c.words.push(w); c.x0 = Math.min(c.x0, w.x0); c.x1 = Math.max(c.x1, w.x1); } else cols.push({x0: w.x0, x1: w.x1, words: [w]}); }
+    for (const w of header) { const c = cols.find(c => (w.x0 <= c.x1 + 2.5 && w.x1 >= c.x0 - 2.5) || (Math.abs(w.y0 - c.words.at(-1).y0) < 2 && w.x0 >= c.x1 && w.x0 - c.x1 < 4)); if (c) { c.words.push(w); c.x0 = Math.min(c.x0, w.x0); c.x1 = Math.max(c.x1, w.x1); } else cols.push({x0: w.x0, x1: w.x1, words: [w]}); }
     cols.sort((a, b) => a.x0 - b.x0);
     for (const c of cols) { c.label = c.words.sort((a, b) => a.y0 - b.y0 || a.x0 - b.x0).map(w => w.text).join(' '); c.mid = (c.x0 + c.x1) / 2; }
     // Column borders: the emptiest vertical strip (fewest words crossing it) between two neighbouring header labels.
@@ -482,10 +548,21 @@ async function parseDocument(doc, config, month, deps = {}) {
   const cfg = config.dateFallback === undefined && (config.scope === 'month' || !config.scope) ? {...config, dateFallback: 'month-start'} : config;
   const format = detectFormat(doc);
   if (format === 'pdf' && cfg.parser === 'bbox') return bboxRows(await (deps.pdfWords || pdfWords)(doc.buffer), cfg.bbox);
+  if (format === 'pdf' && cfg.parser === 'cards') return cardRows(await (deps.pdfWords || pdfWords)(doc.buffer));
   if (format === 'pdf') {
     const text = await (deps.pdfToText || pdfToText)(doc.buffer), rows = parseTextRows(text, cfg, month);
-    if (rows.length) return withPeek(rows, text);
-    try { const pages = await (deps.pdfWords || pdfWords)(doc.buffer), auto = autoBboxConfig(pages), found = auto ? bboxRows(pages, auto) : []; if (found.length) return found; } catch { /* fall through to the diagnostic below */ }
+    const autoRows = async () => { const pages = prepPages(await (deps.pdfWords || pdfWords)(doc.buffer)), auto = autoBboxConfig(pages); return auto ? bboxRows(pages, auto) : []; };
+    if (rows.length) {
+      // The line reader finds number, date and address; when most rows have no type, fill the blanks from the column reader.
+      if (rows.filter(r => r.type).length < rows.length * 0.5) {
+        try {
+          const byNumber = new Map((await autoRows()).map(r => [r.number, r]));
+          for (const r of rows) { const b = byNumber.get(r.number); if (!b) continue; for (const k of ['type', 'value', 'description', 'contractor', 'applicant', 'phone']) if (!r[k] && b[k]) r[k] = b[k]; }
+        } catch { /* keep the line reader result */ }
+      }
+      return withPeek(rows, text);
+    }
+    try { const found = await autoRows(); if (found.length) return found; } catch { /* fall through to the diagnostic below */ }
     return withPeek(rows, text);
   }
   if (format === 'docx') { const text = docxToText(doc.buffer); return withPeek(parseTextRows(text, cfg, month), text); }
@@ -506,7 +583,7 @@ export function toRecord(source, row, month, cfg, url) {
   const key = row.number || 'row-' + createHash('sha1').update(row.raw.replace(/\s+/g, ' ')).digest('hex').slice(0, 16);
   return {id: source.id + ':' + key, sourceId: source.id, city: source.city, state: source.state, address: row.address, number: row.number, issued: row.issued,
     description: (row.description || 'Descrição não disponibilizada; conferir o documento municipal.') + note, type: row.type, value: row.value || 0,
-    contractor: row.contractor === 'N/A' ? '' : row.contractor, applicant: row.applicant, sourceUrl: url, status: row.status, ...(row.approx ? {dateApprox: true} : {})};
+    contractor: row.contractor === 'N/A' ? '' : row.contractor, applicant: row.applicant, sourceUrl: url, status: row.status, ...(row.phone ? {phone: row.phone} : {}), ...(row.approx ? {dateApprox: true} : {})};
 }
 export async function collectDocuments(source, month, deps = {}) {
   const cfg = source.collector || {}, scope = cfg.scope || 'month', latest = scope === 'latest';

@@ -288,7 +288,7 @@ test('a login redirect to an unreviewed host is a visible failure', async () => 
 });
 
 test('a link without a year takes the year heading above it', async () => {
-  const source = src('needham'), base = 'https://www.needhamma.gov/DocumentCenter/View/';
+  const source = {...src('needham'), collector: {...src('needham').collector, parser: undefined}}, base = 'https://www.needhamma.gov/DocumentCenter/View/';
   const listing = '<h3>2026</h3><a href="/DocumentCenter/View/1">1st Quarter</a><a href="/DocumentCenter/View/2">3rd\u200b Quarter</a><h3>2025</h3><a href="/DocumentCenter/View/3">3rd Quarter</a>';
   const calls = [];
   const result = await collectDocuments(source, '2026-08', {fetch: fakeFetch({[source.url]: listing, [base + '2']: {body: pdfBytes, type: 'application/pdf'}}, calls), pdfToText: async () => 'BP-26-77  8/5/2026  1 A ST  New single family dwelling  $500,000.00\n', ...noSleep});
@@ -307,7 +307,7 @@ test('rows that start with the date and then the permit number are read (Amesbur
 });
 
 test('month-only links with no year get their year from the newest-first order (West Hartford)', async () => {
-  const source = src('west-hartford'), base = 'https://www.westhartfordct.gov/fs/resource-manager/view/';
+  const source = {...src('west-hartford'), collector: {...src('west-hartford').collector, parser: undefined}}, base = 'https://www.westhartfordct.gov/fs/resource-manager/view/';
   const months = ['October', 'September', 'August', 'January', 'December', 'November'];
   const listing = months.map((m, i) => '<a href="/fs/resource-manager/view/g' + i + '">' + m + '</a>').join('') + '<a href="/fs/resource-manager/view/demo">Demographics</a>';
   const calls = [];
