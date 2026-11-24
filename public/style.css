@@ -319,3 +319,21 @@ td.rowact{white-space:nowrap}
 #toast:not(.show){display:none}
 #toast.show{cursor:pointer}
 #toast.error{border-color:#66262b}
+
+/* login v3: smaller box, elegant spaced lettering (system fonts only: the CSP blocks web fonts) */
+.login{--elegant:"Century Gothic","Avenir Next","Avenir","Futura","Questrial","Segoe UI",system-ui,sans-serif}
+.login-wrap{width:min(560px,94vw);gap:34px}
+.login-mark{width:84px;height:84px;border-radius:22px}
+.login-brand .brand-text{font-family:var(--elegant)}
+.login-brand .brand-text b{font-size:46px;font-weight:300;letter-spacing:.22em;line-height:1}
+.login-brand .brand-text small{font-size:20px;font-weight:400;letter-spacing:.7em;margin-top:6px}
+.login .panel{padding:36px 40px;border-radius:24px;font-family:var(--elegant)}
+.login .panel h1{font-size:36px;font-weight:300;letter-spacing:.12em;margin:0 0 4px}
+.login form{gap:16px}
+.login label{font-size:15px;font-weight:400;letter-spacing:.06em}
+.login input{padding:14px 18px;font-size:17px;border-radius:14px;border-width:1px}
+.login .pw input{padding-right:52px}
+.login .eye .ico{width:22px;height:22px}
+.login .form-error{font-size:15px}
+.login .primary{padding:15px;font-size:19px;font-weight:400;letter-spacing:.2em;text-transform:uppercase;border-radius:14px}
+@media (max-width:600px){.login-brand .brand-text b{font-size:28px}.login-mark{width:56px;height:56px}.login .panel{padding:24px 20px}.login .panel h1{font-size:28px}}
